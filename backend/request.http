@@ -1,0 +1,7 @@
+POST http://localhost:8080/api/estimate
+Content-Type: application/json
+
+{
+  "areaName": "Stazione",
+  "radiusMeters": 400
+}
