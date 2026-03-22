@@ -1,8 +1,41 @@
-#root {
-  width: 100%;
+/* Contenitore principale della pagina */
+.container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 2rem;
 }
 
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
+/* Layout verticale del form */
+.form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+/* Stile base dei campi input */
+input {
+  width: 100%;
+  padding: 0.6rem;
+  margin-top: 0.4rem;
+  box-sizing: border-box;
+}
+
+/* Stile del bottone */
+button {
+  padding: 0.8rem;
+  cursor: pointer;
+}
+
+/* Box di errore */
+.error-box {
+  margin-top: 2rem;
+  color: red;
+}
+
+/* Box del risultato */
+.result-box {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  background-color: #fff;
 }
