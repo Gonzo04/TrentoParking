@@ -39,3 +39,10 @@ button {
   border: 1px solid #ccc;
   background-color: #fff;
 }
+
+.trento-map {
+  height: 500px; /* Adjust height as needed */
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}

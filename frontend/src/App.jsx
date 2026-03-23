@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import './App.css'
+import TrentoMap from './components/TrentoMap'
 
 function App() {
   // Questo stato salva il nome della zona inserita dall'utente.
@@ -145,6 +146,11 @@ function App() {
           </p>
         </div>
       )}
+
+      <div style={{ marginTop: '20px' }}>
+        <h2>Mappa di Trento</h2>
+        <TrentoMap />
+      </div>
     </div>
   )
 }
