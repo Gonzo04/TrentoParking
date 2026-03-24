@@ -1,0 +1,26 @@
+graph TD
+         %% Nodes
+         Start((Cerca parcheggio)) --> OpenApp[Apre TrentoParking App]
+         OpenApp --> LoadMap[Sistema carica mappa]
+         
+         subgraph Search_Process [Ricerca e stima]
+             LoadMap --> SelectZone[Utente: Seleziona zona e raggio]
+             SelectZone --> FetchData[Sistema: Recupera dati]
+             FetchData --> CalcEst[Sistema: Calcola stima]
+            CalcEst --> ShowResults[Sistema: Mostra stima e area circostante]
+        end
+        
+        ShowResults --> Found{Trovato posto?}
+        Found -- No --> SelectZone
+        Found -- Si --> Park[Utente parcheggia]
+        
+        Park --> Auth{Autenticato?}
+        Auth -- No --> End((Fine))
+        
+        subgraph Feedback_Process [Crowd sourcing]
+            Auth -- Si --> ProvideFB[Utente: Fornisce feedback]
+            ProvideFB --> SaveFB[Sistema: Registra feedback e aggiorna statisiche]
+            SaveFB --> Reward[Sistema: assegna ricompensa/punti]
+        end
+        
+        Reward --> Fine
