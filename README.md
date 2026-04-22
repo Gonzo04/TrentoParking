@@ -69,7 +69,7 @@ Backend (Spring Boot)
 |-----------|-----------------------------------|
 | Frontend  | React 18, Vite                    |
 | Backend   | Kotlin, Spring Boot, Gradle       |
-| Database  | (in integrazione)                 |
+| Database  | MongoDB                           |
 | Mappe     | Servizio cartografico esterno     |
 | Pagamento | Gateway mock                      |
 
