@@ -26,7 +26,8 @@ main
 │       ├── feature/feedback    ← eseguire merge dopo auth
 │       └── feature/booking     ← eseguire merge dopo auth
 ├── feature/frontend            ← indipendente, eseguire merge quando si vuole
-└── feature/admin               ← eseguire merge dopo auth e frontend
+├── feature/admin               ← eseguire merge dopo auth e frontend
+└── feature/host                ← eseguire merge dopo admin
 ```
 
 ---
@@ -43,6 +44,7 @@ main
 | 3 | `feature/booking` | `feature/auth` |
 | qualsiasi | `feature/frontend` | nessuna |
 | 4 | `feature/admin` | `feature/auth` + `feature/frontend` |
+| 4 | `feature/host` | `feature/auth` + `feature/frontend` |
 
 Per branch allo stesso step il merge puo essere eseguito in parallelo.
 
@@ -201,6 +203,29 @@ Il controllo del ruolo è fatto lato backend su ogni endpoint.
 
 **Credenziali di test** (seed in `DataInitializer`):
 - Email: `admin@trentoparking.it` · Password: `admin123`
+
+---
+
+### `feature/host`
+**Base:** `feature/admin` · **Modulo D2:** Gestione Posti Privati (HOST)
+
+Pagina riservata agli host certificati per gestire i propri posti privati da affittare.
+Ogni host vede e modifica **solo i propri posti** — il backend scopa tutte le query su `hostId`.
+
+**Cosa aggiunge rispetto a `feature/admin`:**
+- `dto/HostDtos.kt` — `PostoPrivatoRequest`
+- `controller/HostController.kt` — CRUD `/api/host/posti` con controllo ruolo e scope per hostId
+- `frontend/src/components/HostPanel.jsx` — tabella posti con aggiungi/modifica/elimina, gestione fasce orarie
+- `frontend/src/App.jsx` — tab "I miei posti" visibile solo a `HOST`
+
+**Endpoint esposti:** (tutti richiedono header `Authorization` con token di un HOST)
+- `GET /api/host/posti` — lista i propri posti privati
+- `POST /api/host/posti` — crea un nuovo posto
+- `PUT /api/host/posti/{id}` — modifica un proprio posto (403 se appartiene ad altro host)
+- `DELETE /api/host/posti/{id}` — elimina un proprio posto (403 se appartiene ad altro host)
+
+**Credenziali di test** (seed in `DataInitializer`):
+- Email: `lucia.bianchi@example.com` · Password: `password123`
 
 ---
 
