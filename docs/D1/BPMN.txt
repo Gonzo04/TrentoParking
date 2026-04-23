@@ -1,0 +1,249 @@
+Perfetto. Andiamo con la **Sezione 6: Diagramma BPMN**.
+
+Qui la scelta giusta, coerente con tutto il D1, è modellare il processo **to-be** principale:
+
+> l’utente consulta il sistema, seleziona un’area, imposta un raggio, visualizza la stima e decide come procedere nella ricerca del parcheggio.
+
+Questa è la scelta migliore perché:
+
+* è centrata sul valore del progetto
+* è coerente con obiettivi, requisiti e use case
+* evita di fare un BPMN troppo tecnico o interno
+
+---
+
+# 1. Testo da mettere nella sezione 6
+
+Ti propongo questo testo introduttivo:
+
+```latex
+\section{Diagramma BPMN}
+
+Il diagramma BPMN rappresenta il comportamento dinamico del sistema \textit{to-be} relativo al processo principale di consultazione della disponibilità di parcheggio. In particolare, il processo descrive le azioni attraverso cui un utente seleziona una zona di interesse, imposta un raggio di ricerca, ottiene una stima della disponibilità di parcheggi gratuiti e a pagamento e decide come procedere nella ricerca del parcheggio.
+```
+
+---
+
+# 2. Processo BPMN da modellare
+
+Ti scrivo il flusso in modo molto chiaro.
+
+## Pool / lane consigliate
+
+Per non complicarti troppo, fai così:
+
+### Pool principale
+
+**TrentoParking**
+
+Con due lane:
+
+* **Utente**
+* **Sistema**
+
+Questo basta. Non serve aggiungere altre pool adesso.
+
+---
+
+## Flusso corretto
+
+### Start event
+
+**Richiesta di consultazione avviata**
+
+### Nella lane Utente
+
+1. **Consultare la mappa**
+2. **Selezionare area di interesse**
+3. **Impostare raggio di ricerca**
+
+### Nella lane Sistema
+
+4. **Recuperare dati disponibili**
+5. **Elaborare stima di disponibilità**
+6. **Mostrare stima dei parcheggi gratuiti e a pagamento**
+
+### Nella lane Utente
+
+7. **Valutare il risultato**
+
+### Gateway XOR
+
+**La stima è soddisfacente?**
+
+#### Se sì
+
+8. **Procedere verso la zona selezionata**
+9. **Fine: decisione di ricerca presa**
+
+#### Se no
+
+10. **Selezionare una nuova area**
+    e torni a:
+
+* impostare raggio / nuova consultazione
+
+---
+
+# 3. Perché questo BPMN va bene
+
+Perché:
+
+* descrive un **processo utente reale**
+* non entra nell’algoritmo
+* non parla di alpha, beta, MongoDB, ecc.
+* usa un solo gateway XOR semplice
+* è leggibile e coerente con la lezione BPMN
+
+---
+
+# 4. Nomi corretti da usare nel diagramma
+
+Ricordati le convenzioni del corso:
+
+* attività: **verbo + oggetto**
+* eventi: nome chiaro
+* gateway con domanda/condizione
+
+Quindi usa esattamente cose del tipo:
+
+### Eventi
+
+* **Richiesta di consultazione avviata**
+* **Decisione di ricerca presa**
+
+### Attività
+
+* **Consultare la mappa**
+* **Selezionare area di interesse**
+* **Impostare raggio di ricerca**
+* **Recuperare dati disponibili**
+* **Elaborare stima di disponibilità**
+* **Mostrare stima di disponibilità**
+* **Valutare il risultato**
+* **Procedere verso la zona selezionata**
+* **Selezionare una nuova area**
+
+### Gateway
+
+* **La stima è soddisfacente?**
+
+Con uscite:
+
+* **Sì**
+* **No**
+
+---
+
+# 5. Schema logico del BPMN
+
+Te lo scrivo in modo visivo:
+
+## Lane Utente
+
+Start
+→ Consultare la mappa
+→ Selezionare area di interesse
+→ Impostare raggio di ricerca
+
+## Lane Sistema
+
+→ Recuperare dati disponibili
+→ Elaborare stima di disponibilità
+→ Mostrare stima di disponibilità
+
+## Lane Utente
+
+→ Valutare il risultato
+→ XOR: **La stima è soddisfacente?**
+
+### ramo Sì
+
+→ Procedere verso la zona selezionata
+→ End
+
+### ramo No
+
+→ Selezionare una nuova area
+→ ritorno a **Impostare raggio di ricerca** oppure meglio a **Selezionare area di interesse**
+
+Io farei tornare a **Selezionare area di interesse**. È più naturale.
+
+---
+
+# 6. Cosa NON mettere nel BPMN
+
+Non inserire adesso:
+
+* feedback utente
+* premi
+* amministratore
+* gestione dati esterni
+* dettagli di calcolo
+
+Perché il BPMN del D1 deve rappresentare **un processo chiaro**, non tutto il sistema insieme.
+
+Il feedback, volendo, potrebbe essere un BPMN alternativo. Ma per ora il processo principale è meglio.
+
+---
+
+# 7. Frase finale da mettere sotto o prima della figura
+
+Puoi aggiungere anche questa:
+
+```latex
+Il processo modellato mette in evidenza il ruolo dell'utente e del sistema nella consultazione della disponibilità di parcheggio. L'utente fornisce i parametri di ricerca, mentre il sistema elabora e restituisce una stima utile a supportare la decisione finale.
+```
+
+---
+
+# 8. Come disegnarlo praticamente
+
+Su draw.io fai così:
+
+## Pool grande
+
+**TrentoParking**
+
+## Due lane orizzontali
+
+* sopra: **Utente**
+* sotto: **Sistema**
+
+## Nella lane Utente
+
+* Start event
+* Consultare la mappa
+* Selezionare area di interesse
+* Impostare raggio di ricerca
+* Valutare il risultato
+* XOR gateway
+* Procedere verso la zona selezionata
+* End event
+* Selezionare una nuova area
+
+## Nella lane Sistema
+
+* Recuperare dati disponibili
+* Elaborare stima di disponibilità
+* Mostrare stima di disponibilità
+
+## Flussi
+
+* lineari tra i task
+* dal gateway:
+
+  * **Sì** → procedere → end
+  * **No** → nuova area → ritorno a selezionare area
+
+---
+
+# 9. Mia raccomandazione
+
+Fallo **semplice**.
+Un solo gateway XOR basta.
+
+Se vuoi, nel prossimo messaggio ti preparo due cose già pronte:
+
+1. il **testo LaTeX completo** della sezione 6
+2. uno **schema BPMN passo-passo da copiare in draw.io** con nomi già definitivi.
