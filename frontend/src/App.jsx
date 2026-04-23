@@ -1,72 +1,68 @@
 import { useState } from 'react'
 import './App.css'
+import MapPicker from './components/MapPicker'
+import { estimateParking } from './services/estimateService'
 
 function App() {
-  // Questo stato salva il nome della zona inserita dall'utente.
-  // useState('') significa: all'inizio il campo è una stringa vuota.
-  const [areaName, setAreaName] = useState('')
+  // Punto selezionato sulla mappa
+  const [selectedPosition, setSelectedPosition] = useState(null)
 
-  // Questo stato salva il raggio di ricerca in metri.
-  // Lo inizializziamo a 500 per avere un valore di default.
+  // Raggio di ricerca in metri
   const [radiusMeters, setRadiusMeters] = useState(500)
 
-  // Questo stato conterrà la risposta del backend.
-  // All'inizio non abbiamo ancora ricevuto nessun risultato, quindi usiamo null.
+  // Messaggio mostrato all'utente
+  const [message, setMessage] = useState('')
+
+  // Risultato ricevuto dal backend
   const [result, setResult] = useState(null)
 
-  // Questo stato serve per mostrare eventuali errori all'utente.
-  const [error, setError] = useState('')
-
-  // Questo stato ci dice se la richiesta è in corso.
-  // È utile per disabilitare il bottone e mostrare "Caricamento...".
+  // Stato di caricamento
   const [loading, setLoading] = useState(false)
 
-  // Questa funzione viene eseguita quando l'utente invia il form.
-  // È async perché dentro facciamo una chiamata HTTP con await.
-  const handleSubmit = async (event) => {
-    // event.preventDefault() impedisce al browser di ricaricare la pagina
-    // quando si invia il form. In React quasi sempre vogliamo evitarlo.
-    event.preventDefault()
-
-    // Prima di fare una nuova richiesta, puliamo eventuali dati vecchi.
-    setError('')
+  // Quando l'utente clicca sulla mappa, salviamo le coordinate
+  const handleSelectPosition = ({ lat, lng }) => {
+    setSelectedPosition({ lat, lng })
     setResult(null)
+    setMessage(`Punto selezionato: lat ${lat.toFixed(5)}, lng ${lng.toFixed(5)}`)
+  }
+
+  // Funzione di supporto per tradurre LOW/MEDIUM/HIGH in italiano
+  const translateAvailability = (value) => {
+    switch (value) {
+      case 'LOW':
+        return 'Bassa'
+      case 'MEDIUM':
+        return 'Media'
+      case 'HIGH':
+        return 'Alta'
+      default:
+        return value
+    }
+  }
+
+  // Questa funzione adesso chiama DAVVERO il backend
+  const handleEstimate = async () => {
+    if (!selectedPosition) {
+      setMessage('Seleziona prima un punto sulla mappa.')
+      return
+    }
+
     setLoading(true)
+    setResult(null)
+    setMessage('Calcolo della stima in corso...')
 
     try {
-      // fetch invia una richiesta HTTP al backend.
-      const response = await fetch('http://localhost:8080/api/estimate', {
-        method: 'POST',
-        headers: {
-          // Stiamo dicendo al backend che il body è in formato JSON.
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          // Convertiamo i dati JavaScript in JSON da inviare al server.
-          areaName: areaName,
-          radiusMeters: Number(radiusMeters),
-        }),
+      const data = await estimateParking({
+        centerLat: selectedPosition.lat,
+        centerLng: selectedPosition.lng,
+        radiusMeters,
       })
 
-      // Se la risposta HTTP non è "ok" (es. 400, 500, ecc.),
-      // lanciamo un errore che verrà catturato nel catch.
-      if (!response.ok) {
-        throw new Error('Errore nella chiamata al backend')
-      }
-
-      // Convertiamo la risposta JSON del backend in un oggetto JavaScript.
-      const data = await response.json()
-
-      // Salviamo il risultato nello stato.
-      // Quando lo stato cambia, React aggiorna automaticamente l'interfaccia.
       setResult(data)
-    } catch (err) {
-      // Se succede un errore di rete o un errore lanciato da noi,
-      // salviamo il messaggio nello stato error.
-      setError(err.message)
+      setMessage('Stima calcolata con successo.')
+    } catch (error) {
+      setMessage(error.message)
     } finally {
-      // finally viene eseguito sia in caso di successo sia in caso di errore.
-      // Qui rimettiamo loading a false perché la richiesta è finita.
       setLoading(false)
     }
   }
@@ -74,74 +70,78 @@ function App() {
   return (
     <div className="container">
       <h1>TrentoParking</h1>
-      <p>Stima della disponibilità di parcheggio a Trento</p>
+      <p>Seleziona un punto sulla mappa e imposta il raggio di ricerca.</p>
 
-      {/* 
-        Questo è un form HTML normale, ma in React colleghiamo l'evento onSubmit
-        alla funzione handleSubmit.
-      */}
-      <form onSubmit={handleSubmit} className="form">
-        <div>
-          <label htmlFor="areaName">Nome area</label>
-          <input
-            id="areaName"
-            type="text"
-            value={areaName}
-            onChange={(e) => setAreaName(e.target.value)}
-            placeholder="Es. Centro, Stazione, Ospedale"
-            required
-          />
-        </div>
+      <div style={{ marginBottom: '16px' }}>
+        <label htmlFor="radiusMeters">
+          Raggio di ricerca: <strong>{radiusMeters} metri</strong>
+        </label>
 
-        <div>
-          <label htmlFor="radiusMeters">Raggio di ricerca (metri)</label>
-          <input
-            id="radiusMeters"
-            type="number"
-            value={radiusMeters}
-            onChange={(e) => setRadiusMeters(e.target.value)}
-            min="100"
-            step="50"
-            required
-          />
-        </div>
+        <input
+          id="radiusMeters"
+          type="range"
+          min="100"
+          max="1500"
+          step="50"
+          value={radiusMeters}
+          onChange={(e) => setRadiusMeters(Number(e.target.value))}
+          style={{ width: '100%' }}
+        />
+      </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Caricamento...' : 'Calcola stima'}
+      <MapPicker
+        selectedPosition={selectedPosition}
+        radiusMeters={radiusMeters}
+        onSelectPosition={handleSelectPosition}
+      />
+
+      <div style={{ marginTop: '16px' }}>
+        <button onClick={handleEstimate} disabled={loading}>
+          {loading ? 'Calcolo in corso...' : 'Calcola stima'}
         </button>
-      </form>
+      </div>
 
-      {/* 
-        Rendering condizionale:
-        questo blocco viene mostrato solo se error contiene qualcosa.
-      */}
-      {error && (
-        <div className="error-box">
-          <strong>Errore:</strong> {error}
+      {message && (
+        <div
+          style={{
+            marginTop: '16px',
+            padding: '12px',
+            background: '#f3f4f6',
+            borderRadius: '8px',
+          }}
+        >
+          {message}
         </div>
       )}
 
-      {/* 
-        Anche questo è rendering condizionale:
-        viene mostrato solo se result non è null.
-      */}
       {result && (
-        <div className="result-box">
+        <div
+          style={{
+            marginTop: '16px',
+            padding: '16px',
+            background: '#eef6ff',
+            borderRadius: '12px',
+          }}
+        >
           <h2>Risultato della stima</h2>
-          <p>
-            <strong>Messaggio:</strong> {result.message}
-          </p>
+
           <p>
             <strong>Disponibilità parcheggi gratuiti:</strong>{' '}
-            {result.freeParkingAvailability}
+            {translateAvailability(result.freeParkingAvailability)}
           </p>
+
           <p>
             <strong>Disponibilità parcheggi a pagamento:</strong>{' '}
-            {result.paidParkingAvailability}
+            {translateAvailability(result.paidParkingAvailability)}
           </p>
+
           <p>
             <strong>Area suggerita:</strong>{' '}
             {result.suggestedArea || 'Nessuna'}
+          </p>
+
+          <p>
+            <strong>Messaggio:</strong> {result.message}
           </p>
         </div>
       )}

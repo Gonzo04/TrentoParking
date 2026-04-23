@@ -1,6 +1,7 @@
 package com.trentoparking.backend.dto
 
 data class EstimateRequest(
-    val areaName: String,
+    val centerLat: Double,
+    val centerLng: Double,
     val radiusMeters: Int
 )
