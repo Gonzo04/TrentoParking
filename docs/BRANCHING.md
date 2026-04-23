@@ -25,7 +25,8 @@ main
 │   └── feature/auth            ← eseguire merge dopo base-setup
 │       ├── feature/feedback    ← eseguire merge dopo auth
 │       └── feature/booking     ← eseguire merge dopo auth
-└── feature/frontend            ← indipendente, eseguire merge quando si vuole
+├── feature/frontend            ← indipendente, eseguire merge quando si vuole
+└── feature/admin               ← eseguire merge dopo auth e frontend
 ```
 
 ---
@@ -41,6 +42,7 @@ main
 | 3 | `feature/feedback` | `feature/auth` |
 | 3 | `feature/booking` | `feature/auth` |
 | qualsiasi | `feature/frontend` | nessuna |
+| 4 | `feature/admin` | `feature/auth` + `feature/frontend` |
 
 Per branch allo stesso step il merge puo essere eseguito in parallelo.
 
@@ -176,6 +178,29 @@ I dati dei bus sono mockati (nessuna API esterna reale).
 
 **Endpoint esposti:**
 - `GET /api/mobility/suggestions?lat=&lon=` — restituisce linee bus e fermate suggerite
+
+---
+
+### `feature/admin`
+**Base:** `feature/auth` + merge di `feature/frontend` · **Modulo D2:** Amministrazione
+
+Pagina di gestione parcheggi visibile solo agli utenti con ruolo `AMMINISTRATORE`.
+Il controllo del ruolo è fatto lato backend su ogni endpoint.
+
+**Cosa aggiunge:**
+- `dto/AdminDtos.kt` — `ParcheggioRequest`
+- `controller/AdminController.kt` — CRUD `/api/admin/parcheggi` con controllo ruolo
+- `frontend/src/components/AdminPanel.jsx` — tabella parcheggi con aggiungi/modifica/elimina
+- `frontend/src/App.jsx` — tab "Amministrazione" visibile solo a `AMMINISTRATORE`
+
+**Endpoint esposti:** (tutti richiedono header `Authorization` con token di un AMMINISTRATORE)
+- `GET /api/admin/parcheggi` — lista tutti i parcheggi
+- `POST /api/admin/parcheggi` — crea un nuovo parcheggio
+- `PUT /api/admin/parcheggi/{id}` — modifica un parcheggio
+- `DELETE /api/admin/parcheggi/{id}` — elimina un parcheggio
+
+**Credenziali di test** (seed in `DataInitializer`):
+- Email: `admin@trentoparking.it` · Password: `admin123`
 
 ---
 
