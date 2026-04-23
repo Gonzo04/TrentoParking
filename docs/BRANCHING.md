@@ -6,11 +6,11 @@ Fino ad ora tutto il lavoro di implementazione MongoDB è stato fatto su un'unic
 (`feature/mongodb-integration`). Per facilitare la collaborazione, il lavoro è stato
 **suddiviso in branch separate, una per modulo**, seguendo la struttura dei componenti del D2.
 
-Ogni branch contiene un singolo commit focalizzato e può essere revisionata e mergiata
+Ogni branch contiene un singolo commit focalizzato e può essere revisionata per poi eseguire il merge
 indipendentemente tramite pull request.
 
 > **Nota:** la branch `feature/mongodb-integration` è una branch di riferimento storico
-> che contiene tutto il lavoro in un unico commit. **Non va mergiata** — esiste solo come
+> che contiene tutto il lavoro in un unico commit. **Non va eseguito il merge** — esiste solo come
 > archivio. Tutti i merge avvengono tramite le branch di modulo.
 
 ---
@@ -19,13 +19,13 @@ indipendentemente tramite pull request.
 
 ```
 main
-├── feature/base-setup          ← da mergiare PER PRIMA (tutte le altre dipendono da questa)
-│   ├── feature/estimate        ← mergiare dopo base-setup
-│   ├── feature/mobility        ← mergiare dopo base-setup
-│   └── feature/auth            ← mergiare dopo base-setup
-│       ├── feature/feedback    ← mergiare dopo auth
-│       └── feature/booking     ← mergiare dopo auth
-└── feature/frontend            ← indipendente, mergiare quando si vuole
+├── feature/base-setup          ← eseguire merge PER PRIMA (tutte le altre dipendono da questa)
+│   ├── feature/estimate        ← eseguire merge dopo base-setup
+│   ├── feature/mobility        ← eseguire merge dopo base-setup
+│   └── feature/auth            ← eseguire merge dopo base-setup
+│       ├── feature/feedback    ← eseguire merge dopo auth
+│       └── feature/booking     ← eseguire merge dopo auth
+└── feature/frontend            ← indipendente, eseguire merge quando si vuole
 ```
 
 ---
@@ -42,7 +42,7 @@ main
 | 3 | `feature/booking` | `feature/auth` |
 | qualsiasi | `feature/frontend` | nessuna |
 
-Le branch allo stesso step possono essere mergiate in parallelo.
+Per branch allo stesso step il merge puo essere eseguito in parallelo.
 
 ---
 
@@ -61,7 +61,6 @@ Prerequisiti comuni da cui dipendono tutte le altre branch backend.
 - `repository/FeedbackRepository.kt` — aggiunte query `findByFasciaOraria` e `findByAreaAndFasciaOraria`
 - `controller/GlobalExceptionHandler.kt` — nuovo: converte le eccezioni in risposte HTTP con status code corretto
 - `config/DataInitializer.kt` — aggiornato: usa BCrypt, nuovi campi del modello, dati di seed più completi
-- `CLAUDE.md` — documentazione del progetto per Claude Code
 
 ---
 
