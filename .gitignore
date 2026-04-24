@@ -1,4 +1,12 @@
-.idea/
-*.iml
-.DS_Store
-Thumbs.db
+# Archivi
+*.zip
+
+# LaTeX temporanei
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+
+# Python / sistema / editor se mai serviranno
+__pycache__/
+.vscode/
