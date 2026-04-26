@@ -47,7 +47,7 @@ TrentoParking è un'applicazione web che aiuta gli utenti a stimare la disponibi
 ## Architettura
 
 ```
-Browser (React)
+Browser / Frontend (React)
     │
     │  REST JSON
     ▼
@@ -106,22 +106,24 @@ Il frontend si avvia su `http://localhost:5173`.
 ---
 
 ## Struttura del progetto
-
 ```
 TrentoParking/
 ├── backend/
 │   └── src/main/kotlin/com/trentoparking/backend/
+│       ├── config/         # Configurazioni Spring, inclusa CORS
 │       ├── controller/     # Endpoint REST
-│       ├── service/        # Logica di business
-│       └── dto/            # Oggetti di trasferimento dati
+│       ├── domain/         # Classi di dominio
+│       ├── dto/            # Oggetti di trasferimento dati
+│       └── service/        # Logica applicativa
 ├── frontend/
 │   └── src/
-│       └── App.jsx         # Interfaccia principale
+│       ├── components/     # Componenti React
+│       ├── services/       # Chiamate al backend
+│       └── App.jsx         # Componente principale
 └── docs/
-    ├── D1/                 # Diagramma dei casi d'uso e BPMN
-    └── D2/                 # Diagramma dei componenti e delle classi
+    ├── D1/                 # Requisiti, casi d'uso e BPMN
+    └── D2/                 # Architettura, componenti e classi
 ```
-
 ---
 
 ## API
@@ -133,16 +135,19 @@ Restituisce la stima della disponibilità di parcheggio per l'area indicata.
 **Request**
 ```json
 {
-  "areaName": "centro",
-  "radiusMeters": 500
+ {
+  "centerLat": 46.0679,
+  "centerLng": 11.1211,
+  "radiusMeters": 400
+}
 }
 ```
 
 **Response**
 ```json
 {
-  "freeParkingAvailability": "LOW",
-  "paidParkingAvailability": "HIGH",
+  "freeParkingAvailability": "bassa",
+  "paidParkingAvailability": "alta",
   "suggestedArea": "Parcheggio Monte Baldo",
   "message": "Zona centrale: bassa disponibilità di parcheggi gratuiti, alta disponibilità di parcheggi a pagamento."
 }
@@ -157,3 +162,6 @@ I valori di disponibilità possono essere `LOW`, `MEDIUM` o `HIGH`.
 - David Dorobantu — 234467
 - Riccardo Gonzato — 246476
 - Matteo Sepa — 243283
+
+
+
