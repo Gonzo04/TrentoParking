@@ -135,11 +135,9 @@ Restituisce la stima della disponibilità di parcheggio per l'area indicata.
 **Request**
 ```json
 {
- {
   "centerLat": 46.0679,
   "centerLng": 11.1211,
   "radiusMeters": 400
-}
 }
 ```
 
@@ -153,9 +151,9 @@ Restituisce la stima della disponibilità di parcheggio per l'area indicata.
 }
 ```
 
-I valori di disponibilità possono essere `LOW`, `MEDIUM` o `HIGH`.
 
----
+
+I valori di disponibilità possono essere `Bassa`, `Media` o `Alta`.
 
 ## Autori
 
