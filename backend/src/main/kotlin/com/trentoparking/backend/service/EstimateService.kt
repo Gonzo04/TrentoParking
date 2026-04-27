@@ -1,9 +1,9 @@
 package com.trentoparking.backend.service
-
 import com.trentoparking.backend.domain.TipoParcheggio
 import com.trentoparking.backend.dto.EstimateRequest
 import com.trentoparking.backend.dto.EstimateResponse
 import org.springframework.stereotype.Service
+import com.trentoparking.backend.dto.ParkingInRadiusDto
 import kotlin.math.PI
 import kotlin.math.asin
 import kotlin.math.cos
@@ -20,15 +20,27 @@ class EstimateService(
 
         // Recuperiamo tutti i parcheggi disponibili nella nostra sorgente dati.
         val tuttiIParcheggi = servizioParcheggi.ottieniTuttiIParcheggi()
-
         // Filtriamo solo i parcheggi che cadono entro il raggio selezionato.
-        val parcheggiNelRaggio = tuttiIParcheggi.filter { parcheggio ->
-            distanzaMetri(
-                richiesta.centerLat,
-                richiesta.centerLng,
-                parcheggio.posizione.latitudine,
-                parcheggio.posizione.longitudine
-            ) <= richiesta.radiusMeters
+        val parcheggiConDistanzaNelRaggio = tuttiIParcheggi
+            .map { parcheggio ->
+                val distanza = distanzaMetri(
+                    richiesta.centerLat,
+                    richiesta.centerLng,
+                    parcheggio.posizione.latitudine,
+                    parcheggio.posizione.longitudine
+                )
+
+                parcheggio to distanza
+            }
+            .filter { (_, distanza) ->
+                distanza <= richiesta.radiusMeters
+            }
+            .sortedBy { (_, distanza) ->
+                distanza
+            }
+
+        val parcheggiNelRaggio = parcheggiConDistanzaNelRaggio.map { (parcheggio, _) ->
+            parcheggio
         }
 
         // Separiamo i parcheggi gratuiti da quelli a pagamento.
@@ -52,12 +64,23 @@ class EstimateService(
         } else {
             "Nel raggio selezionato sono stati trovati ${parcheggiNelRaggio.size} parcheggi."
         }
-
+        val parkingsInRadius = parcheggiConDistanzaNelRaggio.map { (parcheggio, distanza) ->
+            ParkingInRadiusDto(
+                id = parcheggio.id,
+                name = parcheggio.nome,
+                type = parcheggio.tipo.name,
+                lat = parcheggio.posizione.latitudine,
+                lng = parcheggio.posizione.longitudine,
+                estimatedAvailableSpots = parcheggio.postiDisponibiliStimati,
+                distanceMeters = distanza
+            )
+        }
         return EstimateResponse(
             freeParkingAvailability = disponibilitaGratuiti,
             paidParkingAvailability = disponibilitaPagamento,
             suggestedArea = parcheggioSuggerito?.nome,
-            message = messaggio
+            message = messaggio,
+            parkingsInRadius = parkingsInRadius
         )
     }
 

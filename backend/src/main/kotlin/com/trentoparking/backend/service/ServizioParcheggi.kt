@@ -8,12 +8,26 @@ import org.springframework.stereotype.Service
 @Service
 class ServizioParcheggi {
 
-    // Per ora usiamo una lista hardcoded.
-    // Più avanti questa fonte dati potrà essere sostituita con:
-    // - API del Comune
-    // - database
-    // - entrambe
-    fun ottieniTuttiIParcheggi(): List<Parcheggio> {
+    fun ottieniParcheggiGratuiti(): List<Parcheggio> {
+        return listOf(
+            Parcheggio(
+                id = "P3",
+                nome = "Parcheggio Sanseverino",
+                tipo = TipoParcheggio.GRATUITO,
+                posizione = Posizione(46.0732, 11.1140),
+                postiDisponibiliStimati = 25
+            ),
+            Parcheggio(
+                id = "P4",
+                nome = "Parcheggio Ex Italcementi",
+                tipo = TipoParcheggio.GRATUITO,
+                posizione = Posizione(46.0705, 11.1085),
+                postiDisponibiliStimati = 18
+            )
+        )
+    }
+
+    fun ottieniParcheggiPagamento(): List<Parcheggio> {
         return listOf(
             Parcheggio(
                 id = "P1",
@@ -30,20 +44,6 @@ class ServizioParcheggi {
                 postiDisponibiliStimati = 40
             ),
             Parcheggio(
-                id = "P3",
-                nome = "Parcheggio Sanseverino",
-                tipo = TipoParcheggio.GRATUITO,
-                posizione = Posizione(46.0732, 11.1140),
-                postiDisponibiliStimati = 25
-            ),
-            Parcheggio(
-                id = "P4",
-                nome = "Parcheggio Ex Italcementi",
-                tipo = TipoParcheggio.GRATUITO,
-                posizione = Posizione(46.0705, 11.1085),
-                postiDisponibiliStimati = 18
-            ),
-            Parcheggio(
                 id = "P5",
                 nome = "Parcheggio Stazione Trento",
                 tipo = TipoParcheggio.PAGAMENTO,
@@ -51,5 +51,9 @@ class ServizioParcheggi {
                 postiDisponibiliStimati = 30
             )
         )
+    }
+
+    fun ottieniTuttiIParcheggi(): List<Parcheggio> {
+        return ottieniParcheggiGratuiti() + ottieniParcheggiPagamento()
     }
 }
