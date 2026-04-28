@@ -1,8 +1,0 @@
-POST http://localhost:8080/api/estimate
-Content-Type: application/json
-
-{
-  "centerLat": 46.0664,
-  "centerLng": 11.1258,
-  "radiusMeters": 500
-}

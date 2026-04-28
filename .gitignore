@@ -10,3 +10,16 @@
 # Python / sistema / editor se mai serviranno
 __pycache__/
 .vscode/
+
+# Node
+node_modules/
+npm-debug.log
+
+# Env file (mai committare)
+.env
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+Thumbs.db

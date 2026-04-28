@@ -1,0 +1,25 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: trentoparking-mongo
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./scripts/mongo-init.sh:/docker-entrypoint-initdb.d/00-create-user.sh:ro
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/01-seed.js:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASS}
+      MONGO_INITDB_DATABASE: trentoparking
+      MONGO_APP_USER: ${MONGO_APP_USER}
+      MONGO_APP_PASS: ${MONGO_APP_PASS}
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  mongo_data:

@@ -2,32 +2,47 @@
 
 ## Contesto
 
-Fino ad ora tutto il lavoro di implementazione MongoDB è stato fatto su un'unica branch
-(`feature/mongodb-integration`). Per facilitare la collaborazione, il lavoro è stato
-**suddiviso in branch separate, una per modulo**, seguendo la struttura dei componenti del D2.
+Il backend è stato riscritto da Kotlin/Spring Boot a **Node.js + Express + Mongoose**.
+Lo scope del progetto è stato ristretto a **affitto di posti privati** (focus startup-ready).
 
-Ogni branch contiene un singolo commit focalizzato e può essere revisionata per poi eseguire il merge
-indipendentemente tramite pull request.
+Sono stati eliminati:
+- Stima della disponibilità di parcheggi pubblici (modulo Bayesiano)
+- Suggerimenti di mobilità alternativa (bus)
+- Feedback crowdsourced sui parcheggi pubblici
+- Integrazione OSM con poligoni reali dei parcheggi pubblici
 
-> **Nota:** la branch `feature/mongodb-integration` è una branch di riferimento storico
-> che contiene tutto il lavoro in un unico commit. **Non va eseguito il merge** — esiste solo come
-> archivio. Tutti i merge avvengono tramite le branch di modulo.
+Sono stati mantenuti:
+- Autenticazione e ruoli (UTENTE, HOST, AMMINISTRATORE)
+- Gestione posti privati (HOST)
+- Prenotazione e pagamento mockato
+- Pannello amministratore (gestione utenti)
+- Frontend React (mappa Leaflet, modali auth, lista prenotazioni)
+
+---
+
+## Stack tecnologico
+
+| Layer | Tecnologia |
+|-------|------------|
+| Backend | Node.js + Express |
+| ORM | Mongoose |
+| Database | MongoDB 7 (con autenticazione) |
+| Auth | JWT (`jsonwebtoken`) + bcryptjs |
+| Frontend | React + Vite + Leaflet |
+| Infra | Docker Compose per MongoDB |
 
 ---
 
 ## Struttura delle branch
 
 ```
-main
-├── feature/base-setup          ← eseguire merge PER PRIMA (tutte le altre dipendono da questa)
-│   ├── feature/estimate        ← eseguire merge dopo base-setup
-│   ├── feature/mobility        ← eseguire merge dopo base-setup
-│   └── feature/auth            ← eseguire merge dopo base-setup
-│       ├── feature/feedback    ← eseguire merge dopo auth
-│       └── feature/booking     ← eseguire merge dopo auth
-├── feature/frontend            ← indipendente, eseguire merge quando si vuole
-├── feature/admin               ← eseguire merge dopo auth e frontend
-└── feature/host                ← eseguire merge dopo admin
+main                             ← scaffolding minimo (server.js, db.js, docker-compose)
+└── feature/base-setup           ← infra condivisa (modelli, middleware JWT/ruolo)
+    ├── feature/auth             ← register/login/logout con JWT
+    │   ├── feature/host         ← CRUD posti privati (scoped per host)
+    │   ├── feature/booking      ← creazione/pagamento/annullamento prenotazione
+    │   └── feature/admin        ← gestione utenti e supervisione
+└── feature/frontend             ← già esistente, aggiornare API client se serve
 ```
 
 ---
@@ -37,250 +52,117 @@ main
 | Step | Branch | Dipende da |
 |------|--------|------------|
 | 1 | `feature/base-setup` | `main` |
-| 2 | `feature/estimate` | `feature/base-setup` |
-| 2 | `feature/mobility` | `feature/base-setup` |
 | 2 | `feature/auth` | `feature/base-setup` |
-| 3 | `feature/feedback` | `feature/auth` |
-| 3 | `feature/booking` | `feature/auth` |
+| 3 | `feature/host` | `feature/auth` |
+| 3 | `feature/admin` | `feature/auth` |
+| 4 | `feature/booking` | `feature/host` |
 | qualsiasi | `feature/frontend` | nessuna |
-| 4 | `feature/admin` | `feature/auth` + `feature/frontend` |
-| 4 | `feature/host` | `feature/auth` + `feature/frontend` |
 
-Per branch allo stesso step il merge puo essere eseguito in parallelo.
+Branch allo stesso step possono essere mergiate in parallelo.
 
 ---
 
 ## Dettaglio delle branch
 
 ### `feature/base-setup`
-**Base:** `main` · **Modulo D2:** infrastruttura condivisa
+**Base:** `main` · **Scope:** infrastruttura condivisa
 
-Prerequisiti comuni da cui dipendono tutte le altre branch backend.
-**Deve essere mergiata per prima.**
-
-**Cosa cambia rispetto a `main`:**
-- `backend/build.gradle.kts` — aggiunta dipendenza `spring-security-crypto` (BCrypt per le password)
-- `model/Feedback.kt` — aggiunto campo `tipoParcheggio` (richiesto dall'algoritmo di stima)
-- `model/Utente.kt` — aggiunti campi `nome` e `cognome` (richiesti dalla registrazione)
-- `repository/FeedbackRepository.kt` — aggiunte query `findByFasciaOraria` e `findByAreaAndFasciaOraria`
-- `controller/GlobalExceptionHandler.kt` — nuovo: converte le eccezioni in risposte HTTP con status code corretto
-- `config/DataInitializer.kt` — aggiornato: usa BCrypt, nuovi campi del modello, dati di seed più completi
-
----
-
-### `feature/estimate`
-**Base:** `feature/base-setup` · **Modulo D2:** Modulo Stima
-
-Riscrittura del servizio di stima con un modello **Bayesiano Beta-Binomiale** al posto
-della logica hardcoded precedente. Aggiunge anche l'endpoint di ricerca parcheggi per raggio.
-
-**Cosa aggiunge rispetto a `feature/base-setup`:**
-- `dto/EstimateRequest.kt` — ora accetta `lat`, `lon`, `raggioMetri`, `fasciaOraria` (prima era solo `areaName`)
-- `dto/EstimateResponse.kt` — ora restituisce `probabilitaGratuito`, `probabilitaPagamento`, `affidabilita`, `disponibilitaBassa`
-- `service/EstimateService.kt` — riscritto con algoritmo Bayesiano
-- `controller/ParcheggioController.kt` — nuovo: ricerca parcheggi pubblici e privati per raggio
-
-**Endpoint esposti:**
-- `POST /api/estimate` — stima disponibilità per coordinate + fascia oraria
-- `GET /api/parcheggi?lat=&lon=&raggio=` — parcheggi pubblici nell'area
-- `GET /api/parcheggi/privati?lat=&lon=&raggio=` — posti privati attivi nell'area
-
-**Come funziona l'algoritmo:**
-1. Trova tutti i `Parcheggio` nel raggio (distanza haversine)
-2. Prior Bayesiano: α₀ = numero posti gratuiti, β₀ = numero posti a pagamento
-3. Aggrega i `Feedback` per la fascia oraria richiesta
-4. Posteriore: `P = (α₀ + successi) / (α₀ + β₀ + totale_feedback) × 100`
-5. `affidabilita = min(100, numero_feedback × 10)` — cresce con i dati
-6. `disponibilitaBassa = true` se entrambe le probabilità < 30% (attiva i suggerimenti mobilità)
+Da implementare:
+- `backend/models/Utente.js` — schema mongoose (email, nome, cognome, passwordHash, ruolo, emailVerificata, punti, livello, targa)
+- `backend/models/PostoPrivato.js` — schema (hostId, posizione, tariffaOraria, attivo, disponibilita)
+- `backend/models/Prenotazione.js` — schema (utenteId, postoPrivatoId, targa, stato, timestamps)
+- `backend/middleware/auth.js` — verifica JWT, popola `req.user`
+- `backend/middleware/role.js` — controllo ruolo (factory `requireRole('AMMINISTRATORE')`)
+- `backend/utils/jwt.js` — sign/verify helper
 
 ---
 
 ### `feature/auth`
-**Base:** `feature/base-setup` · **Modulo D2:** Autenticazione e Ruoli
+**Base:** `feature/base-setup` · **Scope:** registrazione e login
 
-Registrazione, login e logout. Le password sono hashate con BCrypt.
-L'autenticazione usa token UUID in memoria (niente JWT, sufficiente per la demo).
+Da implementare:
+- `backend/routes/auth.js` — `POST /api/auth/register`, `/login`, `/logout`
+- `backend/controllers/authController.js`:
+  - `register`: hash bcrypt + create user + return JWT
+  - `login`: verify password + return JWT (con `userId`, `ruolo`)
+  - `logout`: in JWT puro è no-op lato server (il client butta via il token)
 
-**Cosa aggiunge rispetto a `feature/base-setup`:**
-- `dto/AuthDtos.kt` — `RegisterRequest`, `LoginRequest`, `LoginResponse`
-- `service/AuthService.kt` — hashing BCrypt, gestione token UUID in memoria
-- `controller/AuthController.kt`
-
-**Endpoint esposti:**
-- `POST /api/auth/register` — crea un nuovo `UtenteAutenticato`
-- `POST /api/auth/login` — restituisce `{ token, userId, ruolo }`
-- `POST /api/auth/logout` — invalida il token
-
-**Convenzione header:** tutti gli endpoint autenticati si aspettano il token nell'header
-`Authorization` (la stringa UUID restituita dal login).
-
----
-
-### `feature/feedback`
-**Base:** `feature/auth` · **Modulo D2:** Modulo Feedback (RewardService)
-
-Invio feedback crowdsourced. Ogni feedback valido assegna +10 punti all'utente
-(vincolo OCL 3.8). Solo gli utenti con `emailVerificata = true` possono inviare feedback
-(vincolo OCL 3.7).
-
-**Cosa aggiunge rispetto a `feature/auth`:**
-- `dto/FeedbackDtos.kt` — `FeedbackRequest`
-- `service/RewardService.kt` — invio/modifica/eliminazione + aggiornamento punti
-- `controller/FeedbackController.kt`
-
-**Endpoint esposti:** (tutti richiedono header `Authorization`)
-- `POST /api/feedback` — invia feedback; incrementa `punti` utente di 10
-- `PUT /api/feedback/{id}` — modifica un proprio feedback
-- `DELETE /api/feedback/{id}` — elimina un proprio feedback
-- `GET /api/feedback` — storico dei propri feedback
-
-**Payload feedback:**
-```json
-{
-  "area": "centro",
-  "fasciaOraria": "mattina",
-  "esitoTrovato": true,
-  "tipoParcheggio": "GRATUITO"
-}
-```
-`tipoParcheggio` è obbligatorio quando `esitoTrovato` è `true`, deve essere `null` altrimenti.
-
----
-
-### `feature/booking`
-**Base:** `feature/auth` · **Modulo D2:** Modulo Prenotazione (BookingService)
-
-Prenotazione di posti privati. Il pagamento è mockato (ha sempre successo).
-Le nuove prenotazioni partono sempre dallo stato `IN_ATTESA_PAGAMENTO` (vincolo OCL 3.12).
-Solo utenti con `emailVerificata = true` e `targa` non vuota possono prenotare (vincolo OCL 3.11).
-
-**Cosa aggiunge rispetto a `feature/auth`:**
-- `dto/BookingDtos.kt` — `BookingRequest`
-- `service/BookingService.kt`
-- `controller/BookingController.kt`
-
-**Endpoint esposti:** (tutti richiedono header `Authorization`)
-- `POST /api/bookings` — crea prenotazione (stato: `IN_ATTESA_PAGAMENTO`)
-- `POST /api/bookings/{id}/pay` — conferma pagamento → `PAGATA` (mock, ha sempre successo)
-- `DELETE /api/bookings/{id}` — annulla → `ANNULLATA`
-- `GET /api/bookings` — lista delle proprie prenotazioni
-
----
-
-### `feature/mobility`
-**Base:** `feature/base-setup` · **Modulo D2:** Modulo Mobilità (MobilityService)
-
-Suggerimenti di mobilità alternativa mostrati quando `disponibilitaBassa = true`.
-I dati dei bus sono mockati (nessuna API esterna reale).
-
-**Cosa aggiunge rispetto a `feature/base-setup`:**
-- `dto/MobilityDtos.kt` — `SuggerimentoMobilita`, `LineaBus`, `FermataBus`
-- `service/MobilityService.kt` — restituisce suggerimenti hardcoded
-- `controller/MobilityController.kt`
-
-**Endpoint esposti:**
-- `GET /api/mobility/suggestions?lat=&lon=` — restituisce linee bus e fermate suggerite
-
----
-
-### `feature/admin`
-**Base:** `feature/auth` + merge di `feature/frontend` · **Modulo D2:** Amministrazione
-
-Pagina di gestione parcheggi visibile solo agli utenti con ruolo `AMMINISTRATORE`.
-Il controllo del ruolo è fatto lato backend su ogni endpoint.
-
-**Cosa aggiunge:**
-- `dto/AdminDtos.kt` — `ParcheggioRequest`
-- `controller/AdminController.kt` — CRUD `/api/admin/parcheggi` con controllo ruolo
-- `frontend/src/components/AdminPanel.jsx` — tabella parcheggi con aggiungi/modifica/elimina
-- `frontend/src/App.jsx` — tab "Amministrazione" visibile solo a `AMMINISTRATORE`
-
-**Endpoint esposti:** (tutti richiedono header `Authorization` con token di un AMMINISTRATORE)
-- `GET /api/admin/parcheggi` — lista tutti i parcheggi
-- `POST /api/admin/parcheggi` — crea un nuovo parcheggio
-- `PUT /api/admin/parcheggi/{id}` — modifica un parcheggio
-- `DELETE /api/admin/parcheggi/{id}` — elimina un parcheggio
-
-**Credenziali di test** (seed in `DataInitializer`):
-- Email: `admin@trentoparking.it` · Password: `admin123`
+**Convenzione header:** `Authorization: Bearer <token>` su tutti gli endpoint protetti.
 
 ---
 
 ### `feature/host`
-**Base:** `feature/admin` · **Modulo D2:** Gestione Posti Privati (HOST)
+**Base:** `feature/auth` · **Scope:** gestione posti privati
 
-Pagina riservata agli host certificati per gestire i propri posti privati da affittare.
-Ogni host vede e modifica **solo i propri posti** — il backend scopa tutte le query su `hostId`.
+Da implementare:
+- `backend/routes/host.js` — `GET/POST/PUT/DELETE /api/host/posti`
+- `backend/controllers/hostController.js`:
+  - Tutte le query scopate su `hostId = req.user.userId`
+  - `PUT/DELETE` deve verificare ownership (403 se appartiene ad altro host)
 
-**Cosa aggiunge rispetto a `feature/admin`:**
-- `dto/HostDtos.kt` — `PostoPrivatoRequest`
-- `controller/HostController.kt` — CRUD `/api/host/posti` con controllo ruolo e scope per hostId
-- `frontend/src/components/HostPanel.jsx` — tabella posti con aggiungi/modifica/elimina, gestione fasce orarie
-- `frontend/src/App.jsx` — tab "I miei posti" visibile solo a `HOST`
+Middleware: `requireRole('HOST')` su tutto il router.
 
-**Endpoint esposti:** (tutti richiedono header `Authorization` con token di un HOST)
-- `GET /api/host/posti` — lista i propri posti privati
-- `POST /api/host/posti` — crea un nuovo posto
-- `PUT /api/host/posti/{id}` — modifica un proprio posto (403 se appartiene ad altro host)
-- `DELETE /api/host/posti/{id}` — elimina un proprio posto (403 se appartiene ad altro host)
+---
 
-**Credenziali di test** (seed in `DataInitializer`):
-- Email: `lucia.bianchi@example.com` · Password: `password123`
+### `feature/booking`
+**Base:** `feature/host` · **Scope:** prenotazioni e pagamento
+
+Da implementare:
+- `backend/routes/booking.js` — `GET /api/bookings`, `POST /api/bookings`, `POST /api/bookings/:id/pay`, `DELETE /api/bookings/:id`
+- `backend/controllers/bookingController.js`:
+  - Solo utenti con `emailVerificata = true` e `targa` non vuota possono prenotare
+  - Stato iniziale: `IN_ATTESA_PAGAMENTO`
+  - Pagamento mockato → `PAGATA`
+  - DELETE → `ANNULLATA`
+
+---
+
+### `feature/admin`
+**Base:** `feature/auth` · **Scope:** pannello amministratore
+
+Da implementare:
+- `backend/routes/admin.js` — `GET /api/admin/utenti`, `PUT /api/admin/utenti/:id`, `GET /api/admin/posti` (visualizza tutti i posti di tutti gli host)
+- `backend/controllers/adminController.js`:
+  - Modifica ruolo e `emailVerificata` di un utente
+  - Visualizzazione globale di posti e prenotazioni
+
+Middleware: `requireRole('AMMINISTRATORE')` su tutto il router.
 
 ---
 
 ### `feature/frontend`
-**Base:** `main` · **Scope:** integrazione React completa
+**Base:** `main` · **Scope:** integrazione React
 
-Riscrittura del frontend per integrare tutte le API backend. Usa Leaflet per la mappa
-(tile OpenStreetMap, nessuna API key necessaria). Lo stato di autenticazione è persistito
-in `localStorage`.
-
-**Cosa cambia rispetto a `main`:**
-- `frontend/package.json` — aggiunta dipendenza `leaflet`
-- `frontend/src/App.jsx` — riscritto: stato auth, navigazione tra viste, layout
-- `frontend/src/App.css` — riscritto: layout responsive, stili card/modal
-- `frontend/src/api.js` — nuovo: layer API centralizzato per tutte le chiamate al backend
-- `frontend/src/components/MapPicker.jsx` — nuovo: mappa Leaflet, click per selezionare posizione
-- `frontend/src/components/EstimatePanel.jsx` — nuovo: form raggio+fascia oraria, barre di probabilità
-- `frontend/src/components/ParcheggioList.jsx` — nuovo: lista parcheggi + form prenotazione inline
-- `frontend/src/components/MobilityPanel.jsx` — nuovo: suggerimenti bus (caricati on-demand)
-- `frontend/src/components/AuthModal.jsx` — nuovo: modal login/registrazione
-- `frontend/src/components/FeedbackModal.jsx` — nuovo: modal invio feedback
-- `frontend/src/components/MyFeedback.jsx` — nuovo: storico feedback con eliminazione
-- `frontend/src/components/MyBookings.jsx` — nuovo: lista prenotazioni con paga/annulla
+Già implementata. Da aggiornare:
+- `frontend/src/api.js` — cambiare header `Authorization` per usare `Bearer <token>` invece dell'UUID nudo
+- Rimuovere componenti per stima/feedback/mobilità se ancora presenti
 
 ---
 
 ## Come lavorare su una branch
 
 ```bash
-# Scarica tutte le branch remote
 git fetch origin
-
-# Passa alla branch assegnata
 git checkout feature/<tuo-modulo>
+cd backend && npm install
+cp ../.env.example ../.env  # solo la prima volta
+docker-compose up -d         # avvia MongoDB
+npm run dev                  # backend con auto-reload
+```
 
-# Fai le tue modifiche, poi committa
+Quando finisci, committa e pubblica:
+```bash
 git add <file>
 git commit -m "<modulo>: descrizione di cosa è cambiato"
-
-# Pubblica la branch sul remote
 git push -u origin feature/<tuo-modulo>
 ```
 
-Quando la PR è approvata, viene mergiata in `main` nell'ordine indicato sopra.
-Se `feature/base-setup` non è ancora stata mergiata, **non mergiare** la tua branch —
-avrà conflitti o dipendenze mancanti.
-
 ---
 
-## Pulizia finale
+## Credenziali di test (seed in `scripts/mongo-init.js`)
 
-Una volta mergiate tutte le branch in `main`:
-
-```bash
-git branch -d feature/base-setup feature/estimate feature/auth \
-              feature/feedback feature/booking feature/mobility \
-              feature/frontend feature/mongodb-integration
-```
+| Email | Password | Ruolo |
+|-------|----------|-------|
+| `admin@trentoparking.it` | `admin123` | AMMINISTRATORE |
+| `host@trentoparking.it` | `host123` | HOST |
+| `mario.rossi@example.com` | `password123` | UTENTE |
