@@ -17,8 +17,7 @@ function buildUserResponse(utente) {
 
 async function register(req, res, next) {
   try {
-    const { nome, cognome, email, password, ruolo } = req.body;
-
+    const { nome, cognome, email, password } = req.body;
     if (!nome || !cognome || !email || !password) {
       return res.status(400).json({
         error: 'Nome, cognome, email e password sono obbligatori'
@@ -47,8 +46,9 @@ async function register(req, res, next) {
       cognome: cognome.trim(),
       email: normalizedEmail,
       passwordHash,
-      ruolo: ruolo || 'UTENTE'
-    });
+      ruolo: 'UTENTE'
+    }
+    );
 
     const token = signToken({
       userId: utente._id,
