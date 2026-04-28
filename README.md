@@ -1,99 +1,100 @@
 # TrentoParking
 
-TrentoParking è un'applicazione web che aiuta gli utenti a stimare la disponibilità di parcheggio nelle aree della città di Trento. Il sistema fornisce stime in tempo reale, suggerimenti di mobilità alternativa e, per gli utenti registrati, la possibilità di prenotare posti auto privati.
+TrentoParking è un marketplace per l'**affitto di posti auto privati** a Trento. Gli Host pubblicano i propri posti, gli utenti autenticati possono prenotarli e pagarli online.
 
 ## Indice
 
 - [Funzionalità](#funzionalità)
-- [Architettura](#architettura)
 - [Stack tecnologico](#stack-tecnologico)
 - [Prerequisiti](#prerequisiti)
 - [Avvio rapido](#avvio-rapido)
 - [Struttura del progetto](#struttura-del-progetto)
 - [API](#api)
+- [Branching](#branching)
 - [Autori](#autori)
 
 ---
 
 ## Funzionalità
 
-**Stima della disponibilità**
-- Stima della probabilità di trovare parcheggio gratuito o a pagamento in base all'area e al raggio selezionati
-- Indice di affidabilità della stima
-- Integrazione con i dati pubblici sui parcheggi del Comune di Trento
-- Supporto cartografico per geolocalizzazione e calcolo delle distanze
-
 **Autenticazione e ruoli**
-- Registrazione, login, logout e verifica email
-- Quattro ruoli distinti: Utente anonimo, Utente autenticato, Host, Amministratore
+- Registrazione, login, logout con JWT
+- Tre ruoli: `UTENTE`, `HOST`, `AMMINISTRATORE`
 
-**Feedback e premialità**
-- Gli utenti autenticati (con email verificata) possono inviare, modificare e rimuovere feedback sull'esito della ricerca
-- Sistema di punti: ogni feedback valido incrementa il punteggio dell'utente
-- Pannello di amministrazione per il monitoraggio dei feedback e la gestione della premialità
+**Gestione posti privati (Host)**
+- Pubblicazione posti con posizione, tariffa oraria, fasce orarie di disponibilità
+- Modifica e rimozione dei propri posti (scoping per `hostId`)
 
-**Mobilità alternativa**
-- Quando la disponibilità di parcheggio è bassa, il sistema suggerisce linee bus e fermate utili per raggiungere la destinazione
-- Integrazione con i dati del trasporto pubblico locale
+**Prenotazione (Utente)**
+- Ricerca dei posti privati disponibili sulla mappa
+- Prenotazione con targa veicolo
+- Stati: `IN_ATTESA_PAGAMENTO`, `PAGATA`, `ANNULLATA`
+- Pagamento mockato
 
-**Prenotazione di posti privati**
-- Gli Host possono pubblicare il proprio posto auto con fasce orarie e tariffa oraria
-- Gli utenti autenticati possono prenotare un posto privato inserendo la targa del veicolo
-- Gestione degli stati di prenotazione: in attesa di pagamento, pagata, annullata
-- Integrazione con gateway di pagamento mock
-
----
-
-## Architettura
-
-```
-Browser / Frontend (React)
-    │
-    │  REST JSON
-    ▼
-Backend (Spring Boot)
-    ├── EstimateController  →  EstimateService
-    ├── MobilityService     →  API Bus (trasporto pubblico)
-    ├── RewardService       →  Persistenza (feedback, utenti)
-    └── BookingService      →  Persistenza (prenotazioni, posti privati)
-                                    │
-                            Servizi esterni
-                        (Comune, Mappe, Pagamento)
-```
+**Amministrazione**
+- Gestione utenti (modifica ruolo, verifica email)
+- Visualizzazione globale di posti e prenotazioni
 
 ---
 
 ## Stack tecnologico
 
-| Layer     | Tecnologia                        |
-|-----------|-----------------------------------|
-| Frontend  | React 18, Vite                    |
-| Backend   | Kotlin, Spring Boot, Gradle       |
-| Database  | MongoDB                           |
-| Mappe     | Servizio cartografico esterno     |
-| Pagamento | Gateway mock                      |
+| Layer    | Tecnologia                          |
+|----------|-------------------------------------|
+| Frontend | React 18, Vite, Leaflet             |
+| Backend  | Node.js, Express, Mongoose          |
+| Database | MongoDB 7 (con autenticazione)      |
+| Auth     | JWT (`jsonwebtoken`) + bcryptjs     |
+| Infra    | Docker Compose per MongoDB          |
 
 ---
 
 ## Prerequisiti
 
-- **JDK 17+**
-- **Node.js 18+** e npm
+- **Node.js 20+** e npm
+- **Docker** e **Docker Compose**
 
 ---
 
 ## Avvio rapido
 
-### Backend
+### 1. Variabili d'ambiente
+
+```bash
+cp .env.example .env
+```
+
+Modifica `.env` con valori reali (password forti per `MONGO_ROOT_PASS` e `MONGO_APP_PASS`, una stringa lunga e random per `JWT_SECRET`).
+
+### 2. MongoDB
+
+```bash
+docker-compose up -d
+```
+
+Al primo avvio gli script in `scripts/` creano l'utente applicativo e seedano gli utenti di test. Per ricreare il database da zero:
+
+```bash
+docker-compose down -v
+docker-compose up -d
+```
+
+### 3. Backend
 
 ```bash
 cd backend
-./gradlew bootRun
+npm install
+npm run dev
 ```
 
-Il server si avvia su `http://localhost:8080`.
+Il server si avvia su `http://localhost:8080`. Endpoint di health check:
 
-### Frontend
+```bash
+curl http://localhost:8080/api/health
+# → {"status":"ok"}
+```
+
+### 4. Frontend
 
 ```bash
 cd frontend
@@ -105,61 +106,104 @@ Il frontend si avvia su `http://localhost:5173`.
 
 ---
 
+## Credenziali di test
+
+| Email                         | Password      | Ruolo            |
+|-------------------------------|---------------|------------------|
+| `admin@trentoparking.it`      | `admin123`    | AMMINISTRATORE   |
+| `host@trentoparking.it`       | `host123`     | HOST             |
+| `mario.rossi@example.com`     | `password123` | UTENTE           |
+
+---
+
 ## Struttura del progetto
+
 ```
 TrentoParking/
 ├── backend/
-│   └── src/main/kotlin/com/trentoparking/backend/
-│       ├── config/         # Configurazioni Spring, inclusa CORS
-│       ├── controller/     # Endpoint REST
-│       ├── domain/         # Classi di dominio
-│       ├── dto/            # Oggetti di trasferimento dati
-│       └── service/        # Logica applicativa
+│   ├── server.js              # Entry point Express
+│   ├── config/db.js           # Connessione Mongoose
+│   ├── models/                # Schema Mongoose (Utente, PostoPrivato, Prenotazione)
+│   ├── routes/                # Definizione endpoint
+│   ├── controllers/           # Logica applicativa
+│   ├── middleware/            # auth (JWT), role (RBAC)
+│   └── utils/jwt.js           # sign/verify token
 ├── frontend/
 │   └── src/
-│       ├── components/     # Componenti React
-│       ├── services/       # Chiamate al backend
-│       └── App.jsx         # Componente principale
-└── docs/
-    ├── D1/                 # Requisiti, casi d'uso e BPMN
-    └── D2/                 # Architettura, componenti e classi
+│       ├── components/        # Componenti React
+│       └── App.jsx            # Componente principale
+├── scripts/
+│   ├── mongo-init.sh          # Crea l'utente applicativo MongoDB
+│   └── mongo-init.js          # Seed idempotente degli utenti di test
+├── docs/
+│   ├── BRANCHING.md           # Strategia di branching
+│   ├── D1/                    # Requisiti, casi d'uso, BPMN
+│   └── D2/                    # Architettura, componenti, classi
+├── docker-compose.yml         # MongoDB con auth
+└── .env.example               # Template per .env
 ```
+
 ---
 
 ## API
 
-### `POST /api/estimate`
+Tutti gli endpoint protetti richiedono l'header `Authorization: Bearer <token>`.
 
-Restituisce la stima della disponibilità di parcheggio per l'area indicata.
+### Auth (pubblico)
 
-**Request**
-```json
-{
-  "centerLat": 46.0679,
-  "centerLng": 11.1211,
-  "radiusMeters": 400
-}
+| Metodo | Path                | Descrizione                              |
+|--------|---------------------|------------------------------------------|
+| POST   | `/api/auth/register`| Registra un nuovo utente, ritorna JWT    |
+| POST   | `/api/auth/login`   | Login, ritorna `{ token, userId, ruolo }`|
+| POST   | `/api/auth/logout`  | No-op lato server (client butta token)   |
+
+### Host (ruolo `HOST`)
+
+| Metodo | Path                  | Descrizione                          |
+|--------|-----------------------|--------------------------------------|
+| GET    | `/api/host/posti`     | Lista i propri posti privati         |
+| POST   | `/api/host/posti`     | Crea un nuovo posto                  |
+| PUT    | `/api/host/posti/:id` | Modifica un proprio posto            |
+| DELETE | `/api/host/posti/:id` | Elimina un proprio posto             |
+
+### Bookings (qualsiasi utente autenticato)
+
+| Metodo | Path                       | Descrizione                          |
+|--------|----------------------------|--------------------------------------|
+| GET    | `/api/bookings`            | Lista le proprie prenotazioni        |
+| POST   | `/api/bookings`            | Crea prenotazione (`IN_ATTESA_PAGAMENTO`) |
+| POST   | `/api/bookings/:id/pay`    | Conferma pagamento → `PAGATA`        |
+| DELETE | `/api/bookings/:id`        | Annulla → `ANNULLATA`                |
+
+### Admin (ruolo `AMMINISTRATORE`)
+
+| Metodo | Path                          | Descrizione                          |
+|--------|-------------------------------|--------------------------------------|
+| GET    | `/api/admin/utenti`           | Lista tutti gli utenti               |
+| PUT    | `/api/admin/utenti/:id`       | Modifica ruolo / `emailVerificata`   |
+| GET    | `/api/admin/posti`            | Tutti i posti di tutti gli host      |
+| GET    | `/api/admin/prenotazioni`     | Tutte le prenotazioni                |
+
+---
+
+## Branching
+
+Il lavoro è suddiviso in branch per modulo. Vedi [`docs/BRANCHING.md`](docs/BRANCHING.md) per il dettaglio.
+
+```
+main
+└── feature/base-setup           ← infra condivisa (modelli, middleware)
+    ├── feature/auth             ← register/login/logout con JWT
+    │   ├── feature/host         ← CRUD posti privati
+    │   ├── feature/booking      ← prenotazione + pagamento
+    │   └── feature/admin        ← gestione utenti
+└── feature/frontend             ← React + Leaflet
 ```
 
-**Response**
-```json
-{
-  "freeParkingAvailability": "bassa",
-  "paidParkingAvailability": "alta",
-  "suggestedArea": "Parcheggio Monte Baldo",
-  "message": "Zona centrale: bassa disponibilità di parcheggi gratuiti, alta disponibilità di parcheggi a pagamento."
-}
-```
-
-
-
-I valori di disponibilità possono essere `Bassa`, `Media` o `Alta`.
+---
 
 ## Autori
 
 - David Dorobantu — 234467
 - Riccardo Gonzato — 246476
 - Matteo Sepa — 243283
-
-
-
