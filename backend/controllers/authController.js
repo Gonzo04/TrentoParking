@@ -106,7 +106,26 @@ async function login(req, res, next) {
   }
 }
 
+async function me(req, res, next) {
+  try {
+    const utente = await Utente.findById(req.user.userId);
+
+    if (!utente) {
+      return res.status(404).json({
+        error: 'Utente non trovato'
+      });
+    }
+
+    return res.json({
+      user: buildUserResponse(utente)
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
-  login
+  login,
+  me
 };
