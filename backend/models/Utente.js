@@ -9,6 +9,18 @@ const utenteSchema = new mongoose.Schema({
     trim: true
   },
 
+  nomeUtente: {
+    type: String,
+    required: true,
+    unique: true,
+    sparse: true,
+    lowercase: true,
+    trim: true,
+    minlength: 3,
+    maxlength: 30,
+    match: /^[a-zA-Z0-9._-]+$/
+  },
+
   nome: {
     type: String,
     required: true,
@@ -26,10 +38,13 @@ const utenteSchema = new mongoose.Schema({
     required: true
   },
 
+  // Il ruolo viene gestito dal backend.
+  // Un nuovo utente viene creato come UTENTE e non può scegliere il proprio ruolo dal frontend.
   ruolo: {
     type: String,
     enum: ['UTENTE', 'HOST', 'AMMINISTRATORE'],
-    default: 'UTENTE'
+    default: 'UTENTE',
+    required: true
   },
 
   emailVerificata: {
@@ -45,13 +60,18 @@ const utenteSchema = new mongoose.Schema({
 
   livello: {
     type: String,
-    default: 'base'
+    default: 'Base',
+    trim: true
   },
 
+  // La targa è obbligatoria perché verrà usata nelle prenotazioni dei posti privati.
+  // Per il prototipo accettiamo solo lettere e numeri, senza spazi o simboli.
   targa: {
     type: String,
-    default: '',
-    trim: true
+    required: true,
+    uppercase: true,
+    trim: true,
+    match: /^[A-Z0-9]{5,10}$/
   }
 }, {
   collection: 'utenti',

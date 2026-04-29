@@ -1,69 +1,133 @@
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet'
+import { useEffect } from 'react';
+import {
+  Circle,
+  MapContainer,
+  Marker,
+  TileLayer,
+  useMap,
+  useMapEvents
+} from 'react-leaflet';
 
 // Coordinate approssimative del centro di Trento.
-// Le usiamo come posizione iniziale della mappa.
-const TRENTO_CENTER = [46.0679, 11.1211]
+// Le usiamo come punto iniziale della mappa.
+const TRENTO_CENTER = [46.0679, 11.1211];
 
-/**
- * Questo componente interno ascolta i click sulla mappa.
- * Quando l'utente clicca, prendiamo latitudine e longitudine
- * e le passiamo al componente padre tramite onSelectPosition.
- */
-function MapClickHandler({ onSelectPosition }) {
-  useMapEvents({
-    click(event) {
-      const { lat, lng } = event.latlng
-      onSelectPosition({ lat, lng })
-    },
-  })
+// Raggio predefinito del cerchio mostrato dopo il click.
+// Serve per evitare di passare undefined a Leaflet.
+const DEFAULT_RADIUS_METERS = 300;
 
-  return null
+// Controlla che la posizione sia nel formato corretto per Leaflet.
+// Leaflet richiede latitudine e longitudine numeriche.
+function isValidPosition(position) {
+  return (
+    position &&
+    Number.isFinite(position.lat) &&
+    Number.isFinite(position.lng)
+  );
 }
 
-/**
- * MapPicker:
- * - mostra la mappa centrata su Trento
- * - permette all'utente di cliccare un punto
- * - disegna un marker nel punto selezionato
- * - disegna un cerchio che rappresenta il raggio di ricerca
- */
+// Questo componente forza Leaflet a ricalcolare le dimensioni della mappa.
+// È utile perché la mappa viene mostrata dopo il login e quindi può comparire
+// dentro un layout che prima non era visibile.
+function MapResizeHandler() {
+  const map = useMap();
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+
+    return () => clearTimeout(timeoutId);
+  }, [map]);
+
+  return null;
+}
+
+// Questo componente intercetta il click sulla mappa.
+// Non gestisce direttamente lo stato: comunica solo la posizione al componente padre.
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(event) {
+      if (typeof onMapClick !== 'function') {
+        console.warn('MapPicker: nessuna funzione valida ricevuta per gestire il click.');
+        return;
+      }
+
+      const { lat, lng } = event.latlng;
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        console.warn('MapPicker: coordinate non valide ricevute da Leaflet.', event.latlng);
+        return;
+      }
+
+      onMapClick({ lat, lng });
+    }
+  });
+
+  return null;
+}
+
 export default function MapPicker({
   selectedPosition,
+  position,
   radiusMeters,
   onSelectPosition,
+  onPositionSelected,
+  onPositionSelect,
+  onPositionChange,
+  onLocationSelect,
+  onSelectPosition: onSelectPositionAlternative
 }) {
+  // Accettiamo sia selectedPosition sia position per compatibilità con App.jsx.
+  // In futuro conviene tenere un solo nome, ma ora evitiamo rotture inutili.
+  const currentPosition = selectedPosition || position;
+
+  // Accettiamo più nomi di callback perché nelle versioni precedenti del progetto
+  // il componente mappa è stato usato con nomi diversi.
+  const handleMapClick =
+    onSelectPosition ||
+    onPositionSelected ||
+    onPositionSelect ||
+    onPositionChange ||
+    onLocationSelect ||
+    onSelectPositionAlternative;
+
+  const safeRadius = Number.isFinite(radiusMeters)
+    ? radiusMeters
+    : DEFAULT_RADIUS_METERS;
+
+  const hasValidPosition = isValidPosition(currentPosition);
+
   return (
     <MapContainer
       center={TRENTO_CENTER}
       zoom={13}
       style={{ height: '500px', width: '100%', borderRadius: '12px' }}
     >
-      {/* TileLayer = "sfondo" della mappa.
-          Qui usiamo OpenStreetMap*/}
+      <MapResizeHandler />
+
       <TileLayer
-        attribution='&copy; OpenStreetMap contributors'
-        url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        attribution="&copy; OpenStreetMap contributors"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {/* Componente che intercetta il click sulla mappa */}
-      <MapClickHandler onSelectPosition={onSelectPosition} />
+      <MapClickHandler onMapClick={handleMapClick} />
 
-      {/* Se l'utente ha già selezionato una posizione, mostriamo marker e cerchio */}
-      {selectedPosition && (
+      {hasValidPosition && (
         <>
-          <Marker position={[selectedPosition.lat, selectedPosition.lng]} />
+          <Marker position={[currentPosition.lat, currentPosition.lng]} />
 
           <Circle
-            center={[selectedPosition.lat, selectedPosition.lng]}
-            radius={radiusMeters}
+            center={[currentPosition.lat, currentPosition.lng]}
+            radius={safeRadius}
             pathOptions={{
               color: '#2563eb',
               fillColor: '#60a5fa',
-              fillOpacity: 0.2,
+              fillOpacity: 0.2
             }}
           />
         </>
       )}
     </MapContainer>
-  )
+  );
 }
