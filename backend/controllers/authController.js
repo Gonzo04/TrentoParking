@@ -123,9 +123,15 @@ async function me(req, res, next) {
     next(error);
   }
 }
+async function logout(req, res) {
+  return res.json({
+    message: 'Logout effettuato lato client'
+  });
+}
 
 module.exports = {
   register,
   login,
-  me
+  me,
+  logout
 };
