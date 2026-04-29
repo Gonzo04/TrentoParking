@@ -16,9 +16,9 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/host', require('./routes/host'));
 
 // Routes da aggiungere nei prossimi step:
-// app.use('/api/host', require('./routes/host'));
 // app.use('/api/bookings', require('./routes/booking'));
 // app.use('/api/admin', require('./routes/admin'));
 
