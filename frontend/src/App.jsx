@@ -1,152 +1,116 @@
-import { useState } from 'react'
-import './App.css'
-import MapPicker from './components/MapPicker'
-import { estimateParking } from './services/estimateService'
+import { useCallback, useState } from 'react';
+import './App.css';
+import MapPicker from './components/MapPicker';
+import AuthPanel from './components/AuthPanel';
 
 function App() {
-  // Punto selezionato sulla mappa
-  const [selectedPosition, setSelectedPosition] = useState(null)
+  const [selectedPosition, setSelectedPosition] = useState(null);
+  const [authenticatedUser, setAuthenticatedUser] = useState(null);
 
-  // Raggio di ricerca in metri
-  const [radiusMeters, setRadiusMeters] = useState(500)
+  // Questa funzione riceve la posizione scelta sulla mappa.
+  // Prima di salvarla nello stato controlliamo che latitudine e longitudine siano numeri validi.
+  // Questo evita errori runtime di Leaflet se arrivano dati incompleti o nel formato sbagliato.
+  function handlePositionSelected(position) {
+    const lat = position?.lat;
+    const lng = position?.lng;
 
-  // Messaggio mostrato all'utente
-  const [message, setMessage] = useState('')
-
-  // Risultato ricevuto dal backend
-  const [result, setResult] = useState(null)
-
-  // Stato di caricamento
-  const [loading, setLoading] = useState(false)
-
-  // Quando l'utente clicca sulla mappa, salviamo le coordinate
-  const handleSelectPosition = ({ lat, lng }) => {
-    setSelectedPosition({ lat, lng })
-    setResult(null)
-    setMessage(`Punto selezionato: lat ${lat.toFixed(5)}, lng ${lng.toFixed(5)}`)
-  }
-
-  // Funzione di supporto per tradurre LOW/MEDIUM/HIGH in italiano
-  const translateAvailability = (value) => {
-    switch (value) {
-      case 'LOW':
-        return 'Bassa'
-      case 'MEDIUM':
-        return 'Media'
-      case 'HIGH':
-        return 'Alta'
-      default:
-        return value
-    }
-  }
-
-  // Questa funzione adesso chiama DAVVERO il backend
-  const handleEstimate = async () => {
-    if (!selectedPosition) {
-      setMessage('Seleziona prima un punto sulla mappa.')
-      return
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      console.warn('Posizione non valida ricevuta dalla mappa:', position);
+      return;
     }
 
-    setLoading(true)
-    setResult(null)
-    setMessage('Calcolo della stima in corso...')
-
-    try {
-      const data = await estimateParking({
-        centerLat: selectedPosition.lat,
-        centerLng: selectedPosition.lng,
-        radiusMeters,
-      })
-
-      setResult(data)
-      setMessage('Stima calcolata con successo.')
-    } catch (error) {
-      setMessage(error.message)
-    } finally {
-      setLoading(false)
-    }
+    setSelectedPosition({ lat, lng });
   }
+
+  // AuthPanel chiama questa funzione dopo login, registrazione, logout
+  // oppure dopo il recupero dell'utente da token salvato nel localStorage.
+  const handleAuthChange = useCallback((user) => {
+    setAuthenticatedUser(user);
+  }, []);
 
   return (
-    <div className="container">
-      <h1>TrentoParking</h1>
-      <p>Seleziona un punto sulla mappa e imposta il raggio di ricerca.</p>
+    <div className="app-page">
+      <header className="hero-section">
+        <div>
+          <h1>ParkingShare Trento</h1>
 
-      <div style={{ marginBottom: '16px' }}>
-        <label htmlFor="radiusMeters">
-          Raggio di ricerca: <strong>{radiusMeters} metri</strong>
-        </label>
-
-        <input
-          id="radiusMeters"
-          type="range"
-          min="100"
-          max="1500"
-          step="50"
-          value={radiusMeters}
-          onChange={(e) => setRadiusMeters(Number(e.target.value))}
-          style={{ width: '100%' }}
-        />
-      </div>
-
-      <MapPicker
-        selectedPosition={selectedPosition}
-        radiusMeters={radiusMeters}
-        onSelectPosition={handleSelectPosition}
-      />
-
-      <div style={{ marginTop: '16px' }}>
-        <button onClick={handleEstimate} disabled={loading}>
-          {loading ? 'Calcolo in corso...' : 'Calcola stima'}
-        </button>
-      </div>
-
-      {message && (
-        <div
-          style={{
-            marginTop: '16px',
-            padding: '12px',
-            background: '#f3f4f6',
-            borderRadius: '8px',
-          }}
-        >
-          {message}
-        </div>
-      )}
-
-      {result && (
-        <div
-          style={{
-            marginTop: '16px',
-            padding: '16px',
-            background: '#eef6ff',
-            borderRadius: '12px',
-          }}
-        >
-          <h2>Risultato della stima</h2>
-
-          <p>
-            <strong>Disponibilità parcheggi gratuiti:</strong>{' '}
-            {translateAvailability(result.freeParkingAvailability)}
-          </p>
-
-          <p>
-            <strong>Disponibilità parcheggi a pagamento:</strong>{' '}
-            {translateAvailability(result.paidParkingAvailability)}
-          </p>
-
-          <p>
-            <strong>Area suggerita:</strong>{' '}
-            {result.suggestedArea || 'Nessuna'}
-          </p>
-
-          <p>
-            <strong>Messaggio:</strong> {result.message}
+          <p className="hero-subtitle">
+            Trova e prenota posti auto privati a Trento in modo semplice e veloce.
           </p>
         </div>
-      )}
+      </header>
+
+      <main className="main-layout">
+        {!authenticatedUser && (
+          <section className="landing-card">
+            <div className="landing-content">
+              <h2>Trova o condividi un posto auto, senza stress</h2>
+
+              <p>
+                Accedi alla piattaforma per cercare, prenotare o pubblicare
+                un posto auto privato.
+              </p>
+
+              <ul className="landing-list">
+                <li>Trova posti auto privati disponibili</li>
+                <li>Prenota indicando l&apos;orario</li>
+                <li>Pubblica il tuo posto auto in modo semplice</li>
+              </ul>
+            </div>
+
+            <AuthPanel onAuthChange={handleAuthChange} />
+          </section>
+        )}
+
+        {authenticatedUser && (
+          <>
+            <AuthPanel onAuthChange={handleAuthChange} />
+
+            <section className="content-card dashboard-card">
+              <h2>Posti auto privati</h2>
+
+              <p>
+                Cerca sulla mappa i posti auto privati disponibili a Trento
+                oppure seleziona una posizione per pubblicare un nuovo posto.
+              </p>
+            </section>
+
+            <section className="content-card map-section">
+              <div className="section-heading">
+                <div>
+                  <h2>Mappa</h2>
+
+                  <p>
+                    La mappa mostra i posti auto privati presenti sulla piattaforma.
+                  </p>
+                </div>
+              </div>
+
+              <MapPicker
+                selectedPosition={selectedPosition}
+                radiusMeters={300}
+                onSelectPosition={handlePositionSelected}
+              />
+
+              {selectedPosition && (
+                <div className="selected-position-box">
+                  <h3>Posizione selezionata</h3>
+
+                  <p>
+                    <strong>Latitudine:</strong> {selectedPosition.lat.toFixed(6)}
+                  </p>
+
+                  <p>
+                    <strong>Longitudine:</strong> {selectedPosition.lng.toFixed(6)}
+                  </p>
+                </div>
+              )}
+            </section>
+          </>
+        )}
+      </main>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
