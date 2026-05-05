@@ -166,9 +166,10 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
                 const selected  = selectedDate && date.toDateString() === selectedDate.toDateString()
 
                 let cellStyle = { ...S.dayCell }
-                if (!current)      cellStyle = { ...cellStyle, color: '#d1d5db' }
-                else if (selected) cellStyle = { ...cellStyle, background: '#2563eb', color: '#fff', fontWeight: 700 }
-                else if (!available) cellStyle = { ...cellStyle, color: '#d1d5db', cursor: 'default' }
+                if (!current)        cellStyle = { ...cellStyle, color: '#d1d5db' }
+                else if (selected)   cellStyle = { ...cellStyle, background: '#2563eb', color: '#fff', fontWeight: 700 }
+                else if (available)  cellStyle = { ...cellStyle, background: 'rgba(42,157,143,0.12)', color: '#2a9d8f', fontWeight: 600 }
+                else                 cellStyle = { ...cellStyle, color: '#d1d5db', cursor: 'default' }
 
                 return (
                   <button
