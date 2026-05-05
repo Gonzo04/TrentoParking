@@ -1,32 +1,71 @@
-import { useCallback, useState } from 'react';
-import './App.css';
-import MapPicker from './components/MapPicker';
-import AuthPanel from './components/AuthPanel';
+import { useCallback, useState } from 'react'
+import 'leaflet/dist/leaflet.css'
+import './App.css'
+import { api } from './services/api'
+import AuthPanel from './components/AuthPanel'
+import SpotMap from './components/SpotMap'
+import BookingCalendar from './components/BookingCalendar'
+import PaymentPage from './components/PaymentPage'
+import MyBookings from './components/MyBookings'
 
 function App() {
-  const [selectedPosition, setSelectedPosition] = useState(null);
-  const [authenticatedUser, setAuthenticatedUser] = useState(null);
+  const [authenticatedUser, setAuthenticatedUser] = useState(null)
+  const [view, setView] = useState('map')  // 'map' | 'myBookings' | 'payment'
+  const [spots, setSpots] = useState([])
+  const [spotDetail, setSpotDetail] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [pendingBooking, setPendingBooking] = useState(null)
 
-  // Questa funzione riceve la posizione scelta sulla mappa.
-  // Prima di salvarla nello stato controlliamo che latitudine e longitudine siano numeri validi.
-  // Questo evita errori runtime di Leaflet se arrivano dati incompleti o nel formato sbagliato.
-  function handlePositionSelected(position) {
-    const lat = position?.lat;
-    const lng = position?.lng;
-
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      console.warn('Posizione non valida ricevuta dalla mappa:', position);
-      return;
+  const handleAuthChange = useCallback((user) => {
+    setAuthenticatedUser(user)
+    if (user) {
+      api.listPosti().then(setSpots).catch(console.error)
+    } else {
+      setSpots([])
+      setView('map')
+      setSpotDetail(null)
+      setPendingBooking(null)
     }
+  }, [])
 
-    setSelectedPosition({ lat, lng });
+  async function handleSelectSpot(spotId) {
+    setDetailLoading(true)
+    setSpotDetail(null)
+    try {
+      const data = await api.getPostoConPrenotazioni(spotId)
+      setSpotDetail(data)
+    } catch (e) {
+      alert(e.message)
+    } finally {
+      setDetailLoading(false)
+    }
   }
 
-  // AuthPanel chiama questa funzione dopo login, registrazione, logout
-  // oppure dopo il recupero dell'utente da token salvato nel localStorage.
-  const handleAuthChange = useCallback((user) => {
-    setAuthenticatedUser(user);
-  }, []);
+  async function handleBookingConfirm(params) {
+    try {
+      const booking = await api.createBooking({
+        postoPrivatoId: spotDetail.posto._id,
+        ...params,
+      })
+      booking.postoPrivatoId = spotDetail.posto
+      setPendingBooking(booking)
+      setSpotDetail(null)
+      setView('payment')
+    } catch (e) {
+      alert(e.message)
+    }
+  }
+
+  function handlePaymentDone() {
+    setPendingBooking(null)
+    setView('map')
+    api.listPosti().then(setSpots).catch(console.error)
+  }
+
+  function handlePayFromBookings(booking) {
+    setPendingBooking(booking)
+    setView('payment')
+  }
 
   return (
     <div className="app-page">
@@ -62,55 +101,64 @@ function App() {
           </section>
         )}
 
-        {authenticatedUser && (
+        {authenticatedUser && view === 'payment' && pendingBooking ? (
+          <PaymentPage
+            booking={pendingBooking}
+            onDone={handlePaymentDone}
+            onCancel={() => { setView('map'); setPendingBooking(null) }}
+          />
+        ) : authenticatedUser && view === 'myBookings' ? (
+          <>
+            <AuthPanel onAuthChange={handleAuthChange} />
+            <MyBookings onBack={() => setView('map')} onPay={handlePayFromBookings} />
+          </>
+        ) : authenticatedUser ? (
           <>
             <AuthPanel onAuthChange={handleAuthChange} />
 
             <section className="content-card dashboard-card">
-              <h2>Posti auto privati</h2>
+              <div className="section-heading">
+                <div>
+                  <h2>Posti auto disponibili</h2>
 
-              <p>
-                Cerca sulla mappa i posti auto privati disponibili a Trento
-                oppure seleziona una posizione per pubblicare un nuovo posto.
-              </p>
+                  <p>
+                    Seleziona un posto sulla mappa per vedere disponibilità e prezzi.
+                  </p>
+                </div>
+
+                <button
+                  className="secondary-button"
+                  onClick={() => setView('myBookings')}
+                >
+                  Le mie prenotazioni
+                </button>
+              </div>
             </section>
 
             <section className="content-card map-section">
-              <div className="section-heading">
-                <div>
-                  <h2>Mappa</h2>
-
-                  <p>
-                    La mappa mostra i posti auto privati presenti sulla piattaforma.
-                  </p>
-                </div>
-              </div>
-
-              <MapPicker
-                selectedPosition={selectedPosition}
-                radiusMeters={300}
-                onSelectPosition={handlePositionSelected}
-              />
-
-              {selectedPosition && (
-                <div className="selected-position-box">
-                  <h3>Posizione selezionata</h3>
-
-                  <p>
-                    <strong>Latitudine:</strong> {selectedPosition.lat.toFixed(6)}
-                  </p>
-
-                  <p>
-                    <strong>Longitudine:</strong> {selectedPosition.lng.toFixed(6)}
-                  </p>
-                </div>
+              {detailLoading && (
+                <p style={{ color: '#6b7280', marginBottom: 8 }}>Caricamento posto...</p>
               )}
+              <SpotMap spots={spots} onSelectSpot={handleSelectSpot} />
             </section>
           </>
-        )}
+        ) : null}
       </main>
+
+      {spotDetail && (
+        <div className="modal-overlay" onClick={() => setSpotDetail(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setSpotDetail(null)}>✕</button>
+            <BookingCalendar
+              posto={spotDetail.posto}
+              prenotazioni={spotDetail.prenotazioni}
+              onConfirm={handleBookingConfirm}
+            />
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

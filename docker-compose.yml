@@ -1,6 +1,6 @@
 services:
   mongo:
-    image: mongo:8.0
+    image: mongo:7.0
     container_name: trentoparking-mongo
     ports:
       - "127.0.0.1:27017:27017"
