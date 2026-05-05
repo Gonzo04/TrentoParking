@@ -62,6 +62,11 @@ function App() {
     api.listPosti().then(setSpots).catch(console.error)
   }
 
+  function handlePayFromBookings(booking) {
+    setPendingBooking(booking)
+    setView('payment')
+  }
+
   return (
     <div className="app-page">
       <header className="hero-section">
@@ -105,7 +110,7 @@ function App() {
         ) : authenticatedUser && view === 'myBookings' ? (
           <>
             <AuthPanel onAuthChange={handleAuthChange} />
-            <MyBookings onBack={() => setView('map')} />
+            <MyBookings onBack={() => setView('map')} onPay={handlePayFromBookings} />
           </>
         ) : authenticatedUser ? (
           <>

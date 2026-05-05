@@ -7,7 +7,7 @@ const STATO_LABEL = {
   ANNULLATA:           { label: 'Annullata',               color: '#dc2626' },
 }
 
-export default function MyBookings({ onBack }) {
+export default function MyBookings({ onBack, onPay }) {
   const [bookings, setBookings] = useState([])
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState('')
@@ -29,9 +29,8 @@ export default function MyBookings({ onBack }) {
     }
   }
 
-  // TODO: handle "pay now" flow (redirect to PaymentPage) for IN_ATTESA_PAGAMENTO bookings
-  async function handlePay(id) {
-    alert('TODO: reindirizza alla pagina di pagamento per la prenotazione ' + id)
+  function handlePay(booking) {
+    onPay(booking)
   }
 
   return (
@@ -87,7 +86,7 @@ export default function MyBookings({ onBack }) {
               {b.stato !== 'ANNULLATA' && (
                 <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
                   {b.stato === 'IN_ATTESA_PAGAMENTO' && (
-                    <button onClick={() => handlePay(b._id)} style={S.btnPrimary}>
+                    <button onClick={() => handlePay(b)} style={S.btnPrimary}>
                       Paga ora
                     </button>
                   )}

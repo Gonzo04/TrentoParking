@@ -31,16 +31,17 @@ function getDisponibilitaForDate(date, disponibilita) {
   return disponibilita.find(d => d.giorno === giorno) || null
 }
 
-// Returns a Set of hour numbers that are occupied on the given date
-// TODO: handle multi-day bookings (currently only checks same-day bookings)
+// Returns a Set of hour numbers that are occupied on the given date.
+// Handles bookings that span midnight by checking each occupied hour's date.
 function getBookedHours(date, prenotazioni) {
   const booked = new Set()
-  const dateStr = date.toDateString()
   prenotazioni.forEach(p => {
     const start = new Date(p.dataOraInizio)
     const end   = new Date(p.dataOraFine)
-    if (start.toDateString() === dateStr) {
-      for (let h = start.getHours(); h < end.getHours(); h++) booked.add(h)
+    const cur   = new Date(start)
+    while (cur < end) {
+      if (cur.toDateString() === date.toDateString()) booked.add(cur.getHours())
+      cur.setHours(cur.getHours() + 1)
     }
   })
   return booked
@@ -72,7 +73,14 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
 
   function isDayAvailable(date) {
     if (date < today) return false
-    return getDisponibilitaForDate(date, posto.disponibilita) !== null
+    const disp = getDisponibilitaForDate(date, posto.disponibilita)
+    if (!disp) return false
+    const booked = getBookedHours(date, prenotazioni)
+    // At least one hour must be free to start a booking (end must be > start)
+    for (let h = disp.oraInizio; h < disp.oraFine; h++) {
+      if (!booked.has(h)) return true
+    }
+    return false
   }
 
   function handleDayClick(date) {
@@ -87,10 +95,16 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
       setStartHour(h)
       setEndHour(null)
     } else if (h > startHour && endHour === null) {
-      // TODO: validate no booked hours fall within [startHour, h)
-      setEndHour(h)
+      // Reject if any booked hour falls within [startHour, h)
+      const hasOverlap = Array.from({ length: h - startHour }, (_, i) => startHour + i)
+        .some(hour => bookedHours.has(hour))
+      if (hasOverlap) {
+        setStartHour(h)
+        setEndHour(null)
+      } else {
+        setEndHour(h)
+      }
     } else {
-      // Reset and treat this click as new start
       setStartHour(h)
       setEndHour(null)
     }
