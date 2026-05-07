@@ -1,6 +1,10 @@
 const bcrypt = require('bcryptjs');
 const Utente = require('../models/Utente');
 const { signToken } = require('../utils/jwt');
+// moduli per la verifica della email;
+const TokenVerificaMail = require('../models/TokenVerifica');
+const crypto = require('crypto');
+const { verificaEmail } = require('../utils/verificaMail');
 
 // Espressioni regolari usate per validare i dati ricevuti dal client.
 // La validazione viene fatta anche nel backend perché il frontend può essere aggirato
@@ -117,6 +121,19 @@ async function register(req, res) {
       targa: normalizedTarga,
       ruolo: 'UTENTE'
     });
+    // Generiamo il token per la verifica dell'e-mail
+    const tokenMail = await TokenVerificaMail.create({
+      userId: user._id,
+      token: crypto.randomBytes(16).toString('hex')
+    });
+    console.log(tokenMail);
+
+    //invio email
+    const link = `http://localhost:8080/api/auth/conferma/${tokenMail.tokenMail}`;
+    await verificaEmail(user.email, link);
+    res.status(200).send({
+      message: "Email inviata, controlla il tuo indirizzo email"
+    })
 
     // Generiamo il token JWT con le informazioni minime utili.
     // Non inseriamo dati sensibili nel token.
