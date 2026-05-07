@@ -134,18 +134,21 @@ async function register(req, res) {
 
     // Generiamo il token JWT con le informazioni minime utili.
     // Non inseriamo dati sensibili nel token.
-    const token = signToken({
-      userId: user._id,
-      email: user.email,
-      nomeUtente: user.nomeUtente,
-      ruolo: user.ruolo
-    });
+    if(user.emailVerificata === true){
+        const token = signToken({
+        userId: user._id,
+        email: user.email,
+        nomeUtente: user.nomeUtente,
+        ruolo: user.ruolo
+      });
 
-    return res.status(201).json({
-      message: 'Registrazione effettuata con successo',
-      token,
-      user: buildUserResponse(user)
-    });
+      return res.status(201).json({
+        message: 'Registrazione effettuata con successo',
+        token,
+        user: buildUserResponse(user)
+      });
+    }
+    
   } catch (error) {
     console.error('Errore register:', error);
 
