@@ -128,12 +128,9 @@ async function register(req, res) {
     });
     console.log(tokenMail);
 
-    //invio email
-    const link = `http://localhost:8080/api/auth/conferma/${tokenMail.tokenMail}`;
+    // Invio email
+    const link = `http://localhost:8080/api/auth/conferma/${tokenMail.token}`;
     await verificaEmail(user.email, link);
-    res.status(200).send({
-      message: "Email inviata, controlla il tuo indirizzo email"
-    })
 
     // Generiamo il token JWT con le informazioni minime utili.
     // Non inseriamo dati sensibili nel token.

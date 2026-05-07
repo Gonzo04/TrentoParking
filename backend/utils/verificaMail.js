@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const TokenVerifica = require('../models/TokenVerifica');
+const Utente = require('../models/Utente');
 
 const verificaEmail = async (email, link) => {
     try{
@@ -27,4 +29,32 @@ const verificaEmail = async (email, link) => {
     }
 }
 
-module.exports = {verificaEmail}
+const confermaMail = async (req, res) => {
+    try {
+
+        const tokenMail = await TokenVerifica.findOne({
+            token: req.params.token,
+        });
+
+        if (!tokenMail) {
+            return res.status(404).send("Token non valido");
+        }
+
+        await Utente.updateOne(
+            { _id: tokenMail.userId },
+            { $set: { emailVerificata: true } }
+        );
+
+        await TokenVerifica.findByIdAndDelete(tokenMail._id);
+
+        //return res.send("Email verificata");
+
+    } catch (error) {
+
+        console.log(error);
+
+        return res.status(400).send("Si è verificato un errore");
+    }
+}
+
+module.exports = {verificaEmail, confermaMail}
