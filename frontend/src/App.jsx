@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import './App.css'
 import { api } from './services/api'
 import AuthPanel from './components/AuthPanel'
+import SearchBar from './components/SearchBar'
 import SpotMap from './components/SpotMap'
 import SpotSidebar from './components/SpotSidebar'
 import BookingCalendar from './components/BookingCalendar'
@@ -33,6 +34,7 @@ function App() {
   const [pendingEmail, setPendingEmail] = useState('')
   const [resetSuccess, setResetSuccess] = useState(false)
   const [searchCircle, setSearchCircle] = useState(null) // { lat, lng, radiusM }
+  const [flyTarget, setFlyTarget] = useState(null)
 
   const path = window.location.pathname
   const resetToken = path.startsWith('/reset-password/') ? path.split('/reset-password/')[1] : null
@@ -58,6 +60,7 @@ function App() {
       setSpotDetail(null)
       setPendingBooking(null)
       setSearchCircle(null)
+      setFlyTarget(null)
     }
   }, [])
 
@@ -102,6 +105,12 @@ function App() {
 
   function handleMapClick(latlng) {
     setSearchCircle(sc => ({ lat: latlng.lat, lng: latlng.lng, radiusM: sc?.radiusM ?? 500 }))
+  }
+
+  function handleSearchSelect({ lat, lng }) {
+    const target = { lat, lng }
+    setFlyTarget(target)
+    setSearchCircle(sc => ({ lat, lng, radiusM: sc?.radiusM ?? 500 }))
   }
 
   function handleRadiusChange(radiusM) {
@@ -183,16 +192,7 @@ function App() {
 
             <section className="content-card dashboard-card">
               <div className="section-heading">
-                <div>
-                  <h2>Posti auto disponibili</h2>
-
-                  <p>
-                    {searchCircle
-                      ? 'Clicca sulla mappa per spostare il punto di ricerca.'
-                      : 'Clicca sulla mappa per cercare posti in un\'area.'}
-                  </p>
-                </div>
-
+                <h2 style={{ margin: 0 }}>Posti auto disponibili</h2>
                 <button
                   className="secondary-button"
                   onClick={() => setView('myBookings')}
@@ -200,6 +200,14 @@ function App() {
                   Le mie prenotazioni
                 </button>
               </div>
+              <div style={{ marginTop: '1rem' }}>
+                <SearchBar onSelect={handleSearchSelect} />
+              </div>
+              <p style={{ margin: '0.6rem 0 0', fontSize: 13, color: '#6b7280' }}>
+                {searchCircle
+                  ? 'Clicca sulla mappa per spostare il punto di ricerca.'
+                  : 'Cerca un luogo o clicca sulla mappa per trovare posti nelle vicinanze.'}
+              </p>
             </section>
 
             <div className={searchCircle ? 'map-area map-area--with-sidebar' : 'map-area'}>
@@ -222,6 +230,7 @@ function App() {
                   onSelectSpot={handleSelectSpot}
                   searchCircle={searchCircle}
                   onMapClick={handleMapClick}
+                  flyTarget={flyTarget}
                 />
               </section>
             </div>
