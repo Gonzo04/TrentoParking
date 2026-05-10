@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import L from 'leaflet'
-import { useMapEvents, MapContainer, TileLayer, Marker, Circle, Popup } from 'react-leaflet'
+import { useMap, useMapEvents, MapContainer, TileLayer, Marker, Circle, Popup } from 'react-leaflet'
 
 const TRENTO_CENTER = [46.0679, 11.1211]
 
@@ -18,7 +19,15 @@ function ClickHandler({ onClick }) {
   return null
 }
 
-export default function SpotMap({ spots, onSelectSpot, searchCircle, onMapClick }) {
+function FlyTo({ target }) {
+  const map = useMap()
+  useEffect(() => {
+    if (target) map.flyTo([target.lat, target.lng], 15, { duration: 1.2 })
+  }, [target])
+  return null
+}
+
+export default function SpotMap({ spots, onSelectSpot, searchCircle, onMapClick, flyTarget }) {
   return (
     <MapContainer
       center={TRENTO_CENTER}
@@ -30,6 +39,7 @@ export default function SpotMap({ spots, onSelectSpot, searchCircle, onMapClick 
         url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
       />
       <ClickHandler onClick={onMapClick} />
+      <FlyTo target={flyTarget} />
 
       {searchCircle && (
         <Circle
