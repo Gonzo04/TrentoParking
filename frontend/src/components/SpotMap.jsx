@@ -1,9 +1,33 @@
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
+import { useEffect } from 'react'
+import L from 'leaflet'
+import { useMap, useMapEvents, MapContainer, TileLayer, Marker, Circle, Popup } from 'react-leaflet'
 
 const TRENTO_CENTER = [46.0679, 11.1211]
 
-// TODO: replace CircleMarker with custom icons (Marker + L.divIcon) for a richer look
-export default function SpotMap({ spots, onSelectSpot }) {
+function priceIcon(price) {
+  return L.divIcon({
+    className: 'price-marker-icon',
+    html: `<div class="price-marker">€${price.toFixed(2)}</div>`,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor: [0, -18],
+  })
+}
+
+function ClickHandler({ onClick }) {
+  useMapEvents({ click: e => onClick(e.latlng) })
+  return null
+}
+
+function FlyTo({ target }) {
+  const map = useMap()
+  useEffect(() => {
+    if (target) map.flyTo([target.lat, target.lng], 15, { duration: 1.2 })
+  }, [target])
+  return null
+}
+
+export default function SpotMap({ spots, onSelectSpot, searchCircle, onMapClick, flyTarget }) {
   return (
     <MapContainer
       center={TRENTO_CENTER}
@@ -14,13 +38,22 @@ export default function SpotMap({ spots, onSelectSpot }) {
         attribution='&copy; OpenStreetMap contributors'
         url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
       />
+      <ClickHandler onClick={onMapClick} />
+      <FlyTo target={flyTarget} />
+
+      {searchCircle && (
+        <Circle
+          center={[searchCircle.lat, searchCircle.lng]}
+          radius={searchCircle.radiusM}
+          pathOptions={{ color: '#2a9d8f', fillColor: '#2a9d8f', fillOpacity: 0.12 }}
+        />
+      )}
 
       {spots.map(spot => (
-        <CircleMarker
+        <Marker
           key={spot._id}
-          center={[spot.posizione.latitudine, spot.posizione.longitudine]}
-          radius={14}
-          pathOptions={{ color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.85 }}
+          position={[spot.posizione.latitudine, spot.posizione.longitudine]}
+          icon={priceIcon(spot.tariffaOraria)}
         >
           <Popup>
             <strong>{spot.nome}</strong>
@@ -40,7 +73,7 @@ export default function SpotMap({ spots, onSelectSpot }) {
               Vedi disponibilità
             </button>
           </Popup>
-        </CircleMarker>
+        </Marker>
       ))}
     </MapContainer>
   )

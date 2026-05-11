@@ -325,6 +325,52 @@ button:disabled {
   color: #6b7280;
 }
 
+/* ── Map price markers ─────────────────────────────────────────── */
+.price-marker-icon {
+  background: none !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+.price-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: #12324a;
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(18, 50, 74, 0.4);
+  cursor: pointer;
+  font-family: Inter, system-ui, sans-serif;
+  transition: background 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+
+.price-marker:hover {
+  background: #2a9d8f;
+  box-shadow: 0 4px 16px rgba(42, 157, 143, 0.45);
+}
+
+/* ── Range search layout ───────────────────────────────────────── */
+.map-area {
+  display: contents;
+}
+
+.map-area--with-sidebar {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.spot-sidebar {
+  max-height: 540px;
+  overflow-y: auto;
+}
+
 @media (max-width: 900px) {
   .hero-section {
     padding: 2.5rem 1rem 1.5rem;
@@ -347,5 +393,13 @@ button:disabled {
 
   .password-row {
     grid-template-columns: 1fr;
+  }
+
+  .map-area--with-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .spot-sidebar {
+    max-height: 300px;
   }
 }
