@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
-// Usiamo valori costanti per evitare stringhe scritte in modo diverso nel codice.
-// Questo rende il modello più controllato e più facile da validare.
+// Usiamo valori costanti per evitare stringhe scritte in modo diverso nel codice
+// Questo rende il modello più controllato e più facile da validare
 const GIORNI_DISPONIBILITA = [
   'LUNEDI',
   'MARTEDI',
@@ -124,22 +124,22 @@ const postoPrivatoSchema = new mongoose.Schema({
     min: [0, 'La tariffa oraria non puo essere negativa.']
   },
 
-  // Un posto disattivato rimane nel database, ma non viene mostrato agli utenti.
-  // Questo e meglio rispetto alla cancellazione fisica, perche conserva lo storico.
+  // Un posto disattivato rimane nel database, ma non viene mostrato agli utenti
+  // Questo e meglio rispetto alla cancellazione fisica, perche conserva lo storico
   attivo: {
     type: Boolean,
     default: true
   },
 
-  // Per l'MVP la disponibilita puo anche essere vuota.
-  // In futuro potra essere usata per impedire prenotazioni fuori fascia oraria.
+  // Per l'MVP la disponibilita puo anche essere vuota
+  // In futuro potra essere usata per impedire prenotazioni fuori fascia oraria
   disponibilita: {
     type: [disponibilitaSchema],
     default: []
   },
 
-  // Un posto appena creato non viene considerato automaticamente verificato.
-  // La verifica potra essere gestita in futuro da un amministratore.
+  // Un posto appena creato non viene considerato automaticamente verificato
+  // La verifica potra essere gestita in futuro da un amministratore
   statoVerifica: {
     type: String,
     enum: {
@@ -150,7 +150,7 @@ const postoPrivatoSchema = new mongoose.Schema({
   },
 
   // L'host deve dichiarare esplicitamente di essere proprietario del posto
-  // oppure di avere l'autorizzazione a pubblicarlo sulla piattaforma.
+  // oppure di avere l'autorizzazione a pubblicarlo sulla piattaforma
   dichiarazioneProprietaAccettata: {
     type: Boolean,
     required: [true, 'La dichiarazione di proprieta o autorizzazione e obbligatoria.'],
@@ -162,15 +162,15 @@ const postoPrivatoSchema = new mongoose.Schema({
     }
   },
 
-  // Salviamo quando l'utente ha accettato la dichiarazione.
-  // Questo rende la responsabilita tracciabile nel database.
+  // Salviamo quando l'utente ha accettato la dichiarazione
+  // Questo rende la responsabilita tracciabile nel database
   dataDichiarazioneProprieta: {
     type: Date,
     default: Date.now
   },
 
-  // Campo pensato per eventuali controlli futuri da parte di un amministratore.
-  // Per ora resta vuoto, ma evita di dover cambiare modello appena introdurremo la moderazione.
+  // Campo pensato per eventuali controlli futuri da parte di un amministratore
+  // Per ora resta vuoto, ma evita di dover cambiare modello appena introdurremo la moderazione
   noteVerifica: {
     type: String,
     default: '',
@@ -183,8 +183,8 @@ const postoPrivatoSchema = new mongoose.Schema({
   versionKey: false
 });
 
-// Indici utili per le query piu probabili della feature.
-// Esempio: lista dei posti attivi sulla mappa o posti pubblicati da un certo host.
+// Indici utili per le query piu probabili della feature
+// Esempio: lista dei posti attivi sulla mappa o posti pubblicati da un certo host
 postoPrivatoSchema.index({ attivo: 1, statoVerifica: 1 });
 postoPrivatoSchema.index({ hostId: 1, createdAt: -1 });
 postoPrivatoSchema.index({ 'posizione.latitudine': 1, 'posizione.longitudine': 1 });

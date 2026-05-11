@@ -21,10 +21,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/posti-privati', postiPrivatiRoutes);
 app.use('/api/bookings', require('./routes/booking'));
 
-// Routes da aggiungere nei prossimi step:
-// app.use('/api/host', require('./routes/host'));
-// app.use('/api/admin', require('./routes/admin'));
-
 app.use((err, req, res, next) => {
   console.error(err);
 
@@ -35,16 +31,23 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 8080;
 
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Backend listening on :${PORT}`);
-  });
-});
+connectDB()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Backend listening on :${PORT}`);
+      });
 
-pulisciUserNonVerificati();
+      // Avviamo la pulizia solo dopo la connessione al database
+      // In questo modo evitiamo query Mongoose mentre MongoDB non e ancora pronto
+      pulisciUserNonVerificati();
 
-// Pulisce le mail sbagliate o non confermate ogni ora,
-// dopo 24 ore da quando sono state create.
-setInterval(() => {
-  pulisciUserNonVerificati();
-}, 60 * 60 * 1000);
+      // Pulisce le mail sbagliate o non confermate ogni ora
+      // Dopo 24 ore da quando sono state create
+      setInterval(() => {
+        pulisciUserNonVerificati();
+      }, 60 * 60 * 1000);
+    })
+    .catch((error) => {
+      console.error('Errore durante la connessione a MongoDB:', error);
+      process.exit(1);
+    });
