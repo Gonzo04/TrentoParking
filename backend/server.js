@@ -40,7 +40,7 @@ connectDB().then(() => {
 
 pulisciUserNonVerificati();
 
-// pulisce le mail sbagliate o non confermate ogni ora dopo 24 ore da quando non sono state confermate
+// pulisce le mail sbagliate o non confermate ogni ora dopo 24 ore da quando non sono state inviate
 setInterval(() => {
   pulisciUserNonVerificati();
 }, 60 * 60 * 1000);
