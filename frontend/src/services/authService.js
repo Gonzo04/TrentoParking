@@ -88,10 +88,29 @@ export async function logoutUser(token) {
   });
 }
 
-
+// Rimanda la mail per la verifica della email
 export async function resendVerificationEmail(email) {
   return requestJson('/auth/resend-verification', {
     method: 'POST',
     body: JSON.stringify({ email })
   });
+}
+
+// Manda la mail per il reset della password
+export async function forgotPassword(email) {
+  return requestJson('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  });
+}
+
+// Si occupa del reset della password
+export async function resetPassword(token, password) {
+  return requestJson(
+    `/auth/reset-password/${token}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ password })
+    }
+  );
 }

@@ -5,6 +5,8 @@ const { signToken } = require('../utils/jwt');
 const TokenVerificaMail = require('../models/TokenVerifica');
 const crypto = require('crypto');
 const { verificaEmail } = require('../utils/verificaMail');
+// moduli per il reset della password
+const TokenResetPassword = require('../models/TokenResetPassword');
 
 // Espressioni regolari usate per validare i dati ricevuti dal client.
 // La validazione viene fatta anche nel backend perché il frontend può essere aggirato
@@ -297,6 +299,103 @@ async function login(req, res) {
   }
 }
 
+// Funzione per quando l'utente richiede il reset della password
+async function richiediResetPassword(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        message: 'Email obbligatoria'
+      });
+    }
+
+    const user = await Utente.findOne({
+      email: email.trim().toLowerCase()
+    });
+
+    if (!user) {
+      return res.json({
+        message: 'Abbiamo inviato un link al tuo indirizzo email'
+      });
+    }
+
+    await TokenResetPassword.deleteMany({
+      userId: user._id
+    });
+
+    const token = crypto.randomBytes(32).toString('hex');
+
+    await TokenResetPassword.create({
+      userId: user._id,
+      token
+    });
+
+    const link =
+      `http://localhost:5173/reset-password/${token}`;
+
+    await inviaMailReset(user.email, link);
+
+    return res.json({
+      message: 'Email inviata'
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: 'Errore interno'
+    });
+  }
+}
+
+// Funzione per il cambio password effettivo
+async function resetPassword(req, res) {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        message: 'Password obbligatoria'
+      });
+    }
+
+    if (!PASSWORD_REGEX.test(password)) {
+      return res.status(400).json({
+        message: 'Password non valida'
+      });
+    }
+
+    const tokenDoc = await TokenResetPassword.findOne({ token });
+    if (!tokenDoc) {
+      return res.status(400).json({
+        message: 'Token non valido o scaduto'
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await Utente.findByIdAndUpdate(
+      tokenDoc.userId,
+      { passwordHash }
+    );
+
+    await TokenResetPassword.findByIdAndDelete(
+      tokenDoc._id
+    );
+
+    return res.json({
+      message: 'Password aggiornata'
+    });
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Errore interno'
+    });
+  }
+}
+
 // Restituisce i dati dell'utente autenticato.
 // L'id dell'utente viene inserito in req.user dal middleware requireAuth.
 async function me(req, res) {
@@ -340,5 +439,7 @@ module.exports = {
   login,
   me,
   logout,
-  resendVerificationEmail
+  resendVerificationEmail,
+  richiediResetPassword,
+  resetPassword
 };
