@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { verificaEmail } = require('../utils/verificaMail');
 // moduli per il reset della password
 const TokenResetPassword = require('../models/TokenResetPassword');
+const { sendResetPasswordEmail } = require('../utils/resetPasswordMail')
 
 // Espressioni regolari usate per validare i dati ricevuti dal client.
 // La validazione viene fatta anche nel backend perché il frontend può essere aggirato
@@ -310,39 +311,49 @@ async function richiediResetPassword(req, res) {
       });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const user = await Utente.findOne({
-      email: email.trim().toLowerCase()
+      email: normalizedEmail
     });
 
     if (!user) {
-      return res.json({
-        message: 'Abbiamo inviato un link al tuo indirizzo email'
+      return res.status(404).json({
+        message: 'Utente non trovato'
       });
     }
 
+    // elimina vecchi token reset
     await TokenResetPassword.deleteMany({
       userId: user._id
     });
 
-    const token = crypto.randomBytes(32).toString('hex');
+    const resetToken = crypto
+      .randomBytes(32)
+      .toString('hex');
 
     await TokenResetPassword.create({
       userId: user._id,
-      token
+      token: resetToken
     });
 
-    const link =
-      `http://localhost:5173/reset-password/${token}`;
+    const resetLink =
+      `http://localhost:5173/reset-password/${resetToken}`;
 
-    await inviaMailReset(user.email, link);
+    await sendResetPasswordEmail(
+      user.email,
+      resetLink
+    );
 
     return res.json({
-      message: 'Email inviata'
+      message:
+        'Email reset password inviata'
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
-      message: 'Errore interno'
+      message:
+        'Errore durante il recupero password'
     });
   }
 }

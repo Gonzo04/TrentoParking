@@ -3,7 +3,8 @@ import {
   getCurrentUser,
   loginUser,
   logoutUser,
-  registerUser
+  registerUser,
+  richiediResetPassword
 } from '../services/authService';
 
 // Regole di validazione usate nel frontend.
@@ -13,7 +14,7 @@ const USERNAME_REGEX = /^[a-zA-Z0-9._-]{3,30}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 const TARGA_REGEX = /^[A-Z0-9]{5,10}$/;
 
-function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess }) {
+function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, resetSuccess }) {
   const [mode, setMode] = useState('login');
 
   const [currentUser, setCurrentUser] = useState(null);
@@ -31,6 +32,8 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess }) {
     identifier: '',
     password: ''
   });
+
+  const [forgotEmail, setForgotEmail] = useState('');
 
   const [registerForm, setRegisterForm] = useState({
     nome: '',
@@ -250,6 +253,41 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess }) {
     );
   }
 
+  async function handleForgotPassword() {
+
+  resetMessages();
+
+  const email = forgotEmail.trim();
+
+  if (!email) {
+    setErrorMessage(
+      'Inserisci la tua email per recuperare la password'
+    );
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    await richiediResetPassword(email);
+
+    // meglio svuotare il campo dopo l'invio del reset
+    setForgotEmail('');
+
+    setSuccessMessage(
+      'Ti abbiamo inviato una email per il reset della password'
+    );
+
+  } catch (error) {
+
+    setErrorMessage(error.message);
+
+  } finally {richiediResetPassword
+
+    setLoading(false);
+  }
+}
+
   if (currentUser) {
     return (
       <section className="auth-panel">
@@ -392,6 +430,18 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess }) {
         {errorMessage && (
           <p className="error-message">
             {errorMessage}
+          </p>
+        )}
+
+        {verificationSuccess && (
+          <p className="success-message">
+            Email verificata con successo! Ora puoi accedere.
+          </p>
+        )}
+
+        {resetSuccess && (
+          <p className="success-message">
+            Password aggiornata con successo! Ora puoi accedere.
           </p>
         )}
 

@@ -97,11 +97,23 @@ export async function resendVerificationEmail(email) {
 }
 
 // Manda la mail per il reset della password
-export async function forgotPassword(email) {
-  return requestJson('/auth/forgot-password', {
+export async function richiediResetPassword(email) {
+
+  const response = await fetch('http://localhost:8080/api/auth/forgot-password', {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify({ email })
   });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Errore reset password');
+  }
+
+  return data;
 }
 
 // Si occupa del reset della password

@@ -6,6 +6,8 @@ const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 const ResetPasswordPage = ({ token, onSuccess }) => {
 
+  console.log("TOKEN RESET:", token);
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -66,8 +68,7 @@ const ResetPasswordPage = ({ token, onSuccess }) => {
       <div className="text-center p-8">
 
         <h1 className="text-[#003049] text-2xl font-bold mb-6 flex items-center justify-center gap-3">
-          <Lock className="w-8 h-8 text-[#2a9d8f]" />
-          Reimposta password
+          Reimposta password <Lock className="w-8 h-8 text-[#2a9d8f]" />
         </h1>
 
         <p className="text-gray-600 mb-8 leading-relaxed">
