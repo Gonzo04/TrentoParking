@@ -88,10 +88,41 @@ export async function logoutUser(token) {
   });
 }
 
-
+// Rimanda la mail per la verifica della email
 export async function resendVerificationEmail(email) {
   return requestJson('/auth/resend-verification', {
     method: 'POST',
     body: JSON.stringify({ email })
   });
+}
+
+// Manda la mail per il reset della password
+export async function richiediResetPassword(email) {
+
+  const response = await fetch('http://localhost:8080/api/auth/forgot-password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Errore reset password');
+  }
+
+  return data;
+}
+
+// Si occupa del reset della password
+export async function resetPassword(token, password) {
+  return requestJson(
+    `/auth/reset-password/${token}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ password })
+    }
+  );
 }

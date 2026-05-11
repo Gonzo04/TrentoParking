@@ -9,6 +9,7 @@ import PaymentPage from './components/PaymentPage'
 import MyBookings from './components/MyBookings'
 import EmailVerificationPage from './components/VerificaMail'
 import { getCurrentUser } from './services/authService'
+import ResetPasswordPage from './components/ResetPassword';
 
 function App() {
   const [authenticatedUser, setAuthenticatedUser] = useState(null)
@@ -20,17 +21,25 @@ function App() {
   const [waitingVerification, setWaitingVerification] = useState(false)
   const [verificationSuccess, setVerificationSuccess] = useState(false)
   const [pendingEmail, setPendingEmail] = useState('')
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  const path = window.location.pathname;
+
+  const resetToken = path.startsWith('/reset-password/') ? path.split('/reset-password/')[1] : null;
 
   useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(window.location.search);
 
-  if (params.get('verified') === 'true') {
-    setVerificationSuccess(true);
+    if (params.get('verified') === 'true') {
+      setVerificationSuccess(true);
+      // pulisce URL
+      window.history.replaceState({}, document.title, '/');
+    }
 
-    // pulisce URL
-    window.history.replaceState({}, document.title, '/');
-  }
-}, []);
+    if (params.get('reset') === 'success') {
+      setResetSuccess(true);
+    }
+  }, []);
 
   const handleAuthChange = useCallback((user) => {
     setAuthenticatedUser(user)
@@ -113,13 +122,21 @@ function App() {
               </ul>
             </div>
 
-          {waitingVerification ? (<EmailVerificationPage email={pendingEmail}/>) : (
+          {resetToken ? (
+            <ResetPasswordPage
+              token={resetToken}
+              onSuccess={() => {
+              window.location.href = '/?reset=success';
+            }}
+            />
+          ):waitingVerification ? (<EmailVerificationPage email={pendingEmail}/>) : (
             <AuthPanel onAuthChange={handleAuthChange} 
                        verificationSuccess={verificationSuccess}
+                       resetSuccess={resetSuccess}
                        onRegisterSuccess={(email) => {
                         setPendingEmail(email)
                         setWaitingVerification(true)}}/>
-          )}
+            )}
   </section>
 )}
 
