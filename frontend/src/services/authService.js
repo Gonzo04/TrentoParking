@@ -87,3 +87,11 @@ export async function logoutUser(token) {
     }
   });
 }
+
+
+export async function resendVerificationEmail(email) {
+  return requestJson('/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  });
+}

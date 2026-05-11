@@ -1,6 +1,10 @@
 const bcrypt = require('bcryptjs');
 const Utente = require('../models/Utente');
 const { signToken } = require('../utils/jwt');
+// moduli per la verifica della email;
+const TokenVerificaMail = require('../models/TokenVerifica');
+const crypto = require('crypto');
+const { verificaEmail } = require('../utils/verificaMail');
 
 // Espressioni regolari usate per validare i dati ricevuti dal client.
 // La validazione viene fatta anche nel backend perché il frontend può essere aggirato
@@ -8,6 +12,59 @@ const { signToken } = require('../utils/jwt');
 const USERNAME_REGEX = /^[a-zA-Z0-9._-]{3,30}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 const TARGA_REGEX = /^[A-Z0-9]{5,10}$/;
+
+// Funzione per il reinvio della mail di conferma in caso l'utente prema sul pulsante di rinvio
+async function resendVerificationEmail(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        message: 'Email obbligatoria'
+      });
+    }
+
+    const user = await Utente.findOne({
+      email: email.trim().toLowerCase()
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'Utente non trovato'
+      });
+    }
+
+    if (user.emailVerificata) {
+      return res.status(400).json({
+        message: 'Email già verificata'
+      });
+    }
+
+    await TokenVerificaMail.deleteMany({
+      userId: user._id
+    });
+
+    const tokenMail = await TokenVerificaMail.create({
+      userId: user._id,
+      token: crypto.randomBytes(16).toString('hex')
+    });
+
+    const link = `http://localhost:8080/api/auth/conferma/${tokenMail.token}`;
+
+    await verificaEmail(user.email, link);
+
+    return res.json({
+      message: 'Email reinviata con successo'
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Errore reinvio email'
+    });
+  }
+}
 
 // Costruisce l'oggetto utente da restituire al frontend.
 // Non restituiamo mai passwordHash, perché è un dato interno e sensibile.
@@ -117,22 +174,39 @@ async function register(req, res) {
       targa: normalizedTarga,
       ruolo: 'UTENTE'
     });
+    // Generiamo il token per la verifica dell'e-mail
+    const tokenMail = await TokenVerificaMail.create({
+      userId: user._id,
+      token: crypto.randomBytes(16).toString('hex')
+    });
+    console.log(tokenMail);
+
+    // Invio email
+    const link = `http://localhost:8080/api/auth/conferma/${tokenMail.token}`;
+    await verificaEmail(user.email, link);
 
     // Generiamo il token JWT con le informazioni minime utili.
     // Non inseriamo dati sensibili nel token.
-    const token = signToken({
-      userId: user._id,
-      email: user.email,
-      nomeUtente: user.nomeUtente,
-      ruolo: user.ruolo
-    });
+    if(user.emailVerificata === true){
+        const token = signToken({
+        userId: user._id,
+        email: user.email,
+        nomeUtente: user.nomeUtente,
+        ruolo: user.ruolo
+      });
 
-    return res.status(201).json({
-      message: 'Registrazione effettuata con successo',
-      token,
-      user: buildUserResponse(user)
-    });
-  } catch (error) {
+      return res.status(201).json({
+        message: 'Registrazione effettuata con successo',
+        token,
+        user: buildUserResponse(user)
+      });
+    }
+  // Utente registrato ma email non ancora verificata
+  return res.status(201).json({
+    message: 'Registrazione completata. Controlla la tua email per confermare l’account.',
+    emailVerificata: false
+  })
+} catch (error) {
     console.error('Errore register:', error);
 
     // Gestione dei duplicati intercettati direttamente da MongoDB.
@@ -195,6 +269,12 @@ async function login(req, res) {
         message: 'Credenziali non valide'
       });
     }
+
+    if (!user.emailVerificata) {
+      return res.status(403).json({
+      message: 'Verifica la tua email prima di accedere'
+    });
+}
 
     const token = signToken({
       userId: user._id,
@@ -259,5 +339,6 @@ module.exports = {
   register,
   login,
   me,
-  logout
+  logout,
+  resendVerificationEmail
 };

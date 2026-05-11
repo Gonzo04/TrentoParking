@@ -13,7 +13,7 @@ const USERNAME_REGEX = /^[a-zA-Z0-9._-]{3,30}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 const TARGA_REGEX = /^[A-Z0-9]{5,10}$/;
 
-function AuthPanel({ onAuthChange }) {
+function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess }) {
   const [mode, setMode] = useState('login');
 
   const [currentUser, setCurrentUser] = useState(null);
@@ -198,25 +198,10 @@ function AuthPanel({ onAuthChange }) {
         password: registerForm.password,
         targa: registerForm.targa.trim().toUpperCase()
       });
-
-      localStorage.setItem('authToken', data.token);
-      setCurrentUser(data.user);
-
-      if (onAuthChange) {
-        onAuthChange(data.user);
-      }
-
-      setSuccessMessage('Registrazione effettuata con successo');
-
-      setRegisterForm({
-        nome: '',
-        cognome: '',
-        nomeUtente: '',
-        targa: '',
-        email: '',
-        password: '',
-        confermaPassword: ''
-      });
+      
+      if (onRegisterSuccess) {
+        onRegisterSuccess(registerForm.email.trim());
+      } 
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -374,7 +359,8 @@ function AuthPanel({ onAuthChange }) {
           </label>
 
           {errorMessage && <p className="error-message">{errorMessage}</p>}
-          {successMessage && <p className="success-message">{successMessage}</p>}
+          {successMessage && (<p className="success-message">{successMessage}</p>)}
+          {verificationSuccess && (<p className="success-message">Email verificata con successo! Ora puoi accedere.</p>)}
 
           <button type="submit" className="primary-button" disabled={loading}>
             {loading ? 'Accesso in corso...' : 'Accedi'}

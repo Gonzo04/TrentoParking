@@ -3,6 +3,7 @@ require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const pulisciUserNonVerificati = require('./utils/pulisciUserNonVerificati'); //per pulire le mail non confermate
 
 const authRoutes = require('./routes/auth');
 
@@ -36,3 +37,10 @@ connectDB().then(() => {
     console.log(`Backend listening on :${PORT}`);
   });
 });
+
+pulisciUserNonVerificati();
+
+// pulisce le mail sbagliate o non confermate ogni ora dopo 24 ore da quando non sono state inviate
+setInterval(() => {
+  pulisciUserNonVerificati();
+}, 60 * 60 * 1000);

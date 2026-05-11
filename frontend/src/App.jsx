@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import 'leaflet/dist/leaflet.css'
 import './App.css'
 import { api } from './services/api'
@@ -7,6 +7,8 @@ import SpotMap from './components/SpotMap'
 import BookingCalendar from './components/BookingCalendar'
 import PaymentPage from './components/PaymentPage'
 import MyBookings from './components/MyBookings'
+import EmailVerificationPage from './components/VerificaMail'
+import { getCurrentUser } from './services/authService'
 
 function App() {
   const [authenticatedUser, setAuthenticatedUser] = useState(null)
@@ -15,6 +17,20 @@ function App() {
   const [spotDetail, setSpotDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [pendingBooking, setPendingBooking] = useState(null)
+  const [waitingVerification, setWaitingVerification] = useState(false)
+  const [verificationSuccess, setVerificationSuccess] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState('')
+
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get('verified') === 'true') {
+    setVerificationSuccess(true);
+
+    // pulisce URL
+    window.history.replaceState({}, document.title, '/');
+  }
+}, []);
 
   const handleAuthChange = useCallback((user) => {
     setAuthenticatedUser(user)
@@ -97,9 +113,15 @@ function App() {
               </ul>
             </div>
 
-            <AuthPanel onAuthChange={handleAuthChange} />
-          </section>
-        )}
+          {waitingVerification ? (<EmailVerificationPage email={pendingEmail}/>) : (
+            <AuthPanel onAuthChange={handleAuthChange} 
+                       verificationSuccess={verificationSuccess}
+                       onRegisterSuccess={(email) => {
+                        setPendingEmail(email)
+                        setWaitingVerification(true)}}/>
+          )}
+  </section>
+)}
 
         {authenticatedUser && view === 'payment' && pendingBooking ? (
           <PaymentPage
