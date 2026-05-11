@@ -365,6 +365,58 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess }) {
           <button type="submit" className="primary-button" disabled={loading}>
             {loading ? 'Accesso in corso...' : 'Accedi'}
           </button>
+
+          <button type="button"
+                  className="secondary-button"
+                  onClick={() => switchMode('forgotPassword')}
+                  style={{ marginTop: '12px', width: '100%' }}
+          >
+            Password dimenticata?
+          </button>
+        </form>
+      )}
+
+      {mode === 'forgotPassword' && (
+        <form className="auth-form" onSubmit={handleForgotPassword}>
+
+        <label>
+          Email
+          <input
+            type="email"
+            value={forgotEmail}
+            onChange={(e) => setForgotEmail(e.target.value)}
+            placeholder="mario.rossi@example.com"
+          />
+        </label>
+
+        {errorMessage && (
+          <p className="error-message">
+            {errorMessage}
+          </p>
+        )}
+
+        {successMessage && (
+          <p className="success-message">
+            {successMessage}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          className="primary-button"
+          disabled={loading}
+        >
+          {loading ? 'Invio in corso...' : 'Invia link reset'}
+        </button>
+
+        <button
+          type="button"
+          className="secondary-button"
+          style={{ marginTop: '12px', width: '100%' }}
+          onClick={() => switchMode('login')}
+        >
+          Torna al login
+        </button>
         </form>
       )}
 
