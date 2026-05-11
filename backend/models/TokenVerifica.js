@@ -8,6 +8,11 @@ const TokenVerificaMailSchema = new mongoose.Schema({
     token:{
         type: String,
         required: true,
-    }
+    },
+    createdAt: {
+    type: Date,
+    default: Date.now,
+    expires: 86400 // 24 ore in secondi
+  }
 })
 module.exports = mongoose.model('TokenVerifica', TokenVerificaMailSchema)
