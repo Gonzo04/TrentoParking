@@ -1,0 +1,643 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{pgfplots}
+\usepackage{ragged2e}
+
+\pgfplotsset{compat=1.18}
+
+\renewcommand{\arraystretch}{1.3}
+
+\setlength{\parindent}{0pt}
+
+\geometry{margin=2.5cm}
+
+\title{\textbf{Milestone 3 Report}\\
+TrentoParking}
+\author{Team 12}
+\date{17 Maggio 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%-------------------------------------------------
+\section{Sezione Introduttiva}
+
+\subsection{Team Members}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{6cm}|p{2.5cm}|p{7cm}|}
+\hline
+\textbf{Nome e Cognome} & \textbf{Matricola} & \textbf{Account Github} \\
+\hline
+David Dorobantu & 234467 & https://github.com/DavidDorobantu \\
+\hline
+Riccardo Gonzato & 246476 & https://github.com/Gonzo04 \\
+\hline
+Matteo Sepa & 243283 & https://github.com/sepamatteo \\
+\hline
+\end{tabular}
+\caption{Membri del team}
+\end{table}
+
+\subsection{Project Idea}
+
+TrentoParking è un'applicazione web dedicata al noleggio di posti auto privati.
+L'obiettivo del progetto è permettere ai proprietari di parcheggi privati di mettere a disposizione il proprio posto auto quando non utilizzato, mentre gli utenti possono cercare e prenotare rapidamente un parcheggio disponibile tramite una mappa interattiva.
+L'applicazione vuole ridurre il tempo necessario alla ricerca di parcheggio, migliorare la mobilità urbana e ottimizzare l'utilizzo degli spazi privati inutilizzati.
+
+\subsection{Links}
+
+\begin{itemize}
+    \item Repository Github: \url{https://github.com/Gonzo04/TrentoParking}
+    \item Link Apiary: \url{https://trentoparking.docs.apiary.io/#}
+\end{itemize}
+
+%-------------------------------------------------
+\section{Sezione Generale}
+
+\subsection{Strategia di Branching}
+
+Il team ha adottato una strategia di branching basata sul modello \textit{GitFlow semplificato senza develop}.
+
+I branch utilizzati sono:
+
+\begin{itemize}
+    \item \textbf{main}: contiene esclusivamente versioni stabili e funzionanti dell'applicazione.
+    \item \textbf{feature/*}: branch dedicati allo sviluppo di specifiche funzionalità.
+\end{itemize}
+
+Ogni nuova funzionalità viene sviluppata in un branch separato e successivamente integrata in \textit{main} tramite pull request.
+Prima del merge vengono effettuati:
+
+\begin{itemize}
+    \item revisione del codice;
+    \item verifica della compilazione;
+    \item controllo dei conflitti;
+    \item test delle API e delle funzionalità implementate.
+\end{itemize}
+
+Questa strategia ha permesso al nostro team di lavorare in parallelo riducendo conflitti e mantenendo una maggiore stabilità del codice.
+
+\subsection{Product Backlog}
+
+\small
+
+\begin{longtable}{|p{0.7cm}|p{2.5cm}|p{5.8cm}|p{1.3cm}|p{4.2cm}|}
+\hline
+\textbf{ID} & \textbf{Name} & \textbf{User story} & \textbf{Imp.} & \textbf{How to Demo} \\
+\hline
+1 & Registrazione &
+Come utente voglio registrarmi all'applicazione tramite email e password così da poter utilizzare i servizi di TrentoParking. &
+100 &
+L'utente completa la registrazione e riceve l'email di verifica. \\
+\hline
+
+2 & Verifica Email &
+Come utente voglio verificare il mio account tramite email così da poter accedere all'applicazione in sicurezza. &
+60 &
+L'utente clicca il link ricevuto via email e l'account viene attivato. \\
+\hline
+
+3 & Login &
+Come utente voglio effettuare il login così da poter accedere alla piattaforma. &
+100 &
+L'utente inserisce le credenziali corrette e accede alla home. \\
+\hline
+
+4 & Password reset &
+Come utente voglio recuperare la password dimenticata così da poter riottenere accesso al mio account. &
+60 &
+L'utente richiede il reset password e riceve l'email dedicata. \\
+\hline
+
+5 & Mappa interattiva &
+Come utente voglio visualizzare una mappa interattiva così da poter trovare parcheggi disponibili. &
+60 &
+Dopo il login viene mostrata correttamente la mappa principale. \\
+\hline
+
+6 & Visualizzazione Parcheggio &
+Come utente voglio vedere i posti auto disponibili sulla mappa così da scegliere il migliore. &
+80 &
+I marker dei parcheggi vengono caricati dinamicamente sulla mappa. \\
+\hline
+
+7 & Filtro per raggio &
+Come utente voglio filtrare i parcheggi disponibili in base a un raggio di distanza così da visualizzare solo quelli vicini alla mia posizione. &
+30 &
+L'utente seleziona un raggio di ricerca e la mappa mostra solamente i parcheggi inclusi nell'area scelta. \\
+\hline
+
+8 & Menu parcheggi card &
+Come utente voglio visualizzare i parcheggi disponibili anche in una lista laterale così da confrontare rapidamente le opzioni disponibili. &
+80 &
+Accanto alla mappa viene mostrata una sidebar con la lista dei parcheggi disponibili sincronizzata con i marker presenti sulla mappa. \\
+\hline
+
+9 & Selezione parcheggio dalla mappa &
+Come utente voglio selezionare un parcheggio dalla mappa o dalla lista laterale. &
+50 &
+L'utente seleziona un parcheggio e visualizza i dettagli. \\
+\hline
+
+10 & Prenotazione &
+Come utente voglio prenotare un posto auto disponibile. &
+100 &
+L'utente conferma la prenotazione tramite l'applicazione. \\
+\hline
+
+11 & Recensioni &
+Come utente voglio lasciare recensioni ai proprietari dei parcheggi. &
+40 &
+L'utente inserisce una recensione dopo la fine della prenotazione. \\
+\hline
+
+12 & Messaggi &
+Come utente voglio comunicare con il proprietario del parcheggio. &
+40 &
+L'utente apre una chat e invia messaggi al proprietario. \\
+\hline
+
+\end{longtable}
+
+\normalsize
+\vspace{1cm}
+
+\subsection{Definizione di Done}
+
+Una funzionalità viene considerata \textit{Done} quando soddisfa tutti i seguenti criteri:
+
+\begin{itemize}
+    \item il codice è stato implementato e caricato su Github;
+    \item il codice compila senza errori;
+    \item sono stati eseguiti test manuali e/o automatici;
+    \item il codice è stato revisionato da almeno un altro membro del team;
+    \item non sono presenti bug critici noti;
+    \item la user story associata soddisfa i requisiti definiti durante lo sprint planning.
+\end{itemize}
+
+%-------------------------------------------------
+\section{Sprint 1}
+
+\subsection{Goal}
+
+L'obiettivo principale dello Sprint 1 è stato quello di progettare e sviluppare l'infrastruttura iniziale dell'applicazione TrentoParking.
+
+Durante questo sprint il team si è concentrato principalmente su:
+
+\begin{itemize}
+    \item configurazione dei repository Github;
+    \item definizione dell'architettura frontend e backend;
+    \item implementazione del sistema di autenticazione;
+    \item registrazione utenti con verifica email;
+    \item implementazione del login;
+    \item implementazione del reset password;
+    \item creazione della schermata principale con mappa interattiva;
+    \item progettazione preliminare del sistema di prenotazione.
+\end{itemize}
+
+Lo sprint aveva inoltre lo scopo di creare una base solida e scalabile per lo sprint successivo.
+
+\subsection{Sprint Planning}
+
+Durante lo Sprint Planning il team ha analizzato le user story prioritarie e stimato il carico di lavoro.
+
+\small
+
+\renewcommand{\arraystretch}{1.25}
+
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+
+\begin{longtable}{
+|>{\centering\arraybackslash}m{1.8cm}
+|>{\centering\arraybackslash}m{1.7cm}
+|>{\raggedright\arraybackslash}m{4.7cm}
+|>{\raggedright\arraybackslash}m{3.8cm}
+|>{\centering\arraybackslash}m{1.4cm}
+|>{\centering\arraybackslash}m{0.7cm}|}
+\hline
+
+\multicolumn{3}{|c|}{} &
+\multicolumn{3}{c|}{\textbf{Sprint Backlog (Sprint Planning)}} \\
+\cline{4-6}
+
+\multicolumn{3}{|c|}{} &
+\textbf{Task} & \textbf{Volunt.} & \textbf{Est.} \\
+\hline
+\endfirsthead
+
+\hline
+\multicolumn{3}{|c|}{} &
+\multicolumn{3}{c|}{\textbf{Sprint Backlog (continued)}} \\
+\cline{4-6}
+
+\multicolumn{3}{|c|}{} &
+\textbf{Task} & \textbf{Volunt.} & \textbf{Est.} \\
+\hline
+\endhead
+
+\multirow{30}{*}{\textbf{Sprint \#1}}
+
+& \multirow{6}{*}{Sign up}
+& \multirow{6}{4.8cm}{Come utente voglio registrarmi all'applicazione tramite email e password così da poter utilizzare i servizi di TrentoParking.}
+
+& Design API registrazione & Riccardo & 2 \\
+\cline{4-6}
+
+&&
+& Implementazione endpoint REST & Riccardo & 4 \\
+\cline{4-6}
+
+&&
+& Progettazione database utenti & Riccardo & 2 \\
+\cline{4-6}
+
+&&
+& Sviluppo UI registrazione & Riccardo & 4 \\
+\cline{4-6}
+
+&&
+& Testing registrazione & Riccardo & 2 \\
+\cline{4-6}
+
+&&
+& Deploy autenticazione & Riccardo & 1 \\
+\cline{2-6}
+
+& \multirow{5}{*}{Verifica \\ email}
+& \multirow{5}{4.8cm}{Come utente voglio verificare il mio account tramite email così da poter accedere all'applicazione in sicurezza.}
+
+& Configurazione servizio email & David & 3 \\
+\cline{4-6}
+
+&&
+& Generazione token verifica & David & 2 \\
+\cline{4-6}
+
+&&
+& Validazione token verifica & David & 2 \\
+\cline{4-6}
+
+&&
+& Testing verifica email & David & 2 \\
+\cline{4-6}
+
+&&
+& Deploy servizio email & David & 1 \\
+\cline{2-6}
+
+& \multirow{6}{*}{Login}
+& \multirow{6}{4.8cm}{Come utente voglio effettuare il login così da poter accedere alla piattaforma.}
+
+& Design API login & Riccardo & 2 \\
+\cline{4-6}
+
+&&
+& Implementazione autenticazione JWT & Riccardo & 4 \\
+\cline{4-6}
+
+&&
+& Sviluppo UI login & Riccardo & 3 \\
+\cline{4-6}
+
+&&
+& Gestione errori autenticazione & Riccardo & 2 \\
+\cline{4-6}
+
+&&
+& Testing login & Riccardo & 2 \\
+\cline{4-6}
+
+&&
+& Deploy login service & Riccardo & 1 \\
+\cline{2-6}
+
+& \multirow{5}{*}{Password \\ reset}
+& \multirow{5}{4.8cm}{Come utente voglio recuperare la password dimenticata così da poter riottenere accesso al mio account.}
+
+& Generazione reset token & David & 2 \\
+\cline{4-6}
+
+&&
+& Implementazione endpoint reset & David & 3 \\
+\cline{4-6}
+
+&&
+& Sviluppo UI reset password & David & 3 \\
+\cline{4-6}
+
+&&
+& Testing reset password & David & 2 \\
+\cline{4-6}
+
+&&
+& Deploy reset password & David & 1 \\
+\cline{2-6}
+
+\pagebreak
+
+& \multirow{8}{*}{Mappa \\ interattiva}
+& \multirow{8}{4.8cm}{Come utente voglio visualizzare una mappa interattiva così da poter trovare parcheggi disponibili.}
+
+& Studio integrazione mappe & Matteo & 2 \\
+\cline{4-6}
+
+&&
+& Configurazione map provider & Matteo & 3 \\
+\cline{4-6}
+
+&&
+& Sviluppo UI mappa & Matteo & 4 \\
+\cline{4-6}
+
+&&
+& Gestione marker parcheggi & Matteo & 3 \\
+\cline{4-6}
+
+&&
+& Implementazione filtro raggio & Matteo & 3 \\
+\cline{4-6}
+
+&&
+& Sidebar lista parcheggi & Matteo & 4 \\
+\cline{4-6}
+
+&&
+& Testing visualizzazione mappa & Matteo & 2 \\
+\cline{4-6}
+
+&&
+& Deploy schermata home & Matteo & 1 \\
+\hline
+
+& \multirow{8}{*}{Parking \\ reservation}
+& \multirow{8}{4.8cm}{Come utente voglio prenotare un posto auto disponibile così da assicurarmi un parcheggio prima dell'arrivo.}
+
+& Design API prenotazioni & Matteo & 2 \\
+\cline{4-6}
+
+&&
+& Implementazione endpoint prenotazione & Matteo & 4 \\
+\cline{4-6}
+
+&&
+& Gestione disponibilità parcheggi & Matteo & 3 \\
+\cline{4-6}
+
+&&
+& Salvataggio prenotazioni database & Matteo & 3 \\
+\cline{4-6}
+
+&&
+& Sviluppo UI prenotazione & Matteo & 4 \\
+\cline{4-6}
+
+&&
+& Conferma prenotazione utente & Matteo & 2 \\
+\cline{4-6}
+
+&&
+& Testing prenotazioni & Matteo & 2 \\
+\cline{4-6}
+
+&&
+& Deploy servizio prenotazioni & Matteo & 1 \\
+\cline{2-6}
+
+\multicolumn{5}{|r|}{\textbf{Total}} & \textbf{93} \\
+\hline
+
+\end{longtable}
+
+\normalsize
+
+\subsubsection{Burndown Chart}
+
+Il Burndown Chart mostra l'andamento dello sprint e il completamento progressivo delle attività.
+
+\begin{figure}[H]
+\centering
+
+\begin{tikzpicture}
+\begin{axis}[
+    width=15cm,
+    height=8cm,
+    xlabel={Giorni Sprint},
+    ylabel={Ore di lavoro},
+    xmin=1, xmax=21,
+    ymin=0, ymax=95,
+    xtick={1,3,5,7,9,11,13,15,17,19,21},
+    ytick={0,10,20,30,40,50,60,70,80,90},
+    legend pos=north east,
+    grid=major
+]
+
+% Ideal Burndown
+\addplot[
+    mark=*,
+]
+coordinates {
+    (1,93)
+    (2,88)
+    (3,84)
+    (4,79)
+    (5,75)
+    (6,70)
+    (7,66)
+    (8,61)
+    (9,57)
+    (10,53)
+    (11,48)
+    (12,44)
+    (13,39)
+    (14,35)
+    (15,30)
+    (16,26)
+    (17,22)
+    (18,17)
+    (19,13)
+    (20,8)
+    (21,0)
+};
+
+\addlegendentry{Ideale}
+
+% Actual Burndown
+\addplot[
+    mark=square*,
+]
+coordinates {
+    (1,93)
+    (2,91)
+    (3,88)
+    (4,84)
+    (5,80)
+    (6,75)
+    (7,70)
+    (8,66)
+    (9,60)
+    (10,56)
+    (11,50)
+    (12,46)
+    (13,42)
+    (14,36)
+    (15,31)
+    (16,26)
+    (17,21)
+    (18,16)
+    (19,10)
+    (20,5)
+    (21,0)
+};
+
+\addlegendentry{Vero}
+
+\end{axis}
+\end{tikzpicture}
+
+\caption{Burndown Chart Sprint \1}
+
+\end{figure}
+
+\subsection{Test cases}
+
+Di seguito sono riportati  20 test case relativi alle funzionalità dello Sprint \1 e al design delle funzionalità principali non ancora introdotte
+
+\small
+\begin{longtable}{|p{2.2cm}|p{0.6cm}|p{3.2cm}|p{2.8cm}|p{1.8cm}|p{3.2cm}|}
+\hline
+\textbf{User Story} & \textbf{ID} & \textbf{Description} & \textbf{Test Case Data} & \textbf{Precond.} & \textbf{Expected Result} \\ \hline
+\endfirsthead
+\hline
+\textbf{User Story} & \textbf{ID} & \textbf{Description} & \textbf{Test Case Data} & \textbf{Precond.} & \textbf{Expected Result} \\ \hline
+\endhead
+
+% --- REGISTRAZIONE ---
+\multirow{5}{=}{Registrazione} & 01 & Registrazione valida & email: user@test.it, pwd: Pwd123! & Nessuna & Account creato e redirect. \\ \cline{2-6}
+ & 02 & Formato email errato & email: user@test, pwd: Pwd123! & Nessuna & Errore formato email. \\ \cline{2-6}
+ & 03 & Email già esistente & email: existing@test.it, pwd: Pwd123! & Email in DB & Errore account duplicato. \\ \cline{2-6}
+ & 04 & Campo email vuoto & email: [vuoto], pwd: Pwd123! & Nessuna & Messaggio campo richiesto. \\ \cline{2-6}
+ & 05 & Password vuota & email: user@test.it, pwd: [vuoto] & Nessuna & Messaggio campo richiesto. \\ \hline
+
+% --- LOGIN ---
+\multirow{4}{=}{Login} & 06 & Login corretto & email: user@test.it, pwd: Pwd123! & Acc. attivo & Redirect alla Mappa. \\ \cline{2-6}
+ & 07 & Password errata & email: user@test.it, pwd: wrong & Acc. attivo & Errore credenziali. \\ \cline{2-6}
+ & 08 & Account non verificato & email: user@test.it, pwd: Pwd123! & Non verif. & Errore verifica email. \\ \cline{2-6}
+ & 09 & Logout utente & Click pulsante Logout & Loggato & Sessione distrutta. \\ \hline
+
+% --- RESET ---
+\multirow{3}{=}{Password Reset} & 10 & Richiesta reset valida & email: user@test.it & Account esistente & Email di reset inviata. \\ \cline{2-6}
+ & 11 & Reset con token valido & Nuova password: Pwd456! & Token OK & Password aggiornata in DB. \\ \cline{2-6}
+ & 12 & Reset email inesistente & email: ignoto@test.it & Nessuna & Errore email non trovata. \\ \hline
+
+% --- MAPPA & FILTRI ---
+\multirow{4}{=}{Map \& Filter} & 13 & Caricamento mappa & Accesso Home page & Loggato & Mappa centrata su Trento. \\ \cline{2-6}
+ & 14 & Visualizzazione marker & N/A & Dati in DB & Marker visibili in mappa. \\ \cline{2-6}
+ & 15 & Filtro raggio 500m & Slider impostato su 0.5km & Marker OK & Filtraggio visivo marker. \\ \cline{2-6}
+ & 16 & Nessun risultato & Raggio: 100m in zona vuota & Area vuota & Messaggio "Nessun risultato". \\ \hline
+
+% --- SIDEBAR & PRENOTAZIONE ---
+\multirow{2}{=}{Sidebar} & 17 & Sincronizzazione Lista & Filtro attivo su mappa & Marker OK & Lista aggiornata con mappa. \\ \cline{2-6}
+ & 18 & Selezione da mappa & Click su marker specifico & Marker OK & Apertura schermata dettagli. \\ \hline
+\multirow{2}{=}{Booking} & 19 & Prenotazione riuscita & Click "Prenota ora" & Posto Libero & Stato "Occupato" e conferma. \\ \cline{2-6}
+ & 20 & Prenotazione fallita & Click su posto occupato & Occupato & Errore disponibilità. \\ \hline
+
+\end{longtable}
+\normalsize
+
+A causa della dimensione della pagina non è possibilie fornire un livello di dettaglio sufficiente come indicato dal template, forniamo quindi un file .csv con il corretto livello di dettaglio:\\
+\href{https://docs.google.com/spreadsheets/d/1MUQECu_8l71_o3VYYRUg6efop6524kugg39CWwuaUdM/edit?usp=sharing}{\textbf{Clicca qui per visualizzare il file dei Test Case}}.
+
+\subsection{Sprint Review}
+
+Durante la Sprint Review il team ha effettuato una dimostrazione delle funzionalità implementate.
+
+Sono state presentate:
+
+\begin{itemize}
+    \item registrazione utenti;
+    \item verifica email;
+    \item login;
+    \item reset password;
+    \item navigazione verso la schermata principale;
+    \item integrazione iniziale della mappa.
+\end{itemize}
+
+La discussione successiva si è concentrata principalmente su:
+
+\begin{itemize}
+    \item miglioramento dell'interfaccia utente;
+    \item ottimizzazione delle API di autenticazione;
+    \item gestione delle prenotazioni future;
+\end{itemize}
+
+È stato deciso che nel prossimo sprint verranno implementate le funzionalità principali relative alla ricerca e prenotazione dei parcheggi.
+
+\subsection{Product Backlog Refinement}
+
+Durante il refinement il team ha aggiornato il Product Backlog introducendo nuove user story emerse durante lo sviluppo.
+
+In particolare sono state aggiunte:
+
+\begin{itemize}
+    \item visualizzazione dinamica dei parcheggi disponibili sulla mappa;
+    \item lista laterale sincronizzata con la mappa;
+    \item sistema di recensioni per i proprietari dei parcheggi;
+    \item chat tra utente e proprietario;
+    \item gestione disponibilità temporale dei parcheggi.
+\end{itemize}
+
+Inoltre alcune priorità sono state modificate per dare maggiore importanza alle funzionalità di prenotazione e visualizzazione dei posti auto.
+
+\subsection{Sprint Retrospective}
+
+Durante la retrospective il team ha analizzato gli aspetti positivi e negativi dello sprint.
+
+\subsubsection{Aspetti positivi}
+
+\begin{itemize}
+    \item buona collaborazione tra i membri del team;
+    \item utilizzo efficace di Github e delle pull request;
+    \item comunicazione frequente durante lo sviluppo;
+    \item completamento delle funzionalità di autenticazione;
+    \item buona suddivisione dei task.
+\end{itemize}
+
+\subsubsection{Criticità riscontrate}
+
+\begin{itemize}
+    \item difficoltà iniziali nella configurazione dell'ambiente di sviluppo;
+    \item sottostima del tempo necessario per alcune API;
+\end{itemize}
+
+\subsubsection{Miglioramenti per il prossimo sprint}
+
+\begin{itemize}
+    \item introdurre meeting tecnici più frequenti;
+    \item migliorare la documentazione interna;
+    \item completare il sistema di prenotazione;
+    \item sviluppare recensioni e messaggistica;
+    \item ottimizzare l'esperienza utente nella selezione dei parcheggi.
+\end{itemize}
+
+\end{document}
+```
