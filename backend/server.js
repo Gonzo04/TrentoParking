@@ -3,9 +3,10 @@ require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
-const pulisciUserNonVerificati = require('./utils/pulisciUserNonVerificati'); //per pulire le mail non confermate
+const pulisciUserNonVerificati = require('./utils/pulisciUserNonVerificati'); // per pulire le mail non confermate
 
 const authRoutes = require('./routes/auth');
+const postiPrivatiRoutes = require('./routes/PostiPrivati');
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/posti-privati', postiPrivatiRoutes);
 app.use('/api/bookings', require('./routes/booking'));
 
 // Routes da aggiungere nei prossimi step:
@@ -25,6 +27,7 @@ app.use('/api/bookings', require('./routes/booking'));
 
 app.use((err, req, res, next) => {
   console.error(err);
+
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error'
   });
@@ -40,7 +43,8 @@ connectDB().then(() => {
 
 pulisciUserNonVerificati();
 
-// pulisce le mail sbagliate o non confermate ogni ora dopo 24 ore da quando non sono state inviate
+// Pulisce le mail sbagliate o non confermate ogni ora,
+// dopo 24 ore da quando sono state create.
 setInterval(() => {
   pulisciUserNonVerificati();
 }, 60 * 60 * 1000);
