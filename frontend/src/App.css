@@ -403,3 +403,87 @@ button:disabled {
     max-height: 300px;
   }
 }
+/* ── Create private spot ───────────────────────────────────────── */
+.create-spot-panel {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.create-spot-instructions h3 {
+  margin: 0 0 0.5rem;
+  color: #12324a;
+}
+
+.create-spot-instructions p {
+  margin: 0.35rem 0;
+  font-size: 0.95rem;
+}
+
+.create-spot-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.create-spot-form label {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.create-spot-form input,
+.create-spot-form textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0.85rem 0.95rem;
+  background: #fff;
+  color: #172033;
+  outline: none;
+  resize: vertical;
+}
+
+.create-spot-form input:focus,
+.create-spot-form textarea:focus {
+  border-color: #2a9d8f;
+  box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.16);
+}
+
+.create-spot-checkbox {
+  display: flex !important;
+  grid-template-columns: none !important;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.7rem !important;
+  font-weight: 600 !important;
+  line-height: 1.45;
+}
+
+.create-spot-checkbox input {
+  width: auto;
+  margin-top: 0.2rem;
+}
+
+.create-spot-marker-icon {
+  background: none !important;
+  border: none !important;
+}
+
+.create-spot-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #f97316;
+  color: #fff;
+  font-size: 18px;
+  box-shadow: 0 6px 18px rgba(249, 115, 22, 0.45);
+  border: 3px solid #fff;
+}

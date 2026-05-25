@@ -32,9 +32,12 @@ export default function SpotSidebar({ spots, radiusM, onRadiusChange, onClear, o
         <p style={{ color: '#9ca3af', fontSize: 14, margin: 0 }}>Nessun posto in quest&apos;area.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {spots.map(spot => (
-            <div
-              key={spot._id}
+          {spots.map(spot => {
+            const spotId = spot.id || spot._id;
+
+            return (
+              <div
+                key={spotId}
               style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 14 }}
             >
               <p style={{ margin: '0 0 2px', fontWeight: 700, color: '#12324a', fontSize: 15 }}>{spot.nome}</p>
@@ -42,7 +45,7 @@ export default function SpotSidebar({ spots, radiusM, onRadiusChange, onClear, o
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 700, color: '#2563eb' }}>€{spot.tariffaOraria.toFixed(2)}/ora</span>
                 <button
-                  onClick={() => onSelectSpot(spot._id)}
+                  onClick={() => onSelectSpot(spotId)}
                   style={{
                     padding: '5px 12px', background: '#2563eb', color: '#fff',
                     border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -52,7 +55,7 @@ export default function SpotSidebar({ spots, radiusM, onRadiusChange, onClear, o
                 </button>
               </div>
             </div>
-          ))}
+            )})}
         </div>
       )}
     </div>
