@@ -6,7 +6,7 @@ const connectDB = require('./config/db');
 const pulisciUserNonVerificati = require('./utils/pulisciUserNonVerificati'); // per pulire le mail non confermate
 
 const authRoutes = require('./routes/auth');
-const postiPrivatiRoutes = require('./routes/PostiPrivati');
+const postiPrivatiRoutes = require('./routes/postiPrivati');
 
 const app = express();
 
