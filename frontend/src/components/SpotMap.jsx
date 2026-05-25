@@ -1,33 +1,91 @@
-import { useEffect } from 'react'
-import L from 'leaflet'
-import { useMap, useMapEvents, MapContainer, TileLayer, Marker, Circle, Popup } from 'react-leaflet'
+import { useEffect } from 'react';
+import L from 'leaflet';
+import {
+  Circle,
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+  useMapEvents
+} from 'react-leaflet';
 
-const TRENTO_CENTER = [46.0679, 11.1211]
+const TRENTO_CENTER = [46.0679, 11.1211];
 
 function priceIcon(price) {
+  const safePrice = Number.isFinite(Number(price)) ? Number(price) : 0;
+
   return L.divIcon({
     className: 'price-marker-icon',
-    html: `<div class="price-marker">€${price.toFixed(2)}</div>`,
+    html: `<div class="price-marker">€${safePrice.toFixed(2)}</div>`,
     iconSize: [0, 0],
     iconAnchor: [0, 0],
     popupAnchor: [0, -18],
-  })
+  });
+}
+
+function createSpotIcon() {
+  return L.divIcon({
+    className: 'create-spot-marker-icon',
+    html: '<div class="create-spot-marker">📍</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -28],
+  });
 }
 
 function ClickHandler({ onClick }) {
-  useMapEvents({ click: e => onClick(e.latlng) })
-  return null
+  useMapEvents({
+    click(event) {
+      if (typeof onClick === 'function') {
+        onClick(event.latlng);
+      }
+    }
+  });
+
+  return null;
 }
 
 function FlyTo({ target }) {
-  const map = useMap()
+  const map = useMap();
+
   useEffect(() => {
-    if (target) map.flyTo([target.lat, target.lng], 15, { duration: 1.2 })
-  }, [target])
-  return null
+    if (target) {
+      map.flyTo([target.lat, target.lng], 15, { duration: 1.2 });
+    }
+  }, [map, target]);
+
+  return null;
 }
 
-export default function SpotMap({ spots, onSelectSpot, searchCircle, onMapClick, flyTarget }) {
+function isValidSpotPosition(spot) {
+  return (
+    spot &&
+    spot.posizione &&
+    Number.isFinite(Number(spot.posizione.latitudine)) &&
+    Number.isFinite(Number(spot.posizione.longitudine))
+  );
+}
+
+function isValidLatLng(position) {
+  return (
+    position &&
+    Number.isFinite(Number(position.lat)) &&
+    Number.isFinite(Number(position.lng))
+  );
+}
+
+export default function SpotMap({
+  spots = [],
+  onSelectSpot,
+  searchCircle,
+  onMapClick,
+  flyTarget,
+  isCreateSpotMode = false,
+  createSpotPosition = null
+}) {
+  const validSpots = spots.filter(isValidSpotPosition);
+
   return (
     <MapContainer
       center={TRENTO_CENTER}
@@ -35,46 +93,88 @@ export default function SpotMap({ spots, onSelectSpot, searchCircle, onMapClick,
       style={{ height: '500px', width: '100%', borderRadius: 12 }}
     >
       <TileLayer
-        attribution='&copy; OpenStreetMap contributors'
-        url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        attribution="&copy; OpenStreetMap contributors"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+
       <ClickHandler onClick={onMapClick} />
       <FlyTo target={flyTarget} />
 
-      {searchCircle && (
+      {searchCircle && !isCreateSpotMode && (
         <Circle
           center={[searchCircle.lat, searchCircle.lng]}
           radius={searchCircle.radiusM}
-          pathOptions={{ color: '#2a9d8f', fillColor: '#2a9d8f', fillOpacity: 0.12 }}
+          pathOptions={{
+            color: '#2a9d8f',
+            fillColor: '#2a9d8f',
+            fillOpacity: 0.12
+          }}
         />
       )}
 
-      {spots.map(spot => (
+      {isValidLatLng(createSpotPosition) && (
         <Marker
-          key={spot._id}
-          position={[spot.posizione.latitudine, spot.posizione.longitudine]}
-          icon={priceIcon(spot.tariffaOraria)}
+          position={[
+            Number(createSpotPosition.lat),
+            Number(createSpotPosition.lng)
+          ]}
+          icon={createSpotIcon()}
         >
           <Popup>
-            <strong>{spot.nome}</strong>
+            <strong>Nuovo posto auto</strong>
             <br />
-            <span style={{ color: '#6b7280', fontSize: 13 }}>{spot.posizione.indirizzoTestuale}</span>
-            <br />
-            <span style={{ fontWeight: 600 }}>€{spot.tariffaOraria.toFixed(2)}/ora</span>
-            <br />
-            <button
-              onClick={() => onSelectSpot(spot._id)}
-              style={{
-                marginTop: 6, padding: '4px 10px',
-                background: '#2563eb', color: '#fff',
-                border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13,
-              }}
-            >
-              Vedi disponibilità
-            </button>
+            <span style={{ color: '#6b7280', fontSize: 13 }}>
+              Punto selezionato per la pubblicazione
+            </span>
           </Popup>
         </Marker>
-      ))}
+      )}
+
+      {validSpots.map((spot) => {
+        const spotId = spot.id || spot._id;
+
+        return (
+          <Marker
+            key={spotId}
+            position={[
+              Number(spot.posizione.latitudine),
+              Number(spot.posizione.longitudine)
+            ]}
+            icon={priceIcon(spot.tariffaOraria)}
+          >
+            <Popup>
+              <strong>{spot.nome}</strong>
+              <br />
+
+              <span style={{ color: '#6b7280', fontSize: 13 }}>
+                {spot.posizione.indirizzoTestuale || 'Indirizzo non specificato'}
+              </span>
+              <br />
+
+              <span style={{ fontWeight: 600 }}>
+                €{Number(spot.tariffaOraria || 0).toFixed(2)}/ora
+              </span>
+              <br />
+
+              <button
+                onClick={() => onSelectSpot(spotId)}
+                style={{
+                  marginTop: 6,
+                  padding: '4px 10px',
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                }}
+              >
+                Vedi disponibilità
+              </button>
+            </Popup>
+          </Marker>
+        );
+      })}
     </MapContainer>
-  )
+  );
 }
