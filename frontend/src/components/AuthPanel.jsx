@@ -14,8 +14,8 @@ const USERNAME_REGEX = /^[a-zA-Z0-9._-]{3,30}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 const TARGA_REGEX = /^[A-Z0-9]{5,10}$/;
 
-function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, resetSuccess }) {
-  const [mode, setMode] = useState('login');
+function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, resetSuccess, initialTab }) {
+  const [mode, setMode] = useState(initialTab ?? 'login');
 
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -44,6 +44,11 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
     password: '',
     confermaPassword: ''
   });
+
+  // Se la prop initialTab cambia (es. utente torna alla landing e rientra), aggiorniamo il tab attivo di conseguenza
+  useEffect(() => {
+    if (initialTab) setMode(initialTab);
+  }, [initialTab]);
 
   // All'avvio del componente controlliamo se esiste già un token salvato.
   // Se il token è valido, recuperiamo l'utente e manteniamo la sessione anche dopo refresh.
