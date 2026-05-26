@@ -20,7 +20,7 @@ function validateDisponibilita(disponibilita) {
   }
 
   for (const fascia of disponibilita) {
-    const giorno = normalizeString(fascia.giorno);
+    const giorno = normalizeString(fascia.giorno).toUpperCase();
 
     if (!giorno) {
       return null;
@@ -44,21 +44,46 @@ function validateDisponibilita(disponibilita) {
   }
 
   return disponibilita.map((fascia) => ({
-    giorno: normalizeString(fascia.giorno),
+    giorno: normalizeString(fascia.giorno).toUpperCase(),
     oraInizio: fascia.oraInizio,
     oraFine: fascia.oraFine
   }));
 }
 
+function userOwnsPosto(posto, userId) {
+  return posto.hostId && posto.hostId.toString() === userId;
+}
+
 // GET /api/posti-privati
-// Restituisce i posti attivi mostrabili sulla mappa.
-// La rotta è pensata per utenti autenticati, perché nella UI la mappa è visibile solo dopo login.
+// Restituisce i posti attivi mostrabili sulla mappa
+// I posti eliminati logicamente non vengono più mostrati agli utenti
 async function listPostiPrivati(req, res, next) {
   try {
-    const posti = await PostoPrivato.find({ attivo: true })
-      .populate('hostId', 'nome cognome nomeUtente')
-      .sort({ createdAt: -1 })
-      .lean();
+    const posti = await PostoPrivato.find({
+      attivo: true,
+      eliminato: { $ne: true }
+    })
+        .populate('hostId', 'nome cognome nomeUtente')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    return res.json(posti);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+// GET /api/posti-privati/miei
+// Restituisce i posti pubblicati dall'utente autenticato
+// I posti eliminati logicamente non vengono più mostrati nell'area host
+async function listMieiPostiPrivati(req, res, next) {
+  try {
+    const posti = await PostoPrivato.find({
+      hostId: req.user.userId,
+      eliminato: { $ne: true }
+    })
+        .sort({ createdAt: -1 })
+        .lean();
 
     return res.json(posti);
   } catch (err) {
@@ -67,15 +92,17 @@ async function listPostiPrivati(req, res, next) {
 }
 
 // GET /api/posti-privati/:id
-// Restituisce il dettaglio di un singolo posto privato attivo.
+// Restituisce il dettaglio di un singolo posto privato attivo
+// Se il posto è stato eliminato logicamente viene trattato come non trovato
 async function getPostoPrivatoById(req, res, next) {
   try {
     const posto = await PostoPrivato.findOne({
       _id: req.params.id,
-      attivo: true
+      attivo: true,
+      eliminato: { $ne: true }
     })
-      .populate('hostId', 'nome cognome nomeUtente')
-      .lean();
+        .populate('hostId', 'nome cognome nomeUtente')
+        .lean();
 
     if (!posto) {
       return res.status(404).json({ error: 'Posto privato non trovato' });
@@ -88,16 +115,17 @@ async function getPostoPrivatoById(req, res, next) {
 }
 
 // GET /api/posti-privati/:id/prenotazioni
-// Restituisce il posto e le prenotazioni future necessarie al calendario.
-// Questa rotta sostituisce gradualmente /api/bookings/posti/:id, che mescolava posti e prenotazioni.
+// Restituisce il posto e le prenotazioni future necessarie al calendario
+// Questa rotta viene usata dal frontend per costruire il flusso di prenotazione
 async function getPostoConPrenotazioni(req, res, next) {
   try {
     const posto = await PostoPrivato.findOne({
       _id: req.params.id,
-      attivo: true
+      attivo: true,
+      eliminato: { $ne: true }
     })
-      .populate('hostId', 'nome cognome nomeUtente')
-      .lean();
+        .populate('hostId', 'nome cognome nomeUtente')
+        .lean();
 
     if (!posto) {
       return res.status(404).json({ error: 'Posto privato non trovato' });
@@ -113,8 +141,8 @@ async function getPostoConPrenotazioni(req, res, next) {
       dataOraFine: { $gte: now },
       dataOraInizio: { $lte: limit }
     })
-      .select('dataOraInizio dataOraFine')
-      .lean();
+        .select('dataOraInizio dataOraFine')
+        .lean();
 
     return res.json({ posto, prenotazioni });
   } catch (err) {
@@ -123,8 +151,8 @@ async function getPostoConPrenotazioni(req, res, next) {
 }
 
 // POST /api/posti-privati
-// Crea un posto privato associandolo all'utente autenticato.
-// L'hostId non arriva dal frontend: viene preso dal token verificato dal middleware requireAuth.
+// Crea un posto privato associandolo all'utente autenticato
+// L'hostId non arriva dal frontend perché viene preso dal token verificato
 async function createPostoPrivato(req, res, next) {
   try {
     const utente = await Utente.findById(req.user.userId);
@@ -194,21 +222,23 @@ async function createPostoPrivato(req, res, next) {
       tariffaOraria: tariffa,
       disponibilita: disponibilitaValidata,
       attivo: true,
+      eliminato: false,
+      eliminatoIl: null,
       statoVerifica: 'NON_VERIFICATO',
       dichiarazioneProprietaAccettata: true,
       dataDichiarazioneProprieta: new Date()
     });
 
-    // Al primo posto pubblicato l'utente diventa HOST.
-    // Questa scelta evita un flusso separato "diventa host", ma mantiene il ruolo utile nel dominio.
+    // Al primo posto pubblicato l'utente diventa HOST
+    // Questa scelta evita un flusso separato per diventare host
     if (utente.ruolo === 'UTENTE') {
       utente.ruolo = 'HOST';
       await utente.save();
     }
 
     const postoCreato = await PostoPrivato.findById(posto._id)
-      .populate('hostId', 'nome cognome nomeUtente')
-      .lean();
+        .populate('hostId', 'nome cognome nomeUtente')
+        .lean();
 
     return res.status(201).json(postoCreato);
   } catch (err) {
@@ -216,9 +246,118 @@ async function createPostoPrivato(req, res, next) {
   }
 }
 
+// PATCH /api/posti-privati/:id
+// Aggiorna solo i dati che l'host può gestire dopo la pubblicazione
+// La posizione non viene modificata perché identifica fisicamente il posto
+async function updateMioPostoPrivato(req, res, next) {
+  try {
+    const posto = await PostoPrivato.findById(req.params.id);
+
+    if (!posto) {
+      return res.status(404).json({ error: 'Posto privato non trovato' });
+    }
+
+    if (posto.eliminato === true) {
+      return res.status(404).json({ error: 'Posto privato non trovato' });
+    }
+
+    if (!userOwnsPosto(posto, req.user.userId)) {
+      return res.status(403).json({ error: 'Non puoi modificare un posto che non hai pubblicato tu' });
+    }
+
+    const updates = {};
+
+    if (req.body.nome !== undefined) {
+      const nomePulito = normalizeString(req.body.nome);
+
+      if (!nomePulito) {
+        return res.status(400).json({ error: 'Il nome del posto è obbligatorio' });
+      }
+
+      updates.nome = nomePulito;
+    }
+
+    if (req.body.descrizione !== undefined) {
+      updates.descrizione = normalizeString(req.body.descrizione);
+    }
+
+    if (req.body.tariffaOraria !== undefined) {
+      const tariffa = Number(req.body.tariffaOraria);
+
+      if (!Number.isFinite(tariffa) || tariffa < 0) {
+        return res.status(400).json({ error: 'Tariffa oraria non valida' });
+      }
+
+      updates.tariffaOraria = tariffa;
+    }
+
+    if (req.body.disponibilita !== undefined) {
+      const disponibilitaValidata = validateDisponibilita(req.body.disponibilita);
+
+      if (disponibilitaValidata === null) {
+        return res.status(400).json({ error: 'Disponibilità non valida' });
+      }
+
+      updates.disponibilita = disponibilitaValidata;
+    }
+
+    if (req.body.attivo !== undefined) {
+      updates.attivo = req.body.attivo === true;
+    }
+
+    // Applichiamo solo i campi permessi e ignoriamo eventuali campi sensibili mandati dal frontend
+    Object.assign(posto, updates);
+
+    const postoAggiornato = await posto.save();
+
+    return res.json(postoAggiornato);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+// PATCH /api/posti-privati/:id/elimina
+// Elimina logicamente il posto dalla piattaforma
+// Il documento resta nel database per mantenere storico e controlli futuri
+async function eliminaMioPostoPrivato(req, res, next) {
+  try {
+    const posto = await PostoPrivato.findById(req.params.id);
+
+    if (!posto) {
+      return res.status(404).json({ error: 'Posto privato non trovato' });
+    }
+
+    if (posto.eliminato === true) {
+      return res.status(404).json({ error: 'Posto privato non trovato' });
+    }
+
+    if (!userOwnsPosto(posto, req.user.userId)) {
+      return res.status(403).json({ error: 'Non puoi eliminare un posto che non hai pubblicato tu' });
+    }
+
+    // Disattiviamo il posto per impedire nuove prenotazioni
+    posto.attivo = false;
+
+    // Segniamo il posto come eliminato per nasconderlo da mappa e area host
+    posto.eliminato = true;
+
+    // Salviamo quando è avvenuta l'eliminazione logica
+    posto.eliminatoIl = new Date();
+
+    await posto.save();
+
+    return res.json({ message: 'Posto eliminato correttamente' });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listPostiPrivati,
+  listMieiPostiPrivati,
   getPostoPrivatoById,
   getPostoConPrenotazioni,
-  createPostoPrivato
+  createPostoPrivato,
+  updateMioPostoPrivato,
+  eliminaMioPostoPrivato
 };

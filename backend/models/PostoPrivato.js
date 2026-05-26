@@ -125,21 +125,35 @@ const postoPrivatoSchema = new mongoose.Schema({
   },
 
   // Un posto disattivato rimane nel database, ma non viene mostrato agli utenti
-  // Questo e meglio rispetto alla cancellazione fisica, perche conserva lo storico
+  // Questo serve quando l'host vuole sospendere temporaneamente il posto
   attivo: {
     type: Boolean,
     default: true
   },
 
-  // Per l'MVP la disponibilita puo anche essere vuota
-  // In futuro potra essere usata per impedire prenotazioni fuori fascia oraria
+  // Indica se il posto è stato eliminato logicamente dall'host
+  // Per l'utente il posto sparisce, ma il documento resta nel database
+  eliminato: {
+    type: Boolean,
+    default: false
+  },
+
+  // Salva la data in cui il posto è stato eliminato logicamente
+  // È utile per controlli futuri e per mantenere tracciabilità
+  eliminatoIl: {
+    type: Date,
+    default: null
+  },
+
+  // Per l'MVP la disponibilità può anche essere vuota
+  // In futuro potrà essere usata per impedire prenotazioni fuori fascia oraria
   disponibilita: {
     type: [disponibilitaSchema],
     default: []
   },
 
   // Un posto appena creato non viene considerato automaticamente verificato
-  // La verifica potra essere gestita in futuro da un amministratore
+  // La verifica potrà essere gestita in futuro da un amministratore
   statoVerifica: {
     type: String,
     enum: {
@@ -163,7 +177,7 @@ const postoPrivatoSchema = new mongoose.Schema({
   },
 
   // Salviamo quando l'utente ha accettato la dichiarazione
-  // Questo rende la responsabilita tracciabile nel database
+  // Questo rende la responsabilità tracciabile nel database
   dataDichiarazioneProprieta: {
     type: Date,
     default: Date.now
@@ -183,10 +197,10 @@ const postoPrivatoSchema = new mongoose.Schema({
   versionKey: false
 });
 
-// Indici utili per le query piu probabili della feature
+// Indici utili per le query più probabili della feature
 // Esempio: lista dei posti attivi sulla mappa o posti pubblicati da un certo host
-postoPrivatoSchema.index({ attivo: 1, statoVerifica: 1 });
-postoPrivatoSchema.index({ hostId: 1, createdAt: -1 });
+postoPrivatoSchema.index({ attivo: 1, eliminato: 1, statoVerifica: 1 });
+postoPrivatoSchema.index({ hostId: 1, eliminato: 1, createdAt: -1 });
 postoPrivatoSchema.index({ 'posizione.latitudine': 1, 'posizione.longitudine': 1 });
 
 module.exports = mongoose.model('PostoPrivato', postoPrivatoSchema);

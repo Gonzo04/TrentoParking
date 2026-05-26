@@ -23,6 +23,7 @@ function distanceM(lat1, lon1, lat2, lon2) {
 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
 async function reverseGeocode(lat, lng) {
   const params = new URLSearchParams({
     format: 'jsonv2',
@@ -55,6 +56,18 @@ async function reverseGeocode(lat, lng) {
 
   return data.display_name || '';
 }
+
+// Valori tecnici da mandare al backend e testi leggibili da mostrare nel form
+const GIORNI_DISPONIBILITA_CREAZIONE = [
+  { value: 'LUNEDI', label: 'Lunedì' },
+  { value: 'MARTEDI', label: 'Martedì' },
+  { value: 'MERCOLEDI', label: 'Mercoledì' },
+  { value: 'GIOVEDI', label: 'Giovedì' },
+  { value: 'VENERDI', label: 'Venerdì' },
+  { value: 'SABATO', label: 'Sabato' },
+  { value: 'DOMENICA', label: 'Domenica' }
+];
+
 function App() {
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
   const [view, setView] = useState('map');
@@ -80,6 +93,9 @@ function App() {
     descrizione: '',
     indirizzoTestuale: '',
     tariffaOraria: '',
+    disponibilitaGiorni: [],
+    disponibilitaOraInizio: '8',
+    disponibilitaOraFine: '18',
     dichiarazioneProprietaAccettata: false
   });
 
@@ -133,6 +149,9 @@ function App() {
       descrizione: '',
       indirizzoTestuale: '',
       tariffaOraria: '',
+      disponibilitaGiorni: [],
+      disponibilitaOraInizio: '8',
+      disponibilitaOraFine: '18',
       dichiarazioneProprietaAccettata: false
     });
   }
@@ -195,39 +214,39 @@ function App() {
   }
 
   async function handleMapClick(latlng) {
-  if (isCreateSpotMode) {
-    setCreateSpotPosition({
-      lat: latlng.lat,
-      lng: latlng.lng
-    });
+    if (isCreateSpotMode) {
+      setCreateSpotPosition({
+        lat: latlng.lat,
+        lng: latlng.lng
+      });
 
-    setCreateSpotError('');
+      setCreateSpotError('');
 
-    try {
-      const indirizzo = await reverseGeocode(latlng.lat, latlng.lng);
+      try {
+        const indirizzo = await reverseGeocode(latlng.lat, latlng.lng);
 
-      setNewSpotForm((currentForm) => ({
-        ...currentForm,
-        indirizzoTestuale: indirizzo
-      }));
-    } catch (error) {
-      console.error(error);
+        setNewSpotForm((currentForm) => ({
+          ...currentForm,
+          indirizzoTestuale: indirizzo
+        }));
+      } catch (error) {
+        console.error(error);
 
-      setNewSpotForm((currentForm) => ({
-        ...currentForm,
-        indirizzoTestuale: ''
-      }));
+        setNewSpotForm((currentForm) => ({
+          ...currentForm,
+          indirizzoTestuale: ''
+        }));
+      }
+
+      return;
     }
 
-    return;
+    setSearchCircle((currentCircle) => ({
+      lat: latlng.lat,
+      lng: latlng.lng,
+      radiusM: currentCircle?.radiusM ?? 500
+    }));
   }
-
-  setSearchCircle((currentCircle) => ({
-    lat: latlng.lat,
-    lng: latlng.lng,
-    radiusM: currentCircle?.radiusM ?? 500
-  }));
-}
 
   function handleSearchSelect({ lat, lng }) {
     const target = { lat, lng };
@@ -253,6 +272,23 @@ function App() {
   function handleNewSpotFormChange(event) {
     const { name, value, type, checked } = event.target;
 
+    if (name === 'disponibilitaGiorni') {
+      setNewSpotForm((currentForm) => {
+        const giorniAttuali = currentForm.disponibilitaGiorni;
+
+        const nuoviGiorni = checked
+          ? [...giorniAttuali, value]
+          : giorniAttuali.filter((giorno) => giorno !== value);
+
+        return {
+          ...currentForm,
+          disponibilitaGiorni: nuoviGiorni
+        };
+      });
+
+      return;
+    }
+
     setNewSpotForm((currentForm) => ({
       ...currentForm,
       [name]: type === 'checkbox' ? checked : value
@@ -271,6 +307,8 @@ function App() {
     }
 
     const tariffa = Number(newSpotForm.tariffaOraria);
+    const oraInizio = Number(newSpotForm.disponibilitaOraInizio);
+    const oraFine = Number(newSpotForm.disponibilitaOraFine);
 
     if (!newSpotForm.nome.trim()) {
       setCreateSpotError('Inserisci un nome per il posto auto');
@@ -282,10 +320,36 @@ function App() {
       return;
     }
 
+    if (newSpotForm.disponibilitaGiorni.length === 0) {
+      setCreateSpotError('Seleziona almeno un giorno di disponibilità');
+      return;
+    }
+
+    if (!Number.isInteger(oraInizio) || !Number.isInteger(oraFine)) {
+      setCreateSpotError('Inserisci orari di disponibilità validi');
+      return;
+    }
+
+    if (oraInizio < 0 || oraInizio > 23 || oraFine < 1 || oraFine > 24) {
+      setCreateSpotError('Gli orari devono essere compresi tra 0 e 24');
+      return;
+    }
+
+    if (oraFine <= oraInizio) {
+      setCreateSpotError('L ora di fine deve essere successiva all ora di inizio');
+      return;
+    }
+
     if (!newSpotForm.dichiarazioneProprietaAccettata) {
       setCreateSpotError('Devi dichiarare di essere proprietario o autorizzato a pubblicare il posto');
       return;
     }
+
+    const disponibilita = newSpotForm.disponibilitaGiorni.map((giorno) => ({
+      giorno,
+      oraInizio,
+      oraFine
+    }));
 
     setCreateSpotLoading(true);
 
@@ -299,7 +363,7 @@ function App() {
           indirizzoTestuale: newSpotForm.indirizzoTestuale.trim()
         },
         tariffaOraria: tariffa,
-        disponibilita: [],
+        disponibilita,
         dichiarazioneProprietaAccettata: true
       });
 
@@ -538,6 +602,61 @@ function App() {
                           rows={3}
                         />
                       </label>
+
+                      <div className="availability-fields">
+                        <p className="form-section-title">
+                          Disponibilità del posto
+                        </p>
+
+                        <div className="availability-days">
+                          {GIORNI_DISPONIBILITA_CREAZIONE.map((giorno) => (
+                            <label
+                              key={giorno.value}
+                              className="create-spot-checkbox"
+                            >
+                              <input
+                                name="disponibilitaGiorni"
+                                type="checkbox"
+                                value={giorno.value}
+                                checked={newSpotForm.disponibilitaGiorni.includes(giorno.value)}
+                                onChange={handleNewSpotFormChange}
+                              />
+
+                              <span>{giorno.label}</span>
+                            </label>
+                          ))}
+                        </div>
+
+                        <div className="availability-hours">
+                          <label>
+                            Ora inizio
+                            <input
+                              name="disponibilitaOraInizio"
+                              type="number"
+                              min="0"
+                              max="23"
+                              step="1"
+                              value={newSpotForm.disponibilitaOraInizio}
+                              onChange={handleNewSpotFormChange}
+                              required
+                            />
+                          </label>
+
+                          <label>
+                            Ora fine
+                            <input
+                              name="disponibilitaOraFine"
+                              type="number"
+                              min="1"
+                              max="24"
+                              step="1"
+                              value={newSpotForm.disponibilitaOraFine}
+                              onChange={handleNewSpotFormChange}
+                              required
+                            />
+                          </label>
+                        </div>
+                      </div>
 
                       <label className="create-spot-checkbox">
                         <input
