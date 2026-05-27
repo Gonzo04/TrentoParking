@@ -143,6 +143,13 @@ export default function SpotMap({
             icon={priceIcon(spot.tariffaOraria)}
           >
             <Popup>
+              {spot.foto && spot.foto.length > 0 && (
+                <img
+                  src={`http://localhost:8080${spot.foto[0]}`}
+                  alt=""
+                  style={{ width: '100%', height: 110, objectFit: 'cover', borderRadius: 6, marginBottom: 6, display: 'block' }}
+                />
+              )}
               <strong>{spot.nome}</strong>
               <br />
 

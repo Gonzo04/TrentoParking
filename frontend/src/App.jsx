@@ -82,6 +82,7 @@ function App() {
     tariffaOraria: '',
     dichiarazioneProprietaAccettata: false
   });
+  const [photoFiles, setPhotoFiles] = useState([]);
 
   const path = window.location.pathname;
   const resetToken = path.startsWith('/reset-password/')
@@ -135,6 +136,7 @@ function App() {
       tariffaOraria: '',
       dichiarazioneProprietaAccettata: false
     });
+    setPhotoFiles([]);
   }
 
   function startCreateSpotMode() {
@@ -290,7 +292,7 @@ function App() {
     setCreateSpotLoading(true);
 
     try {
-      await api.createPostoPrivato({
+      const posto = await api.createPostoPrivato({
         nome: newSpotForm.nome.trim(),
         descrizione: newSpotForm.descrizione.trim(),
         posizione: {
@@ -302,6 +304,10 @@ function App() {
         disponibilita: [],
         dichiarazioneProprietaAccettata: true
       });
+
+      if (photoFiles.length > 0) {
+        await api.uploadFoto(posto._id, photoFiles);
+      }
 
       await loadPostiPrivati();
 
@@ -537,6 +543,22 @@ function App() {
                           placeholder="Aggiungi dettagli utili per chi prenota"
                           rows={3}
                         />
+                      </label>
+
+                      <label>
+                        Foto del posto (opzionale, max 10)
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          multiple
+                          onChange={e => setPhotoFiles(Array.from(e.target.files))}
+                          style={{ marginTop: 4 }}
+                        />
+                        {photoFiles.length > 0 && (
+                          <span style={{ fontSize: 12, color: '#6b7280' }}>
+                            {photoFiles.length} {photoFiles.length === 1 ? 'foto selezionata' : 'foto selezionate'}
+                          </span>
+                        )}
                       </label>
 
                       <label className="create-spot-checkbox">

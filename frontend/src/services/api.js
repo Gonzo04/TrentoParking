@@ -69,6 +69,21 @@ export const api = {
     body: JSON.stringify(body),
   }),
 
+  // Foto posto
+  uploadFoto: async (postoId, files) => {
+    const token = localStorage.getItem('authToken');
+    const formData = new FormData();
+    files.forEach(f => formData.append('foto', f));
+    const res = await fetch(`${BASE}/posti-privati/${postoId}/foto`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Errore upload foto');
+    return data;
+  },
+
   // Bookings
   listMyBookings: () => request('/bookings'),
 

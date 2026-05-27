@@ -135,6 +135,18 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
     <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: 460 }}>
       {/* Spot header */}
       <div style={{ marginBottom: 20 }}>
+        {posto.foto && posto.foto.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto' }}>
+            {posto.foto.map((url, i) => (
+              <img
+                key={i}
+                src={`http://localhost:8080${url}`}
+                alt=""
+                style={{ height: 120, minWidth: 160, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+              />
+            ))}
+          </div>
+        )}
         <h2 style={{ margin: '0 0 4px' }}>{posto.nome}</h2>
         <p style={{ margin: '0 0 2px', color: '#6b7280', fontSize: 14 }}>{posto.posizione.indirizzoTestuale}</p>
         <p style={{ margin: 0, fontWeight: 700, color: '#2563eb' }}>€{posto.tariffaOraria.toFixed(2)}/ora</p>
