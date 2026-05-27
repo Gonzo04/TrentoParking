@@ -4,14 +4,13 @@ import './App.css';
 import { api } from './services/api';
 import LandingPage from './components/LandingPage';
 import AuthPanel from './components/AuthPanel';
+import AuthPage from './components/AuthPage';
 import SearchBar from './components/SearchBar';
 import SpotMap from './components/SpotMap';
 import SpotSidebar from './components/SpotSidebar';
 import BookingCalendar from './components/BookingCalendar';
 import PaymentPage from './components/PaymentPage';
 import MyBookings from './components/MyBookings';
-import EmailVerificationPage from './components/VerificaMail';
-import ResetPasswordPage from './components/ResetPassword';
 
 /* ── Utility ─────────────────────────────────────────────────────── */
 function distanceM(lat1, lon1, lat2, lon2) {
@@ -149,7 +148,7 @@ function App() {
     return posti;
   }, []);
 
-  /* ── Auth change ─────────────────────────────────────────────────── */
+  /* ── Auth cambio ─────────────────────────────────────────────────── */
   const handleAuthChange = useCallback((user) => {
     setAuthenticatedUser(user);
 
@@ -164,7 +163,7 @@ function App() {
       setFlyTarget(null);
       resetCreateSpotState();
       // Torna alla landing solo se era in una view autenticata,
-      // non se è già in 'landing' o 'auth' (es. primo mount senza token)
+      // non se è già in 'landing' o 'auth'
       setView(prev =>
         prev === 'dashboard' || prev === 'payment' || prev === 'myBookings'
           ? 'landing'
@@ -310,7 +309,7 @@ function App() {
     }
   }
 
-  /* ── Nearby spots ────────────────────────────────────────────────── */
+  /* ── Spots vicini ────────────────────────────────────────────────── */
   const nearbySpots = useMemo(() => {
     if (!searchCircle) return spots;
     return spots.filter(spot =>
@@ -341,50 +340,20 @@ function App() {
   /* Pagina di autenticazione (login / registrazione / reset password) */
   if (view === 'auth') {
     return (
-      <div className="app-page">
-        <header className="hero-section">
-          <div>
-            <h1>ParkingShare Trento</h1>
-            <p className="hero-subtitle">
-              Trova e prenota posti auto privati a Trento in modo semplice e veloce.
-            </p>
-          </div>
-        </header>
-
-        <main className="main-layout">
-          <section className="landing-card">
-            <div className="landing-content">
-              <h2>Trova o condividi un posto auto, senza stress</h2>
-              <p>Accedi alla piattaforma per cercare, prenotare o pubblicare un posto auto privato.</p>
-              <ul className="landing-list">
-                <li>Trova posti auto privati disponibili</li>
-                <li>Prenota indicando l&apos;orario</li>
-                <li>Pubblica il tuo posto auto in modo semplice</li>
-              </ul>
-            </div>
-
-            {resetToken ? (
-              <ResetPasswordPage
-                token={resetToken}
-                onSuccess={() => { window.location.href = '/?reset=success'; }}
-              />
-            ) : waitingVerification ? (
-              <EmailVerificationPage email={pendingEmail} />
-            ) : (
-              <AuthPanel
-                initialTab={authInitialTab}
-                onAuthChange={handleAuthChange}
-                verificationSuccess={verificationSuccess}
-                resetSuccess={resetSuccess}
-                onRegisterSuccess={(email) => {
-                  setPendingEmail(email);
-                  setWaitingVerification(true);
-                }}
-              />
-            )}
-          </section>
-        </main>
-      </div>
+      <AuthPage
+        authInitialTab={authInitialTab}
+        onAuthChange={handleAuthChange}
+        verificationSuccess={verificationSuccess}
+        resetSuccess={resetSuccess}
+        waitingVerification={waitingVerification}
+        pendingEmail={pendingEmail}
+        resetToken={resetToken}
+        onBack={() => setView('landing')}
+        onRegisterSuccess={(email) => {
+          setPendingEmail(email);
+          setWaitingVerification(true);
+        }}
+      />
     );
   }
 

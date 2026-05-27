@@ -7,13 +7,32 @@ import {
   richiediResetPassword
 } from '../services/authService';
 
-// Regole di validazione usate nel frontend.
-// Sono le stesse del backend, così l'utente riceve subito feedback prima dell'invio.
-// La sicurezza però resta nel backend, perché il frontend può essere aggirato.
 const USERNAME_REGEX = /^[a-zA-Z0-9._-]{3,30}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 const TARGA_REGEX = /^[A-Z0-9]{5,10}$/;
 
+/* ── SVG icons ───────────────────────────────────────────────────── */
+function EyeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
+/* ── Component ───────────────────────────────────────────────────── */
 function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, resetSuccess, initialTab }) {
   const [mode, setMode] = useState(initialTab ?? 'login');
 
@@ -28,13 +47,8 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [loginForm, setLoginForm] = useState({
-    identifier: '',
-    password: ''
-  });
-
+  const [loginForm, setLoginForm] = useState({ identifier: '', password: '' });
   const [forgotEmail, setForgotEmail] = useState('');
-
   const [registerForm, setRegisterForm] = useState({
     nome: '',
     cognome: '',
@@ -45,42 +59,28 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
     confermaPassword: ''
   });
 
-  // Se la prop initialTab cambia (es. utente torna alla landing e rientra), aggiorniamo il tab attivo di conseguenza
   useEffect(() => {
     if (initialTab) setMode(initialTab);
   }, [initialTab]);
 
-  // All'avvio del componente controlliamo se esiste già un token salvato.
-  // Se il token è valido, recuperiamo l'utente e manteniamo la sessione anche dopo refresh.
   useEffect(() => {
     async function loadUserFromToken() {
       const token = localStorage.getItem('authToken');
 
       if (!token) {
         setInitialLoading(false);
-
-        if (onAuthChange) {
-          onAuthChange(null);
-        }
-
+        if (onAuthChange) onAuthChange(null);
         return;
       }
 
       try {
         const data = await getCurrentUser(token);
         setCurrentUser(data.user);
-
-        if (onAuthChange) {
-          onAuthChange(data.user);
-        }
+        if (onAuthChange) onAuthChange(data.user);
       } catch {
-        // Se il token non è più valido, lo eliminiamo per evitare stati incoerenti.
         localStorage.removeItem('authToken');
         setCurrentUser(null);
-
-        if (onAuthChange) {
-          onAuthChange(null);
-        }
+        if (onAuthChange) onAuthChange(null);
       } finally {
         setInitialLoading(false);
       }
@@ -96,23 +96,13 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
 
   function handleLoginChange(event) {
     const { name, value } = event.target;
-
-    setLoginForm((previousForm) => ({
-      ...previousForm,
-      [name]: value
-    }));
+    setLoginForm(prev => ({ ...prev, [name]: value }));
   }
 
   function handleRegisterChange(event) {
     const { name, value } = event.target;
-
-    // La targa viene mostrata già in maiuscolo per coerenza con il backend.
     const normalizedValue = name === 'targa' ? value.toUpperCase() : value;
-
-    setRegisterForm((previousForm) => ({
-      ...previousForm,
-      [name]: normalizedValue
-    }));
+    setRegisterForm(prev => ({ ...prev, [name]: normalizedValue }));
   }
 
   function validateRegisterForm() {
@@ -122,25 +112,16 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
     const email = registerForm.email.trim();
     const targa = registerForm.targa.trim().toUpperCase();
 
-    if (!nome || !cognome || !nomeUtente || !email || !registerForm.password || !targa) {
+    if (!nome || !cognome || !nomeUtente || !email || !registerForm.password || !targa)
       return 'Compila tutti i campi obbligatori';
-    }
-
-    if (!USERNAME_REGEX.test(nomeUtente)) {
+    if (!USERNAME_REGEX.test(nomeUtente))
       return 'Il nome utente deve avere 3-30 caratteri e può contenere solo lettere, numeri, punto, trattino e underscore';
-    }
-
-    if (!PASSWORD_REGEX.test(registerForm.password)) {
+    if (!PASSWORD_REGEX.test(registerForm.password))
       return 'La password deve avere almeno 8 caratteri, una lettera maiuscola e un numero';
-    }
-
-    if (registerForm.password !== registerForm.confermaPassword) {
+    if (registerForm.password !== registerForm.confermaPassword)
       return 'Le due password non coincidono';
-    }
-
-    if (!TARGA_REGEX.test(targa)) {
+    if (!TARGA_REGEX.test(targa))
       return 'La targa deve contenere solo lettere e numeri, da 5 a 10 caratteri';
-    }
 
     return '';
   }
@@ -150,33 +131,19 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
     resetMessages();
 
     const identifier = loginForm.identifier.trim();
-
     if (!identifier || !loginForm.password) {
       setErrorMessage('Inserisci email/nome utente e password');
       return;
     }
 
     setLoading(true);
-
     try {
-      const data = await loginUser({
-        identifier,
-        password: loginForm.password
-      });
-
+      const data = await loginUser({ identifier, password: loginForm.password });
       localStorage.setItem('authToken', data.token);
       setCurrentUser(data.user);
-
-      if (onAuthChange) {
-        onAuthChange(data.user);
-      }
-
+      if (onAuthChange) onAuthChange(data.user);
       setSuccessMessage('Login effettuato con successo');
-
-      setLoginForm({
-        identifier: '',
-        password: ''
-      });
+      setLoginForm({ identifier: '', password: '' });
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -189,16 +156,14 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
     resetMessages();
 
     const validationError = validateRegisterForm();
-
     if (validationError) {
       setErrorMessage(validationError);
       return;
     }
 
     setLoading(true);
-
     try {
-      const data = await registerUser({
+      await registerUser({
         nome: registerForm.nome.trim(),
         cognome: registerForm.cognome.trim(),
         nomeUtente: registerForm.nomeUtente.trim(),
@@ -206,10 +171,8 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
         password: registerForm.password,
         targa: registerForm.targa.trim().toUpperCase()
       });
-      
-      if (onRegisterSuccess) {
-        onRegisterSuccess(registerForm.email.trim());
-      } 
+
+      if (onRegisterSuccess) onRegisterSuccess(registerForm.email.trim());
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -219,27 +182,39 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
 
   async function handleLogout() {
     resetMessages();
-
     const token = localStorage.getItem('authToken');
-
     setLoading(true);
-
     try {
-      if (token) {
-        await logoutUser(token);
-      }
+      if (token) await logoutUser(token);
     } catch {
-      // Anche se la chiamata al backend fallisce, rimuoviamo comunque il token locale.
-      // In questa versione il logout reale dipende dal frontend.
+      // logout locale anche se il backend fallisce
     } finally {
       localStorage.removeItem('authToken');
       setCurrentUser(null);
-
-      if (onAuthChange) {
-        onAuthChange(null);
-      }
-
+      if (onAuthChange) onAuthChange(null);
       setSuccessMessage('Logout effettuato');
+      setLoading(false);
+    }
+  }
+
+  async function handleForgotPassword(event) {
+    event.preventDefault();
+    resetMessages();
+
+    const email = forgotEmail.trim();
+    if (!email) {
+      setErrorMessage('Inserisci la tua email per recuperare la password');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await richiediResetPassword(email);
+      setForgotEmail('');
+      setSuccessMessage('Ti abbiamo inviato una email per il reset della password');
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
       setLoading(false);
     }
   }
@@ -252,46 +227,10 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
   if (initialLoading) {
     return (
       <section className="auth-panel">
-        <h2>Area utente</h2>
         <p>Controllo sessione in corso...</p>
       </section>
     );
   }
-
-  async function handleForgotPassword() {
-
-  resetMessages();
-
-  const email = forgotEmail.trim();
-
-  if (!email) {
-    setErrorMessage(
-      'Inserisci la tua email per recuperare la password'
-    );
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    await richiediResetPassword(email);
-
-    // meglio svuotare il campo dopo l'invio del reset
-    setForgotEmail('');
-
-    setSuccessMessage(
-      'Ti abbiamo inviato una email per il reset della password'
-    );
-
-  } catch (error) {
-
-    setErrorMessage(error.message);
-
-  } finally {richiediResetPassword
-
-    setLoading(false);
-  }
-}
 
   if (currentUser) {
     return (
@@ -299,44 +238,19 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
         <h2>Il tuo account</h2>
 
         <div className="user-card">
-          <p>
-            <strong>Nome:</strong> {currentUser.nome} {currentUser.cognome}
-          </p>
-
-          <p>
-            <strong>Nome utente:</strong> {currentUser.nomeUtente}
-          </p>
-
-          <p>
-            <strong>Email:</strong> {currentUser.email}
-          </p>
-
-          <p>
-            <strong>Targa:</strong> {currentUser.targa}
-          </p>
-
-          <p>
-            <strong>Ruolo:</strong> {currentUser.ruolo}
-          </p>
-
-          <p>
-            <strong>Punti:</strong> {currentUser.punti}
-          </p>
-
-          <p>
-            <strong>Livello:</strong> {currentUser.livello}
-          </p>
+          <p><strong>Nome:</strong> {currentUser.nome} {currentUser.cognome}</p>
+          <p><strong>Nome utente:</strong> {currentUser.nomeUtente}</p>
+          <p><strong>Email:</strong> {currentUser.email}</p>
+          <p><strong>Targa:</strong> {currentUser.targa}</p>
+          <p><strong>Ruolo:</strong> {currentUser.ruolo}</p>
+          <p><strong>Punti:</strong> {currentUser.punti}</p>
+          <p><strong>Livello:</strong> {currentUser.livello}</p>
         </div>
 
         {successMessage && <p className="success-message">{successMessage}</p>}
-        {errorMessage && <p className="error-message">{errorMessage}</p>}
+        {errorMessage   && <p className="error-message">{errorMessage}</p>}
 
-        <button
-          type="button"
-          className="primary-button"
-          onClick={handleLogout}
-          disabled={loading}
-        >
+        <button type="button" className="primary-button" onClick={handleLogout} disabled={loading}>
           {loading ? 'Uscita in corso...' : 'Logout'}
         </button>
       </section>
@@ -345,28 +259,32 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
 
   return (
     <section className="auth-panel">
-      <h2>Accesso</h2>
-
+      {/* ── Tabs ─────────────────────────────────────────────────── */}
       <div className="auth-tabs">
         <button
           type="button"
           className={mode === 'login' ? 'tab-button active' : 'tab-button'}
           onClick={() => switchMode('login')}
         >
-          Login
+          Accedi
         </button>
-
         <button
           type="button"
           className={mode === 'register' ? 'tab-button active' : 'tab-button'}
           onClick={() => switchMode('register')}
         >
-          Registrazione
+          Registrati
         </button>
       </div>
 
+      {/* ── Login ─────────────────────────────────────────────────── */}
       {mode === 'login' && (
         <form className="auth-form" onSubmit={handleLoginSubmit}>
+          <div className="ap-form-heading">
+            <h3>Bentornato</h3>
+            <p>Accedi al tuo account TrentoParking</p>
+          </div>
+
           <label>
             Email o nome utente
             <input
@@ -387,119 +305,112 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
                 name="password"
                 value={loginForm.password}
                 onChange={handleLoginChange}
-                placeholder="Password"
+                placeholder="La tua password"
                 autoComplete="current-password"
               />
-
               <button
                 type="button"
-                className="secondary-button"
-                onClick={() => setShowLoginPassword((previousValue) => !previousValue)}
+                className="ap-eye-btn"
+                onClick={() => setShowLoginPassword(v => !v)}
+                aria-label={showLoginPassword ? 'Nascondi password' : 'Mostra password'}
               >
-                {showLoginPassword ? 'Nascondi' : 'Mostra'}
+                {showLoginPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
           </label>
 
-          {errorMessage && <p className="error-message">{errorMessage}</p>}
-          {successMessage && (<p className="success-message">{successMessage}</p>)}
-          {verificationSuccess && (<p className="success-message">Email verificata con successo! Ora puoi accedere.</p>)}
+          {errorMessage   && <p className="error-message">{errorMessage}</p>}
+          {successMessage && <p className="success-message">{successMessage}</p>}
+          {verificationSuccess && (
+            <p className="success-message">Email verificata! Ora puoi accedere.</p>
+          )}
+          {resetSuccess && (
+            <p className="success-message">Password aggiornata! Ora puoi accedere.</p>
+          )}
 
           <button type="submit" className="primary-button" disabled={loading}>
-            {loading ? 'Accesso in corso...' : 'Accedi'}
+            {loading ? 'Accesso in corso…' : 'Accedi'}
           </button>
 
-          <button type="button"
-                  className="secondary-button"
-                  onClick={() => switchMode('forgotPassword')}
-                  style={{ marginTop: '12px', width: '100%' }}
+          <button
+            type="button"
+            className="ap-forgot-link"
+            onClick={() => switchMode('forgotPassword')}
           >
             Password dimenticata?
           </button>
         </form>
       )}
 
+      {/* ── Forgot password ───────────────────────────────────────── */}
       {mode === 'forgotPassword' && (
         <form className="auth-form" onSubmit={handleForgotPassword}>
+          <div className="ap-form-heading">
+            <h3>Recupera password</h3>
+            <p>Ti invieremo un link per reimpostarla</p>
+          </div>
 
-        <label>
-          Email
-          <input
-            type="email"
-            value={forgotEmail}
-            onChange={(e) => setForgotEmail(e.target.value)}
-            placeholder="mario.rossi@example.com"
-          />
-        </label>
+          <label>
+            Email
+            <input
+              type="email"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              placeholder="mario.rossi@example.com"
+              autoComplete="email"
+            />
+          </label>
 
-        {errorMessage && (
-          <p className="error-message">
-            {errorMessage}
-          </p>
-        )}
+          {errorMessage   && <p className="error-message">{errorMessage}</p>}
+          {successMessage && <p className="success-message">{successMessage}</p>}
 
-        {verificationSuccess && (
-          <p className="success-message">
-            Email verificata con successo! Ora puoi accedere.
-          </p>
-        )}
+          <button type="submit" className="primary-button" disabled={loading}>
+            {loading ? 'Invio in corso…' : 'Invia link reset'}
+          </button>
 
-        {resetSuccess && (
-          <p className="success-message">
-            Password aggiornata con successo! Ora puoi accedere.
-          </p>
-        )}
-
-        {successMessage && (
-          <p className="success-message">
-            {successMessage}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          className="primary-button"
-          disabled={loading}
-        >
-          {loading ? 'Invio in corso...' : 'Invia link reset'}
-        </button>
-
-        <button
-          type="button"
-          className="secondary-button"
-          style={{ marginTop: '12px', width: '100%' }}
-          onClick={() => switchMode('login')}
-        >
-          Torna al login
-        </button>
+          <button
+            type="button"
+            className="ap-back-to-login"
+            onClick={() => switchMode('login')}
+          >
+            ← Torna al login
+          </button>
         </form>
       )}
 
+      {/* ── Registrazione ──────────────────────────────────────────────── */}
       {mode === 'register' && (
         <form className="auth-form" onSubmit={handleRegisterSubmit}>
-          <label>
-            Nome
-            <input
-              type="text"
-              name="nome"
-              value={registerForm.nome}
-              onChange={handleRegisterChange}
-              placeholder="Mario"
-              autoComplete="given-name"
-            />
-          </label>
+          <div className="ap-form-heading">
+            <h3>Crea il tuo account</h3>
+            <p>Registrati gratuitamente in pochi secondi</p>
+          </div>
 
-          <label>
-            Cognome
-            <input
-              type="text"
-              name="cognome"
-              value={registerForm.cognome}
-              onChange={handleRegisterChange}
-              placeholder="Rossi"
-              autoComplete="family-name"
-            />
-          </label>
+          {/* Nome + Cognome affiancati */}
+          <div className="auth-row-2">
+            <label>
+              Nome
+              <input
+                type="text"
+                name="nome"
+                value={registerForm.nome}
+                onChange={handleRegisterChange}
+                placeholder="Mario"
+                autoComplete="given-name"
+              />
+            </label>
+            <label>
+              Cognome
+              <input
+                type="text"
+                name="cognome"
+                value={registerForm.cognome}
+                onChange={handleRegisterChange}
+                placeholder="Rossi"
+                autoComplete="family-name"
+              />
+            </label>
+          </div>
 
           <label>
             Nome utente
@@ -544,16 +455,16 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
                 name="password"
                 value={registerForm.password}
                 onChange={handleRegisterChange}
-                placeholder="Password"
+                placeholder="Almeno 8 caratteri"
                 autoComplete="new-password"
               />
-
               <button
                 type="button"
-                className="secondary-button"
-                onClick={() => setShowRegisterPassword((previousValue) => !previousValue)}
+                className="ap-eye-btn"
+                onClick={() => setShowRegisterPassword(v => !v)}
+                aria-label={showRegisterPassword ? 'Nascondi password' : 'Mostra password'}
               >
-                {showRegisterPassword ? 'Nascondi' : 'Mostra'}
+                {showRegisterPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
           </label>
@@ -569,13 +480,13 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
                 placeholder="Ripeti la password"
                 autoComplete="new-password"
               />
-
               <button
                 type="button"
-                className="secondary-button"
-                onClick={() => setShowConfirmPassword((previousValue) => !previousValue)}
+                className="ap-eye-btn"
+                onClick={() => setShowConfirmPassword(v => !v)}
+                aria-label={showConfirmPassword ? 'Nascondi password' : 'Mostra password'}
               >
-                {showConfirmPassword ? 'Nascondi' : 'Mostra'}
+                {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
           </label>
@@ -585,11 +496,11 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
             Il nome utente può contenere lettere, numeri, punto, trattino e underscore.
           </p>
 
-          {errorMessage && <p className="error-message">{errorMessage}</p>}
+          {errorMessage   && <p className="error-message">{errorMessage}</p>}
           {successMessage && <p className="success-message">{successMessage}</p>}
 
           <button type="submit" className="primary-button" disabled={loading}>
-            {loading ? 'Registrazione in corso...' : 'Registrati'}
+            {loading ? 'Registrazione in corso…' : 'Crea account'}
           </button>
         </form>
       )}

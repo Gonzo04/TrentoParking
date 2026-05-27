@@ -164,7 +164,7 @@ export default function LandingPage({ onLogin, onRegister }) {
             </h1>
 
             <p className="lp-hero-subtitle">
-              Prenota posti auto privati a Trento in pochi tap.
+              Prenota posti auto privati a Trento in pochi click.<br></br>
               Senza stress, senza giri a vuoto: trovi, prenoti e paghi tutto dall&apos;app.
             </p>
 
