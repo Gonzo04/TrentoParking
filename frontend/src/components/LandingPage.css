@@ -32,7 +32,7 @@
 .lp-nav {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   background: var(--lp-navy);
   display: flex;
   align-items: center;
@@ -556,7 +556,7 @@
 
 .lp-features-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1.25rem;
 }
 
@@ -608,6 +608,11 @@
   grid-template-columns: 1fr 1fr;
   gap: 4rem;
   align-items: center;
+}
+
+.lp-host-inner--single {
+  grid-template-columns: 1fr;
+  max-width: 680px;
 }
 
 .lp-host-checklist {

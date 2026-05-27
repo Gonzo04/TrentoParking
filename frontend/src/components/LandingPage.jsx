@@ -3,7 +3,7 @@ import './LandingPage.css';
 
 
 /* ── Mappa Leaflet read-only ─────────────────────────────────────── */
-function HeroMap() {
+function HeroMap({ height = 120 }) {
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -48,7 +48,7 @@ function HeroMap() {
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height: 120, borderRadius: 12, overflow: 'hidden' }}
+      style={{ width: '100%', height, borderRadius: 12, overflow: 'hidden' }}
     />
   );
 }
@@ -123,15 +123,7 @@ const FEATURES = [
   { icon: '🗺️', title: 'Mappa in tempo reale',   desc: 'Vedi tutti i posti disponibili su una mappa interattiva con filtri per orario e distanza.' },
   { icon: '📅', title: 'Calendario prenotazioni', desc: 'Gestisci tutte le prenotazioni da un\'unica dashboard con vista calendario mensile.' },
   { icon: '🔒', title: 'Pagamenti sicuri',         desc: 'Transazioni protette direttamente in app. Nessun contante, nessun problema.' },
-  { icon: '📍', title: 'Geolocalizzazione',        desc: 'Trova posti vicino alla tua posizione o cerca per indirizzo con reverse geocoding.' },
   { icon: '🚗', title: 'Pubblica il tuo posto',    desc: 'Hai un posto libero? Pubblicalo in pochi click e inizia a guadagnare subito.' },
-  { icon: '📧', title: 'Notifiche e conferme',     desc: 'Ricevi conferma immediata via email con tutti i dettagli e le istruzioni di accesso.' },
-];
-
-const EARNINGS_BARS = [
-  { label: 'Lunedì–Venerdì', pct: 82 },
-  { label: 'Weekend',         pct: 55 },
-  { label: 'Serate',          pct: 40 },
 ];
 
 /* ── Componente ──────────────────────────────────────────────────── */
@@ -172,13 +164,13 @@ export default function LandingPage({ onLogin, onRegister }) {
             </h1>
 
             <p className="lp-hero-subtitle">
-              Prenota posti auto privati a Trento in pochi tap. Senza stress,
-              senza giri a vuoto: trovi, prenoti e paghi tutto dall&apos;app.
+              Prenota posti auto privati a Trento in pochi tap.
+              Senza stress, senza giri a vuoto: trovi, prenoti e paghi tutto dall&apos;app.
             </p>
 
             <div className="lp-hero-cta">
               <button className="lp-btn-primary lp-btn-primary--lg" onClick={onRegister}>
-                Inizia ora — è gratis
+                Inizia ora
               </button>
               <button className="lp-btn-outline--lg" onClick={onLogin}>
                 Accedi
@@ -214,22 +206,11 @@ export default function LandingPage({ onLogin, onRegister }) {
                 </div>
               </div>
               <div style={{ marginTop: '1rem' }}>
-                <HeroMap />
+                <HeroMap height={180} />
               </div>
             </div>
 
-            <div className="lp-stats-row">
-              {[
-                { num: '120+', label: 'Posti attivi' },
-                { num: '98%',  label: 'Confermati'   },
-                { num: '4.8★', label: 'Valutazione'  },
-              ].map(({ num, label }) => (
-                <div key={label} className="lp-stat-mini">
-                  <div className="lp-stat-mini-num">{num}</div>
-                  <div className="lp-stat-mini-label">{label}</div>
-                </div>
-              ))}
-            </div>
+
           </div>
 
         </div>
@@ -292,7 +273,7 @@ export default function LandingPage({ onLogin, onRegister }) {
 
       {/* GUADAGNA */}
       <div id="guadagna" className="lp-host-bg">
-        <div className="lp-host-inner">
+        <div className="lp-host-inner lp-host-inner--single">
           <div>
             <div className="lp-section-eyebrow">Per i proprietari</div>
             <h2 className="lp-section-title">Hai un posto auto inutilizzato?</h2>
@@ -317,31 +298,12 @@ export default function LandingPage({ onLogin, onRegister }) {
               Pubblica il tuo posto →
             </button>
           </div>
-
-          <div className="lp-earnings-card">
-            <div className="lp-earnings-label">Guadagno stimato mensile</div>
-            <div className="lp-earnings-amount">€180</div>
-            <div className="lp-earnings-sub">
-              per un posto nel centro di Trento a €2,50/h
-            </div>
-            <div className="lp-earnings-bars">
-              {EARNINGS_BARS.map(({ label, pct }) => (
-                <div key={label} className="lp-earnings-bar-row">
-                  <span className="lp-earnings-bar-label">{label}</span>
-                  <div className="lp-earnings-bar-bg">
-                    <div className="lp-earnings-bar-fill" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="lp-earnings-bar-pct">{pct}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
       {/* CTA FINALE */}
       <div className="lp-cta-section">
-        <h2 className="lp-cta-title">Pronto a dire addio al parcheggio selvaggio?</h2>
+        <h2 className="lp-cta-title">Pronto a dire addio alla ricerca del parcheggio?</h2>
         <p className="lp-cta-sub">
           Unisciti a chi ha già smesso di girare in tondo. Crea un account gratuito
           e trova il tuo posto auto a Trento oggi.
@@ -361,11 +323,6 @@ export default function LandingPage({ onLogin, onRegister }) {
         <div className="lp-footer-logo">
           <span className="lp-nav-logo-text">Trento<span>Parking</span></span>
         </div>
-        <ul className="lp-footer-links">
-          <li><a href="#">Privacy</a></li>
-          <li><a href="#">Termini</a></li>
-          <li><a href="#">Contatti</a></li>
-        </ul>
         <div className="lp-footer-copy">
           © {new Date().getFullYear()} Trento Parking. Tutti i diritti riservati.
         </div>
