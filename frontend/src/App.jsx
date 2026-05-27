@@ -120,6 +120,29 @@ function App() {
   }, [resetToken]);
 
   /* ── Spots ───────────────────────────────────────────────────────── */
+  // Registra ogni cambio di view nella cronologia del browser
+  useEffect(() => {
+    if (!resetToken) {
+      window.history.pushState({ view }, '', '');
+    }
+  }, [view, resetToken]);
+
+  // Gestisce il tasto "indietro" del browser/mouse
+  useEffect(() => {
+    function handlePopState(event) {
+      const previousView = event.state?.view;
+      if (!previousView) { setView('landing'); return; }
+      // Se l'utente non è loggato non può tornare a view autenticate
+      if (!authenticatedUser && (previousView === 'dashboard' || previousView === 'payment' || previousView === 'myBookings')) {
+        setView('landing');
+        return;
+      }
+      setView(previousView);
+    }
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [authenticatedUser]);
+
   const loadPostiPrivati = useCallback(async () => {
     const posti = await api.listPosti();
     setSpots(posti);

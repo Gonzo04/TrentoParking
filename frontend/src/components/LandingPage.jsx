@@ -1,8 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './LandingPage.css';
 
 
-/* ── Dati statici ────────────────────────────────────────────────── */
+/* ── Mappa Leaflet read-only ─────────────────────────────────────── */
+function HeroMap() {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    // Leaflet è già installato nel progetto (usato da SpotMap)
+    const L = window.L || require('leaflet');
+
+    const map = L.map(containerRef.current, {
+      center: [46.0679, 11.1211], // Trento centro
+      zoom: 14,
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+      keyboard: false,
+      attributionControl: false,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Marker personalizzato teal sul centro di Trento
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width:14px;height:14px;
+        background:#2a9d8f;
+        border:3px solid #fff;
+        border-radius:50%;
+        box-shadow:0 2px 8px rgba(42,157,143,0.6);
+      "></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    });
+
+    L.marker([46.0679, 11.1211], { icon }).addTo(map);
+
+    return () => map.remove();
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height: 120, borderRadius: 12, overflow: 'hidden' }}
+    />
+  );
+}
+
+
 const STEPS = [
   {
     title: 'Cerca un posto vicino a te',
@@ -13,8 +64,8 @@ const STEPS = [
           <span className="lp-vc-address-icon">📍</span>
           Via Manci, Trento Centro
         </div>
-        <div style={{ background: '#e6f4f2', borderRadius: 10, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: '0.78rem', color: '#4a5568' }}>
-          Mappa interattiva
+        <div style={{ marginBottom: 12 }}>
+          <HeroMap />
         </div>
         <div className="lp-vc-map-tags">
           {['Coperto', 'Disponibile ora', '€2/h'].map(t => (
@@ -127,7 +178,7 @@ export default function LandingPage({ onLogin, onRegister }) {
 
             <div className="lp-hero-cta">
               <button className="lp-btn-primary lp-btn-primary--lg" onClick={onRegister}>
-                Inizia ora
+                Inizia ora — è gratis
               </button>
               <button className="lp-btn-outline--lg" onClick={onLogin}>
                 Accedi
@@ -162,8 +213,8 @@ export default function LandingPage({ onLogin, onRegister }) {
                   <span className="lp-spot-badge">Disponibile</span>
                 </div>
               </div>
-              <div className="lp-map-preview">
-                <div className="lp-map-dot" />
+              <div style={{ marginTop: '1rem' }}>
+                <HeroMap />
               </div>
             </div>
 
