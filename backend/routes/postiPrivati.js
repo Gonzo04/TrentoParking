@@ -2,31 +2,45 @@ const express = require('express');
 const requireAuth = require('../middleware/auth');
 const {
   listPostiPrivati,
+  listMieiPostiPrivati,
   getPostoPrivatoById,
   getPostoConPrenotazioni,
-  createPostoPrivato
+  createPostoPrivato,
+  updateMioPostoPrivato,
+  eliminaMioPostoPrivato
 } = require('../controllers/postoPrivatoController');
 
 const router = express.Router();
 
-// Tutte le rotte dei posti privati richiedono autenticazione.
-// Questa scelta è coerente con la UI attuale: la mappa e i posti sono visibili solo dopo login.
 router.use(requireAuth);
 
 // GET /api/posti-privati
-// Lista dei posti privati attivi da mostrare sulla mappa.
+// Lista dei posti privati attivi da mostrare sulla mappa
 router.get('/', listPostiPrivati);
 
+// GET /api/posti-privati/miei
+// Lista dei posti pubblicati dall'utente autenticato
+// Deve stare prima di /:id, altrimenti Express leggerebbe "miei" come id
+router.get('/miei', listMieiPostiPrivati);
+
 // POST /api/posti-privati
-// Creazione di un nuovo posto privato da parte dell'utente autenticato.
+// Crea un nuovo posto privato associato all'utente autenticato
 router.post('/', createPostoPrivato);
 
+// PATCH /api/posti-privati/:id/elimina
+// Elimina logicamente un posto pubblicato dall'utente autenticato
+router.patch('/:id/elimina', eliminaMioPostoPrivato);
+
+// PATCH /api/posti-privati/:id
+// Modifica i dati gestibili dall'host proprietario del posto
+router.patch('/:id', updateMioPostoPrivato);
+
 // GET /api/posti-privati/:id/prenotazioni
-// Dettaglio del posto con prenotazioni future, usato dal calendario.
+// Dettaglio del posto con prenotazioni future, usato dal calendario
 router.get('/:id/prenotazioni', getPostoConPrenotazioni);
 
 // GET /api/posti-privati/:id
-// Dettaglio semplice di un posto privato.
+// Dettaglio semplice di un posto privato
 router.get('/:id', getPostoPrivatoById);
 
 module.exports = router;

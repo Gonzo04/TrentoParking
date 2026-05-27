@@ -9,13 +9,18 @@ import SpotSidebar from './components/SpotSidebar';
 import BookingCalendar from './components/BookingCalendar';
 import PaymentPage from './components/PaymentPage';
 import MyBookings from './components/MyBookings';
+import MySpots from './components/MySpots';
+import MyReceivedBookings from './components/MyReceivedBookings';
 import EmailVerificationPage from './components/VerificaMail';
 import ResetPasswordPage from './components/ResetPassword';
 
 function distanceM(lat1, lon1, lat2, lon2) {
+  // Calcola la distanza approssimata tra due coordinate geografiche
+  // Serve per filtrare i posti vicini al punto cercato dall'utente
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
+
   const a = Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
@@ -23,7 +28,10 @@ function distanceM(lat1, lon1, lat2, lon2) {
 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
 async function reverseGeocode(lat, lng) {
+  // Converte le coordinate selezionate sulla mappa in un indirizzo testuale
+  // Lo usiamo per aiutare l'host a compilare automaticamente il riferimento del posto
   const params = new URLSearchParams({
     format: 'jsonv2',
     lat: String(lat),
@@ -55,6 +63,33 @@ async function reverseGeocode(lat, lng) {
 
   return data.display_name || '';
 }
+
+// Valori tecnici da mandare al backend e testi leggibili da mostrare nel form
+// Il backend salva i giorni in maiuscolo senza accenti per evitare problemi di confronto
+const GIORNI_DISPONIBILITA_CREAZIONE = [
+  { value: 'LUNEDI', label: 'Lunedì' },
+  { value: 'MARTEDI', label: 'Martedì' },
+  { value: 'MERCOLEDI', label: 'Mercoledì' },
+  { value: 'GIOVEDI', label: 'Giovedì' },
+  { value: 'VENERDI', label: 'Venerdì' },
+  { value: 'SABATO', label: 'Sabato' },
+  { value: 'DOMENICA', label: 'Domenica' }
+];
+
+function getEntityId(entity) {
+  // Normalizza gli id perché a volte arrivano come stringa e a volte come oggetto MongoDB popolato
+  // Questo rende sicuro il confronto tra utente loggato e host del posto
+  if (!entity) {
+    return '';
+  }
+
+  if (typeof entity === 'string') {
+    return entity;
+  }
+
+  return entity._id || entity.id || entity.userId || '';
+}
+
 function App() {
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
   const [view, setView] = useState('map');
@@ -80,6 +115,9 @@ function App() {
     descrizione: '',
     indirizzoTestuale: '',
     tariffaOraria: '',
+    disponibilitaGiorni: [],
+    disponibilitaOraInizio: '8',
+    disponibilitaOraFine: '18',
     dichiarazioneProprietaAccettata: false
   });
 
@@ -89,6 +127,8 @@ function App() {
     : null;
 
   useEffect(() => {
+    // Legge eventuali parametri presenti nell'URL dopo verifica email o reset password
+    // Dopo averli letti puliamo l'URL per evitare messaggi ripetuti al refresh
     const params = new URLSearchParams(window.location.search);
 
     if (params.get('verified') === 'true') {
@@ -102,12 +142,15 @@ function App() {
   }, []);
 
   const loadPostiPrivati = useCallback(async () => {
+    // Carica i posti privati visibili sulla mappa
+    // Questa funzione viene riusata dopo creazione, modifica o eliminazione di un posto
     const posti = await api.listPosti();
     setSpots(posti);
     return posti;
   }, []);
 
   const handleAuthChange = useCallback((user) => {
+    // Aggiorna lo stato dell'utente quando avviene login, logout o refresh del profilo
     setAuthenticatedUser(user);
 
     if (user) {
@@ -124,20 +167,27 @@ function App() {
   }, [loadPostiPrivati]);
 
   function resetCreateSpotState() {
+    // Riporta il form di pubblicazione allo stato iniziale
+    // Serve dopo annullamento o pubblicazione completata
     setIsCreateSpotMode(false);
     setCreateSpotPosition(null);
     setCreateSpotMessage('');
     setCreateSpotError('');
+
     setNewSpotForm({
       nome: '',
       descrizione: '',
       indirizzoTestuale: '',
       tariffaOraria: '',
+      disponibilitaGiorni: [],
+      disponibilitaOraInizio: '8',
+      disponibilitaOraFine: '18',
       dichiarazioneProprietaAccettata: false
     });
   }
 
   function startCreateSpotMode() {
+    // Attiva la modalità in cui il click sulla mappa serve per scegliere il punto del posto
     setIsCreateSpotMode(true);
     setCreateSpotMessage('');
     setCreateSpotError('');
@@ -145,10 +195,14 @@ function App() {
   }
 
   function cancelCreateSpotMode() {
+    // Annulla la pubblicazione e pulisce form e pin temporaneo
     resetCreateSpotState();
   }
 
   async function handleSelectSpot(spotId) {
+    // Carica dettaglio del posto e prenotazioni future
+    // Se il posto è di un altro host verrà mostrato il calendario
+    // Se il posto è dell'utente loggato verrà mostrato il pannello di gestione
     setDetailLoading(true);
     setSpotDetail(null);
 
@@ -163,6 +217,8 @@ function App() {
   }
 
   async function handleBookingConfirm(params) {
+    // Crea una prenotazione sul posto selezionato
+    // Dopo la creazione l'utente viene mandato alla pagina di pagamento mock
     try {
       const booking = await api.createBooking({
         postoPrivatoId: spotDetail.posto._id || spotDetail.posto.id,
@@ -179,6 +235,7 @@ function App() {
   }
 
   async function handlePaymentDone() {
+    // Dopo il pagamento torniamo alla mappa e ricarichiamo i posti
     setPendingBooking(null);
     setView('map');
 
@@ -190,46 +247,51 @@ function App() {
   }
 
   function handlePayFromBookings(booking) {
+    // Permette di pagare una prenotazione rimasta in attesa dalla pagina Le mie prenotazioni
     setPendingBooking(booking);
     setView('payment');
   }
 
   async function handleMapClick(latlng) {
-  if (isCreateSpotMode) {
-    setCreateSpotPosition({
-      lat: latlng.lat,
-      lng: latlng.lng
-    });
+    // In modalità pubblicazione il click seleziona la posizione del nuovo posto
+    if (isCreateSpotMode) {
+      setCreateSpotPosition({
+        lat: latlng.lat,
+        lng: latlng.lng
+      });
 
-    setCreateSpotError('');
+      setCreateSpotError('');
 
-    try {
-      const indirizzo = await reverseGeocode(latlng.lat, latlng.lng);
+      try {
+        const indirizzo = await reverseGeocode(latlng.lat, latlng.lng);
 
-      setNewSpotForm((currentForm) => ({
-        ...currentForm,
-        indirizzoTestuale: indirizzo
-      }));
-    } catch (error) {
-      console.error(error);
+        setNewSpotForm((currentForm) => ({
+          ...currentForm,
+          indirizzoTestuale: indirizzo
+        }));
+      } catch (error) {
+        console.error(error);
 
-      setNewSpotForm((currentForm) => ({
-        ...currentForm,
-        indirizzoTestuale: ''
-      }));
+        setNewSpotForm((currentForm) => ({
+          ...currentForm,
+          indirizzoTestuale: ''
+        }));
+      }
+
+      return;
     }
 
-    return;
+    // Fuori dalla modalità pubblicazione il click serve per impostare il centro della ricerca
+    setSearchCircle((currentCircle) => ({
+      lat: latlng.lat,
+      lng: latlng.lng,
+      radiusM: currentCircle?.radiusM ?? 500
+    }));
   }
 
-  setSearchCircle((currentCircle) => ({
-    lat: latlng.lat,
-    lng: latlng.lng,
-    radiusM: currentCircle?.radiusM ?? 500
-  }));
-}
-
   function handleSearchSelect({ lat, lng }) {
+    // Sposta la mappa sul luogo scelto dalla barra di ricerca
+    // Se stiamo pubblicando un posto, la ricerca può anche impostare la posizione del nuovo posto
     const target = { lat, lng };
 
     setFlyTarget(target);
@@ -245,13 +307,32 @@ function App() {
   }
 
   function handleRadiusChange(radiusM) {
+    // Aggiorna il raggio di ricerca usato dalla sidebar dei posti vicini
     setSearchCircle((currentCircle) => (
       currentCircle ? { ...currentCircle, radiusM } : null
     ));
   }
 
   function handleNewSpotFormChange(event) {
+    // Gestisce sia gli input normali sia le checkbox dei giorni di disponibilità
     const { name, value, type, checked } = event.target;
+
+    if (name === 'disponibilitaGiorni') {
+      setNewSpotForm((currentForm) => {
+        const giorniAttuali = currentForm.disponibilitaGiorni;
+
+        const nuoviGiorni = checked
+          ? [...giorniAttuali, value]
+          : giorniAttuali.filter((giorno) => giorno !== value);
+
+        return {
+          ...currentForm,
+          disponibilitaGiorni: nuoviGiorni
+        };
+      });
+
+      return;
+    }
 
     setNewSpotForm((currentForm) => ({
       ...currentForm,
@@ -260,6 +341,8 @@ function App() {
   }
 
   async function handleCreatePrivateSpot(event) {
+    // Valida i dati del form e crea un nuovo posto privato tramite API
+    // L'hostId non viene mai mandato dal frontend perché lo decide il backend dal token
     event.preventDefault();
 
     setCreateSpotMessage('');
@@ -271,6 +354,8 @@ function App() {
     }
 
     const tariffa = Number(newSpotForm.tariffaOraria);
+    const oraInizio = Number(newSpotForm.disponibilitaOraInizio);
+    const oraFine = Number(newSpotForm.disponibilitaOraFine);
 
     if (!newSpotForm.nome.trim()) {
       setCreateSpotError('Inserisci un nome per il posto auto');
@@ -282,10 +367,38 @@ function App() {
       return;
     }
 
+    if (newSpotForm.disponibilitaGiorni.length === 0) {
+      setCreateSpotError('Seleziona almeno un giorno di disponibilità');
+      return;
+    }
+
+    if (!Number.isInteger(oraInizio) || !Number.isInteger(oraFine)) {
+      setCreateSpotError('Inserisci orari di disponibilità validi');
+      return;
+    }
+
+    if (oraInizio < 0 || oraInizio > 23 || oraFine < 1 || oraFine > 24) {
+      setCreateSpotError('Gli orari devono essere compresi tra 0 e 24');
+      return;
+    }
+
+    if (oraFine <= oraInizio) {
+      setCreateSpotError('L ora di fine deve essere successiva all ora di inizio');
+      return;
+    }
+
     if (!newSpotForm.dichiarazioneProprietaAccettata) {
       setCreateSpotError('Devi dichiarare di essere proprietario o autorizzato a pubblicare il posto');
       return;
     }
+
+    // Trasformiamo i giorni selezionati nel formato richiesto dal backend
+    // Ogni giorno usa la stessa fascia oraria scelta nel form
+    const disponibilita = newSpotForm.disponibilitaGiorni.map((giorno) => ({
+      giorno,
+      oraInizio,
+      oraFine
+    }));
 
     setCreateSpotLoading(true);
 
@@ -299,17 +412,18 @@ function App() {
           indirizzoTestuale: newSpotForm.indirizzoTestuale.trim()
         },
         tariffaOraria: tariffa,
-        disponibilita: [],
+        disponibilita,
         dichiarazioneProprietaAccettata: true
       });
 
       await loadPostiPrivati();
 
+      // Rileggiamo l'utente perché dopo il primo posto il backend può promuoverlo a HOST
       const data = await api.me();
       setAuthenticatedUser(data.user);
 
-      setCreateSpotMessage('Posto auto privato pubblicato correttamente');
       resetCreateSpotState();
+      setCreateSpotMessage('Posto auto privato pubblicato correttamente');
     } catch (error) {
       setCreateSpotError(error.message);
     } finally {
@@ -318,10 +432,12 @@ function App() {
   }
 
   const nearbySpots = useMemo(() => {
+    // Se non c'è un cerchio di ricerca mostriamo tutti i posti caricati
     if (!searchCircle) {
       return spots;
     }
 
+    // Se c'è un cerchio di ricerca mostriamo solo i posti dentro il raggio scelto
     return spots.filter((spot) => (
       spot.posizione &&
       Number.isFinite(Number(spot.posizione.latitudine)) &&
@@ -334,6 +450,19 @@ function App() {
       ) <= searchCircle.radiusM
     ));
   }, [spots, searchCircle]);
+
+  const selectedSpotOwnerId = getEntityId(spotDetail?.posto?.hostId);
+  const authenticatedUserId = getEntityId(authenticatedUser);
+
+  const isSelectedSpotOwnedByUser = Boolean(
+    selectedSpotOwnerId &&
+    authenticatedUserId &&
+    selectedSpotOwnerId === authenticatedUserId
+  );
+
+  // Controlla se l'utente autenticato è un host
+  // Serve per mostrare solo agli host le prenotazioni ricevute sui propri posti
+  const isHost = authenticatedUser?.ruolo === 'HOST';
 
   return (
     <div className="app-page">
@@ -404,6 +533,23 @@ function App() {
               onPay={handlePayFromBookings}
             />
           </>
+        ) : authenticatedUser && view === 'mySpots' ? (
+          <>
+            <AuthPanel onAuthChange={handleAuthChange} />
+
+            <MySpots
+              onBack={() => setView('map')}
+              onChanged={loadPostiPrivati}
+            />
+          </>
+        ) : authenticatedUser && view === 'receivedBookings' ? (
+          <>
+            <AuthPanel onAuthChange={handleAuthChange} />
+
+            <MyReceivedBookings
+              onBack={() => setView('map')}
+            />
+          </>
         ) : authenticatedUser ? (
           <>
             <AuthPanel onAuthChange={handleAuthChange} />
@@ -414,12 +560,37 @@ function App() {
 
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {!isCreateSpotMode ? (
-                    <button
-                      className="secondary-button"
-                      onClick={startCreateSpotMode}
-                    >
-                      Pubblica un posto
-                    </button>
+                    <>
+                      <button
+                        className="secondary-button"
+                        onClick={startCreateSpotMode}
+                      >
+                        Pubblica un posto
+                      </button>
+
+                      <button
+                        className="secondary-button"
+                        onClick={() => setView('mySpots')}
+                      >
+                        I miei posti
+                      </button>
+
+                      {isHost && (
+                        <button
+                          className="secondary-button"
+                          onClick={() => setView('receivedBookings')}
+                        >
+                          Prenotazioni ricevute
+                        </button>
+                      )}
+
+                      <button
+                        className="secondary-button"
+                        onClick={() => setView('myBookings')}
+                      >
+                        Le mie prenotazioni
+                      </button>
+                    </>
                   ) : (
                     <button
                       className="secondary-button"
@@ -428,13 +599,6 @@ function App() {
                       Annulla pubblicazione
                     </button>
                   )}
-
-                  <button
-                    className="secondary-button"
-                    onClick={() => setView('myBookings')}
-                  >
-                    Le mie prenotazioni
-                  </button>
                 </div>
               </div>
 
@@ -539,6 +703,61 @@ function App() {
                         />
                       </label>
 
+                      <div className="availability-fields">
+                        <p className="form-section-title">
+                          Disponibilità del posto
+                        </p>
+
+                        <div className="availability-days">
+                          {GIORNI_DISPONIBILITA_CREAZIONE.map((giorno) => (
+                            <label
+                              key={giorno.value}
+                              className="create-spot-checkbox"
+                            >
+                              <input
+                                name="disponibilitaGiorni"
+                                type="checkbox"
+                                value={giorno.value}
+                                checked={newSpotForm.disponibilitaGiorni.includes(giorno.value)}
+                                onChange={handleNewSpotFormChange}
+                              />
+
+                              <span>{giorno.label}</span>
+                            </label>
+                          ))}
+                        </div>
+
+                        <div className="availability-hours">
+                          <label>
+                            Ora inizio
+                            <input
+                              name="disponibilitaOraInizio"
+                              type="number"
+                              min="0"
+                              max="23"
+                              step="1"
+                              value={newSpotForm.disponibilitaOraInizio}
+                              onChange={handleNewSpotFormChange}
+                              required
+                            />
+                          </label>
+
+                          <label>
+                            Ora fine
+                            <input
+                              name="disponibilitaOraFine"
+                              type="number"
+                              min="1"
+                              max="24"
+                              step="1"
+                              value={newSpotForm.disponibilitaOraFine}
+                              onChange={handleNewSpotFormChange}
+                              required
+                            />
+                          </label>
+                        </div>
+                      </div>
+
                       <label className="create-spot-checkbox">
                         <input
                           name="dichiarazioneProprietaAccettata"
@@ -609,11 +828,38 @@ function App() {
               ✕
             </button>
 
-            <BookingCalendar
-              posto={spotDetail.posto}
-              prenotazioni={spotDetail.prenotazioni}
-              onConfirm={handleBookingConfirm}
-            />
+            {isSelectedSpotOwnedByUser ? (
+              <div className="owner-spot-panel">
+                <h3>{spotDetail.posto.nome}</h3>
+
+                <p>
+                  Questo posto è stato pubblicato da te.
+                  Non puoi prenotare un posto di cui sei host.
+                </p>
+
+                <p>
+                  Puoi gestire disponibilità, tariffa, descrizione e stato
+                  dalla sezione "I miei posti".
+                </p>
+
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => {
+                    setSpotDetail(null);
+                    setView('mySpots');
+                  }}
+                >
+                  Vai a I miei posti
+                </button>
+              </div>
+            ) : (
+              <BookingCalendar
+                posto={spotDetail.posto}
+                prenotazioni={spotDetail.prenotazioni}
+                onConfirm={handleBookingConfirm}
+              />
+            )}
           </div>
         </div>
       )}
