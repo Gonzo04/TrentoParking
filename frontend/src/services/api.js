@@ -99,4 +99,9 @@ export const api = {
   cancelBooking: (id) => request(`/bookings/${id}`, {
     method: 'DELETE',
   }),
+
+  // Recensioni
+  getRecensioni: (postoId) => request(`/recensioni/posto/${postoId}`),
+  getMyRecensioni: () => request('/recensioni/mie'),
+  createRecensione: (body) => request('/recensioni', { method: 'POST', body: JSON.stringify(body) }),
 };

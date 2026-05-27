@@ -155,8 +155,11 @@ function App() {
     setSpotDetail(null);
 
     try {
-      const data = await api.getPostoConPrenotazioni(spotId);
-      setSpotDetail(data);
+      const [data, recensioniData] = await Promise.all([
+        api.getPostoConPrenotazioni(spotId),
+        api.getRecensioni(spotId),
+      ]);
+      setSpotDetail({ ...data, recensioni: recensioniData.recensioni, mediaVoti: recensioniData.media });
     } catch (error) {
       alert(error.message);
     } finally {
@@ -634,6 +637,8 @@ function App() {
             <BookingCalendar
               posto={spotDetail.posto}
               prenotazioni={spotDetail.prenotazioni}
+              recensioni={spotDetail.recensioni}
+              mediaVoti={spotDetail.mediaVoti}
               onConfirm={handleBookingConfirm}
             />
           </div>

@@ -47,7 +47,15 @@ function getBookedHours(date, prenotazioni) {
   return booked
 }
 
-export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
+function Stars({ value }) {
+  return (
+    <span style={{ color: '#f59e0b', fontSize: 15, letterSpacing: 1 }}>
+      {Array.from({ length: 5 }, (_, i) => i < value ? '★' : '☆').join('')}
+    </span>
+  )
+}
+
+export default function BookingCalendar({ posto, prenotazioni, recensioni = [], mediaVoti = null, onConfirm }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
 
   const [year,  setYear]  = useState(today.getFullYear())
@@ -263,6 +271,35 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
           </button>
         </div>
       )}
+
+      {/* Reviews */}
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <h3 style={{ margin: 0, fontSize: 15 }}>Recensioni</h3>
+          {mediaVoti !== null && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Stars value={Math.round(mediaVoti)} />
+              <span style={{ fontSize: 13, color: '#6b7280' }}>{mediaVoti.toFixed(1)} ({recensioni.length})</span>
+            </span>
+          )}
+          {recensioni.length === 0 && (
+            <span style={{ fontSize: 13, color: '#9ca3af' }}>Nessuna recensione ancora</span>
+          )}
+        </div>
+
+        {recensioni.map(r => (
+          <div key={r._id} style={{ borderTop: '1px solid #f1f5f9', paddingTop: 10, marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{r.utenteId?.nomeUtente ?? 'Utente'}</span>
+              <Stars value={r.voto} />
+            </div>
+            {r.testo && <p style={{ margin: 0, fontSize: 13, color: '#374151' }}>{r.testo}</p>}
+            <span style={{ fontSize: 11, color: '#9ca3af' }}>
+              {new Date(r.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
