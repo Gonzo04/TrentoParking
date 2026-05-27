@@ -101,7 +101,42 @@ async function getPostoConPrenotazioni(req, res, next) {
 async function listMyBookings(req, res, next) {
   try {
     const prenotazioni = await Prenotazione.find({ utenteId: req.user.userId })
+        .populate({
+          path: 'postoPrivatoId',
+          select: 'nome posizione tariffaOraria hostId',
+          populate: {
+            path: 'hostId',
+            select: 'nome cognome nomeUtente email'
+          }
+        })
+        .sort({ dataOraInizio: -1 })
+        .lean();
+
+    return res.json(prenotazioni);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+// GET /api/bookings/ricevute
+// Restituisce le prenotazioni ricevute sui posti pubblicati dall'host autenticato
+// L'host vede solo le prenotazioni relative ai propri posti
+async function listReceivedBookings(req, res, next) {
+  try {
+    const mieiPosti = await PostoPrivato.find({
+      hostId: req.user.userId,
+      eliminato: { $ne: true }
+    })
+        .select('_id')
+        .lean();
+
+    const mieiPostiIds = mieiPosti.map((posto) => posto._id);
+
+    const prenotazioni = await Prenotazione.find({
+      postoPrivatoId: { $in: mieiPostiIds }
+    })
         .populate('postoPrivatoId', 'nome posizione tariffaOraria')
+        .populate('utenteId', 'nome cognome nomeUtente email targa')
         .sort({ dataOraInizio: -1 })
         .lean();
 
@@ -263,6 +298,7 @@ module.exports = {
   listPosti,
   getPostoConPrenotazioni,
   listMyBookings,
+  listReceivedBookings,
   createBooking,
   payBooking,
   cancelBooking

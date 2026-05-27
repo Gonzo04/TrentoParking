@@ -59,7 +59,20 @@ export const api = {
     return data.posti || [];
   },
 
-  // Questa rotta servirà quando collegheremo davvero disponibilità e prenotazioni
+  // Restituisce solo i posti pubblicati dall'utente autenticato
+  // Serve per costruire la pagina "I miei posti"
+  listMySpots: async () => {
+    const data = await request('/posti-privati/miei');
+
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return data.posti || [];
+  },
+
+  // Questa rotta serve per caricare un posto con le sue prenotazioni future
+  // Viene usata dal calendario di prenotazione
   getPostoConPrenotazioni: (id) => request(`/posti-privati/${id}/prenotazioni`),
 
   // Crea un nuovo posto privato
@@ -69,8 +82,24 @@ export const api = {
     body: JSON.stringify(body),
   }),
 
+  // Aggiorna solo i campi che l'host può modificare dopo la pubblicazione
+  // Il backend blocca comunque modifiche a hostId, posizione e statoVerifica
+  updatePostoPrivato: (id, body) => request(`/posti-privati/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  }),
+
+  // Elimina logicamente un posto privato dell'host
+  // Per l'utente sparisce, ma il backend lo conserva nel database
+  eliminaPostoPrivato: (id) => request(`/posti-privati/${id}/elimina`, {
+    method: 'PATCH',
+  }),
+
   // Bookings
   listMyBookings: () => request('/bookings'),
+
+  // Restituisce le prenotazioni ricevute sui posti pubblicati dall'host autenticato
+  listReceivedBookings: () => request('/bookings/ricevute'),
 
   createBooking: (body) => request('/bookings', {
     method: 'POST',

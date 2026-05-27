@@ -74,14 +74,15 @@ async function listPostiPrivati(req, res, next) {
 }
 
 // GET /api/posti-privati/miei
-// Restituisce i posti pubblicati dall'utente autenticato
-// I posti eliminati logicamente non vengono più mostrati nell'area host
+// Restituisce solo i posti pubblicati dall'utente autenticato
+// Popoliamo hostId per mostrare anche chi ha pubblicato il posto
 async function listMieiPostiPrivati(req, res, next) {
   try {
     const posti = await PostoPrivato.find({
       hostId: req.user.userId,
       eliminato: { $ne: true }
     })
+        .populate('hostId', 'nome cognome nomeUtente email')
         .sort({ createdAt: -1 })
         .lean();
 

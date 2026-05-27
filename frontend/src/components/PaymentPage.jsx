@@ -1,111 +1,377 @@
 import { useState } from 'react'
 import { api } from '../services/api'
 
-// TODO: replace fake card form with a real payment provider (e.g. Stripe Elements)
-export default function PaymentPage({ booking, onDone, onCancel }) {
-  const [card, setCard] = useState({ number: '', expiry: '', cvv: '' })
-  const [paying,  setPaying]  = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error,   setError]   = useState('')
+export default function PaymentPage({ booking, onBack, onPaid }) {
+  const [cardNumber, setCardNumber] = useState('')
+  const [expiry, setExpiry] = useState('')
+  const [cvv, setCvv] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  function set(field) {
-    return (e) => setCard(c => ({ ...c, [field]: e.target.value }))
-  }
-
-  async function handlePay(e) {
-    e.preventDefault()
-    setPaying(true)
-    setError('')
-    // Simulate processing delay
-    await new Promise(r => setTimeout(r, 1500))
-    try {
-      await api.payBooking(booking._id)
-      setSuccess(true)
-      setTimeout(onDone, 2000)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setPaying(false)
-    }
-  }
-
-  if (success) {
+  // Se la pagina viene aperta senza una prenotazione valida
+  // mostriamo un messaggio chiaro invece di rompere il componente
+  if (!booking) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: 56, color: '#16a34a' }}>✓</div>
-        <h2 style={{ marginTop: 12 }}>Pagamento completato!</h2>
-        <p style={{ color: '#6b7280' }}>La tua prenotazione è confermata. Reindirizzamento...</p>
+      <div style={S.page}>
+        <div style={S.wrapper}>
+          <div style={S.card}>
+            <h2 style={S.titleCentered}>Prenotazione non trovata</h2>
+            <p style={S.textCenter}>
+              Non ci sono dati disponibili per completare il pagamento
+            </p>
+
+            <div style={S.actionsCenter}>
+              <button onClick={onBack} style={S.secondaryButton}>
+                Torna indietro
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   const spot = booking.postoPrivatoId
 
+  async function handleSubmit(event) {
+    event.preventDefault()
+    setError('')
+
+    // Controllo semplice lato frontend
+    // Serve solo per evitare submit vuoti
+    if (!cardNumber.trim() || !expiry.trim() || !cvv.trim()) {
+      setError('Compila tutti i campi del pagamento')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const updatedBooking = await api.payBooking(booking._id)
+
+      // Avvisiamo il componente padre che il pagamento è andato a buon fine
+      if (onPaid) {
+        onPaid(updatedBooking)
+      }
+    } catch (err) {
+      setError(err.message || 'Errore durante il pagamento')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function formatDateRange() {
+    const inizio = new Date(booking.dataOraInizio)
+    const fine = new Date(booking.dataOraFine)
+
+    const data = inizio.toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    })
+
+    const oraInizio = inizio.toLocaleTimeString('it-IT', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+    const oraFine = fine.toLocaleTimeString('it-IT', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+    return `${data} · ${oraInizio} - ${oraFine}`
+  }
+
   return (
-    <div style={{ maxWidth: 480, margin: '40px auto', padding: '0 16px' }}>
-      <button
-        onClick={onCancel}
-        style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 14, marginBottom: 16 }}
-      >
-        ← Torna alla mappa
-      </button>
+    <div style={S.page}>
+      <div style={S.wrapper}>
+        <div style={S.topBar}>
+          <button onClick={onBack} style={S.backButton}>
+            ← Torna alla mappa
+          </button>
+        </div>
 
-      <h2 style={{ marginBottom: 20 }}>Completa il pagamento</h2>
+        <div style={S.card}>
+          <div style={S.header}>
+            <h1 style={S.titleCentered}>Completa il pagamento</h1>
+            <p style={S.subtitleCentered}>
+              Conferma la prenotazione inserendo i dati della carta
+            </p>
+          </div>
 
-      {/* Booking summary */}
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 16, marginBottom: 24, background: '#f9fafb' }}>
-        <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{spot?.nome ?? 'Posto auto'}</p>
-        <p style={{ margin: '0 0 4px', fontSize: 13, color: '#6b7280' }}>
-          {new Date(booking.dataOraInizio).toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' })}
-          {' → '}
-          {new Date(booking.dataOraFine).toLocaleString('it-IT', { timeStyle: 'short' })}
-        </p>
-        <p style={{ margin: '0 0 4px', fontSize: 13, color: '#6b7280' }}>Targa: {booking.targa}</p>
-        <p style={{ margin: 0, fontWeight: 700, fontSize: 18, color: '#2563eb' }}>
-          €{booking.prezzoTotale?.toFixed(2)}
-        </p>
+          <div style={S.summaryBox}>
+            <h2 style={S.summaryTitle}>
+              {spot?.nome || 'Posto auto privato'}
+            </h2>
+
+            <p style={S.summaryText}>
+              {spot?.posizione?.indirizzoTestuale || 'Indirizzo non disponibile'}
+            </p>
+
+            <div style={S.summaryInfo}>
+              <div style={S.summaryRow}>
+                <span style={S.label}>Data e orario</span>
+                <span style={S.value}>{formatDateRange()}</span>
+              </div>
+
+              <div style={S.summaryRow}>
+                <span style={S.label}>Targa</span>
+                <span style={S.value}>{booking.targa || 'Non disponibile'}</span>
+              </div>
+
+              <div style={S.summaryRow}>
+                <span style={S.label}>Totale</span>
+                <span style={S.total}>€{Number(booking.prezzoTotale || 0).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} style={S.form}>
+            <div>
+              <label style={S.inputLabel}>Numero carta</label>
+              <input
+                type="text"
+                value={cardNumber}
+                onChange={(event) => setCardNumber(event.target.value)}
+                placeholder="1234 5678 9012 3456"
+                style={S.input}
+              />
+            </div>
+
+            <div style={S.row}>
+              <div style={{ flex: 1 }}>
+                <label style={S.inputLabel}>Scadenza</label>
+                <input
+                  type="text"
+                  value={expiry}
+                  onChange={(event) => setExpiry(event.target.value)}
+                  placeholder="MM/AA"
+                  style={S.input}
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label style={S.inputLabel}>CVV</label>
+                <input
+                  type="text"
+                  value={cvv}
+                  onChange={(event) => setCvv(event.target.value)}
+                  placeholder="123"
+                  style={S.input}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div style={S.errorBox}>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                ...S.primaryButton,
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {loading
+                ? 'Pagamento in corso...'
+                : `Paga €${Number(booking.prezzoTotale || 0).toFixed(2)}`}
+            </button>
+          </form>
+        </div>
       </div>
-
-      {/* Fake card form */}
-      <form onSubmit={handlePay} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div>
-          <label style={S.label}>Numero carta</label>
-          <input
-            style={S.input}
-            placeholder="1234 5678 9012 3456"
-            maxLength={19}
-            value={card.number}
-            onChange={set('number')}
-            required
-          />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={S.label}>Scadenza</label>
-            <input style={S.input} placeholder="MM/AA" maxLength={5} value={card.expiry} onChange={set('expiry')} required />
-          </div>
-          <div>
-            <label style={S.label}>CVV</label>
-            <input style={S.input} placeholder="123" maxLength={3} value={card.cvv} onChange={set('cvv')} required />
-          </div>
-        </div>
-
-        {error && <p style={{ color: 'red', fontSize: 14, margin: 0 }}>{error}</p>}
-
-        <button
-          type="submit"
-          disabled={paying}
-          style={{ ...S.btnPrimary, padding: '12px 0', fontSize: 15, marginTop: 8 }}
-        >
-          {paying ? 'Pagamento in corso...' : `Paga €${booking.prezzoTotale?.toFixed(2)}`}
-        </button>
-      </form>
     </div>
   )
 }
 
 const S = {
-  label: { display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#374151' },
-  input: { width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' },
-  btnPrimary: { background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', width: '100%' },
+  page: {
+    minHeight: '100vh',
+    padding: '40px 20px 60px',
+    display: 'flex',
+    justifyContent: 'center'
+  },
+
+  wrapper: {
+    width: '100%',
+    maxWidth: '760px'
+  },
+
+  topBar: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '18px'
+  },
+
+  backButton: {
+    background: '#ffffff',
+    color: '#1e3a8a',
+    border: 'none',
+    borderRadius: '12px',
+    padding: '12px 20px',
+    fontSize: '15px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    boxShadow: '0 8px 20px rgba(0,0,0,0.12)'
+  },
+
+  card: {
+    background: '#ffffff',
+    borderRadius: '20px',
+    padding: '32px',
+    boxShadow: '0 18px 40px rgba(0,0,0,0.18)'
+  },
+
+  header: {
+    marginBottom: '24px',
+    textAlign: 'center'
+  },
+
+  titleCentered: {
+    margin: '0 0 10px 0',
+    fontSize: '34px',
+    fontWeight: '800',
+    color: '#0f172a'
+  },
+
+  subtitleCentered: {
+    margin: 0,
+    fontSize: '16px',
+    color: '#475569',
+    lineHeight: 1.5
+  },
+
+  textCenter: {
+    textAlign: 'center',
+    fontSize: '16px',
+    color: '#475569'
+  },
+
+  actionsCenter: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginTop: '20px'
+  },
+
+  summaryBox: {
+    background: '#f8fafc',
+    border: '1px solid #dbeafe',
+    borderRadius: '16px',
+    padding: '22px',
+    marginBottom: '26px'
+  },
+
+  summaryTitle: {
+    margin: '0 0 8px 0',
+    fontSize: '24px',
+    fontWeight: '800',
+    color: '#0f172a'
+  },
+
+  summaryText: {
+    margin: '0 0 20px 0',
+    fontSize: '15px',
+    color: '#475569'
+  },
+
+  summaryInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px'
+  },
+
+  summaryRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '16px',
+    alignItems: 'center',
+    flexWrap: 'wrap'
+  },
+
+  label: {
+    fontSize: '15px',
+    fontWeight: '700',
+    color: '#334155'
+  },
+
+  value: {
+    fontSize: '15px',
+    color: '#0f172a',
+    fontWeight: '600'
+  },
+
+  total: {
+    fontSize: '28px',
+    fontWeight: '800',
+    color: '#2563eb'
+  },
+
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '18px'
+  },
+
+  row: {
+    display: 'flex',
+    gap: '14px'
+  },
+
+  inputLabel: {
+    display: 'block',
+    marginBottom: '8px',
+    fontSize: '15px',
+    fontWeight: '700',
+    color: '#1e293b'
+  },
+
+  input: {
+    width: '100%',
+    height: '52px',
+    borderRadius: '12px',
+    border: '1px solid #cbd5e1',
+    padding: '0 14px',
+    fontSize: '16px',
+    color: '#0f172a',
+    background: '#ffffff',
+    boxSizing: 'border-box'
+  },
+
+  errorBox: {
+    background: '#fef2f2',
+    color: '#b91c1c',
+    border: '1px solid #fecaca',
+    borderRadius: '12px',
+    padding: '12px 14px',
+    fontSize: '14px',
+    fontWeight: '600'
+  },
+
+  primaryButton: {
+    width: '100%',
+    height: '54px',
+    border: 'none',
+    borderRadius: '12px',
+    background: '#2563eb',
+    color: '#ffffff',
+    fontSize: '18px',
+    fontWeight: '800',
+    marginTop: '8px'
+  },
+
+  secondaryButton: {
+    background: '#2563eb',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '12px',
+    padding: '12px 20px',
+    fontSize: '15px',
+    fontWeight: '700',
+    cursor: 'pointer'
+  }
 }
