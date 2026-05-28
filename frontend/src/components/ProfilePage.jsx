@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
-import { TAGS, GIORNI, AvailabilityEditor, TagsEditor } from './Dashboard'
-
+import { TAGS } from '../utils/SpotOptions'
+import { AvailabilityEditor, TagsEditor } from './SpotFormControls'
 // Il backend salva {giorno:'LUNEDI', oraInizio:8, oraFine:20}
 // L'editor usa {giorno:'lunedi', oraInizio:'08:00', oraFine:'20:00'}
 function dispToEditor(disp) {
@@ -295,14 +295,21 @@ function PostoRow({ posto, onUpdated, onDeleted, onDisattivato }) {
   }
 
   async function handleDelete() {
-    if (!confirm(`Vuoi eliminare definitivamente "${posto.nome}"? L'operazione non è reversibile.`)) return
-    try {
-      await api.deletePosto(posto._id)
-      onDeleted(posto._id)
-    } catch (err) {
-      alert(err.message)
-    }
+  // Chiediamo conferma prima di eliminare il posto dalla vista dell'host
+  // L'eliminazione è logica: il posto sparisce dall'interfaccia ma resta nel database
+  const conferma = confirm(
+    `Vuoi eliminare "${posto.nome}"? Il posto non sarà più visibile, ma resterà nello storico.`
+  )
+
+  if (!conferma) return
+
+  try {
+    await api.deletePosto(posto._id)
+    onDeleted(posto._id)
+  } catch (err) {
+    alert(err.message || 'Errore durante eliminazione')
   }
+}
 
   const visibleTags = (posto.caratteristiche ?? [])
     .map(k => TAGS.find(t => t.key === k))
