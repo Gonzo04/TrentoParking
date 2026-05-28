@@ -2,7 +2,6 @@ const express = require('express');
 const requireAuth = require('../middleware/auth');
 const {
   listPostiPrivati,
-  listMieiPostiPrivati,
   getPostoPrivatoById,
   getPostoConPrenotazioni,
   createPostoPrivato,
@@ -22,13 +21,10 @@ router.get('/', listPostiPrivati);
 // GET /api/posti-privati/miei
 // Lista dei posti pubblicati dall'utente autenticato
 // Deve stare prima di /:id, altrimenti Express leggerebbe "miei" come id
-router.get('/miei', listMieiPostiPrivati);
+router.get('/miei', getMieiPosti);
 
 // POST /api/posti-privati
 router.post('/', createPostoPrivato);
-
-// GET /api/posti-privati/miei
-router.get('/miei', getMieiPosti);
 
 // GET /api/posti-privati/:id/prenotazioni
 router.get('/:id/prenotazioni', getPostoConPrenotazioni);
