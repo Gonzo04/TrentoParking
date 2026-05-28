@@ -12,12 +12,13 @@ import {
 
 const TRENTO_CENTER = [46.0679, 11.1211];
 
-function priceIcon(price) {
+function priceIcon(price, highlighted = false) {
   const safePrice = Number.isFinite(Number(price)) ? Number(price) : 0;
+  const cls = highlighted ? 'price-marker price-marker--highlighted' : 'price-marker';
 
   return L.divIcon({
     className: 'price-marker-icon',
-    html: `<div class="price-marker">€${safePrice.toFixed(2)}</div>`,
+    html: `<div class="${cls}">€${safePrice.toFixed(2)}</div>`,
     iconSize: [0, 0],
     iconAnchor: [0, 0],
     popupAnchor: [0, -18],
@@ -82,7 +83,8 @@ export default function SpotMap({
   onMapClick,
   flyTarget,
   isCreateSpotMode = false,
-  createSpotPosition = null
+  createSpotPosition = null,
+  hoveredSpotId = null,
 }) {
   const validSpots = spots.filter(isValidSpotPosition);
 
@@ -132,6 +134,7 @@ export default function SpotMap({
 
       {validSpots.map((spot) => {
         const spotId = spot.id || spot._id;
+        const isHovered = hoveredSpotId === spotId;
 
         return (
           <Marker
@@ -140,7 +143,8 @@ export default function SpotMap({
               Number(spot.posizione.latitudine),
               Number(spot.posizione.longitudine)
             ]}
-            icon={priceIcon(spot.tariffaOraria)}
+            icon={priceIcon(spot.tariffaOraria, isHovered)}
+            zIndexOffset={isHovered ? 1000 : 0}
           >
             <Popup>
               <strong>{spot.nome}</strong>

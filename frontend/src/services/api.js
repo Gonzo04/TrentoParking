@@ -82,17 +82,22 @@ export const api = {
     body: JSON.stringify(body),
   }),
 
-  // Aggiorna solo i campi che l'host può modificare dopo la pubblicazione
-  // Il backend blocca comunque modifiche a hostId, posizione e statoVerifica
-  updatePostoPrivato: (id, body) => request(`/posti-privati/${id}`, {
+  // Profilo utente
+  updateMe: (body) => request('/auth/me', {
     method: 'PATCH',
     body: JSON.stringify(body),
   }),
 
-  // Elimina logicamente un posto privato dell'host
-  // Per l'utente sparisce, ma il backend lo conserva nel database
-  eliminaPostoPrivato: (id) => request(`/posti-privati/${id}/elimina`, {
+  // Posti dell'host loggato (attivi e non)
+  getMieiPosti: () => request('/posti-privati/miei'),
+
+  updatePosto: (id, body) => request(`/posti-privati/${id}`, {
     method: 'PATCH',
+    body: JSON.stringify(body),
+  }),
+
+  deletePosto: (id) => request(`/posti-privati/${id}`, {
+    method: 'DELETE',
   }),
 
   // Bookings

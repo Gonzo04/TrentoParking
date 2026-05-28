@@ -209,7 +209,11 @@ async function createBooking(req, res, next) {
       });
     }
 
-    // Controlla se esiste già una prenotazione che si sovrappone allo stesso intervallo
+    // Un host non può prenotare il proprio posto
+    if (posto.hostId.toString() === req.user.userId)
+      return res.status(403).json({ error: 'Non puoi prenotare il tuo stesso posto auto' });
+
+    // Controlla sovrapposizioni con prenotazioni esistenti
     const overlap = await Prenotazione.findOne({
       postoPrivatoId,
       stato: { $ne: 'ANNULLATA' },

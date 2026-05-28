@@ -152,6 +152,13 @@ const postoPrivatoSchema = new mongoose.Schema({
     default: []
   },
 
+  // Tag descrittivi scelti dall'host: coperto, vicino_centro, sorvegliato, ecc.
+  // Usati nel frontend per filtrare e mostrare caratteristiche rilevanti all'utente
+  caratteristiche: {
+    type: [String],
+    default: []
+  },
+
   // Un posto appena creato non viene considerato automaticamente verificato
   // La verifica potrà essere gestita in futuro da un amministratore
   statoVerifica: {

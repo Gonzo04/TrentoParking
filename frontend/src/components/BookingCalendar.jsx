@@ -1,70 +1,40 @@
 import { useMemo, useState } from 'react'
 
+/* ── Costanti ─────────────────────────────────────────────────────── */
 const MESI = [
-  'Gennaio',
-  'Febbraio',
-  'Marzo',
-  'Aprile',
-  'Maggio',
-  'Giugno',
-  'Luglio',
-  'Agosto',
-  'Settembre',
-  'Ottobre',
-  'Novembre',
-  'Dicembre'
+  'Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+  'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre',
 ]
+const GIORNI_HEADER = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom']
 
-const GIORNI_HEADER = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+// Mapping JS getDay() (0 = domenica) → formato salvato dal backend (uppercase, no accenti)
+const GIORNO_IT = ['DOMENICA','LUNEDI','MARTEDI','MERCOLEDI','GIOVEDI','VENERDI','SABATO']
 
-// getDay() di JavaScript usa 0 per domenica, 1 per lunedì e così via
-// Questo array usa lo stesso ordine, ma con i valori tecnici salvati dal backend
-const GIORNI_BACKEND = [
-  'DOMENICA',
-  'LUNEDI',
-  'MARTEDI',
-  'MERCOLEDI',
-  'GIOVEDI',
-  'VENERDI',
-  'SABATO'
-]
-
-// Etichette leggibili da mostrare all'utente
-// Il backend usa valori tecnici, il frontend li traduce in testi più chiari
-const LABEL_GIORNI = {
-  LUNEDI: 'Lunedì',
-  MARTEDI: 'Martedì',
-  MERCOLEDI: 'Mercoledì',
-  GIOVEDI: 'Giovedì',
-  VENERDI: 'Venerdì',
-  SABATO: 'Sabato',
-  DOMENICA: 'Domenica'
+// Label brevi per la visualizzazione
+const GIORNO_SHORT = {
+  LUNEDI: 'Lun', MARTEDI: 'Mar', MERCOLEDI: 'Mer',
+  GIOVEDI: 'Gio', VENERDI: 'Ven', SABATO: 'Sab', DOMENICA: 'Dom',
+}
+const GIORNO_FULL = {
+  LUNEDI: 'Lunedì', MARTEDI: 'Martedì', MERCOLEDI: 'Mercoledì',
+  GIOVEDI: 'Giovedì', VENERDI: 'Venerdì', SABATO: 'Sabato', DOMENICA: 'Domenica',
 }
 
-function normalizeGiorno(value) {
-  // Normalizziamo il giorno per evitare problemi tra "MERCOLEDI" e "mercoledì"
-  // Togliamo gli accenti e portiamo tutto in maiuscolo
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toUpperCase()
+// Stessi tag definiti in Dashboard.jsx (duplicati qui per evitare dipendenze circolari)
+const TAGS_INFO = {
+  coperto:          { emoji: '🏠', label: 'Coperto'          },
+  vicino_centro:    { emoji: '📍', label: 'Vicino al centro' },
+  sorvegliato:      { emoji: '🔒', label: 'Sorvegliato'      },
+  carica_elettrica: { emoji: '⚡', label: 'Ricarica EV'      },
+  facile_accesso:   { emoji: '✅', label: 'Facile accesso'   },
+  accessibile:      { emoji: '♿', label: 'Accessibile'      },
 }
 
-function isSameDay(firstDate, secondDate) {
-  // Confrontiamo solo anno, mese e giorno
-  // Non confrontiamo ore e minuti perché qui ci interessa solo la data del calendario
-  return firstDate.getFullYear() === secondDate.getFullYear() &&
-    firstDate.getMonth() === secondDate.getMonth() &&
-    firstDate.getDate() === secondDate.getDate()
-}
-
+/* ── Helpers griglia calendario ──────────────────────────────────── */
 function buildMonthGrid(year, month) {
-  // Costruisce la griglia del mese includendo anche alcuni giorni del mese precedente o successivo
-  // Serve per avere sempre settimane complete da lunedì a domenica
-  const first = new Date(year, month, 1)
-  const last = new Date(year, month + 1, 0)
-  const startDow = (first.getDay() + 6) % 7
+  const first   = new Date(year, month, 1)
+  const last    = new Date(year, month + 1, 0)
+  const startDow = (first.getDay() + 6) % 7 // Lun = 0
 
   const cells = []
 
@@ -104,17 +74,8 @@ function buildMonthGrid(year, month) {
 }
 
 function getDisponibilitaForDate(date, disponibilita) {
-  // Recupera la fascia di disponibilità valida per il giorno selezionato
-  // Il confronto usa i valori tecnici del backend, non le etichette italiane con accenti
-  if (!Array.isArray(disponibilita)) {
-    return null
-  }
-
-  const giornoRichiesto = GIORNI_BACKEND[date.getDay()]
-
-  return disponibilita.find((fascia) => (
-    normalizeGiorno(fascia.giorno) === giornoRichiesto
-  )) || null
+  const giorno = GIORNO_IT[date.getDay()] // es. 'LUNEDI'
+  return disponibilita.find(d => d.giorno === giorno) || null
 }
 
 function getBookedHours(date, prenotazioni) {
@@ -143,92 +104,36 @@ function getBookedHours(date, prenotazioni) {
   return booked
 }
 
-function hasBookedHourInsideInterval(startHour, endHour, bookedHours) {
-  // Controlla se tra ora inizio inclusa e ora fine esclusa esistono ore già prenotate
-  // Esempio: 10-12 controlla 10 e 11, non 12
-  for (let hour = startHour; hour < endHour; hour++) {
-    if (bookedHours.has(hour)) {
-      return true
-    }
-  }
-
-  return false
+function padHour(h) {
+  return String(h).padStart(2, '0') + ':00'
 }
 
-function formatDisponibilita(disponibilita) {
-  // Mostra le fasce disponibili in modo leggibile dentro al calendario
-  if (!Array.isArray(disponibilita) || disponibilita.length === 0) {
-    return 'Nessuna disponibilità impostata'
-  }
+/* ── Componente ──────────────────────────────────────────────────── */
+export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwner = false }) {
+  const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
 
-  return disponibilita
-    .map((fascia) => {
-      const giorno = normalizeGiorno(fascia.giorno)
-      const label = LABEL_GIORNI[giorno] || fascia.giorno
-
-      return `${label} ${fascia.oraInizio}:00-${fascia.oraFine}:00`
-    })
-    .join(', ')
-}
-
-export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
-  const today = useMemo(() => {
-    // Usiamo la data di oggi senza ore, minuti e secondi
-    // Così il confronto con i giorni del calendario è più stabile
-    const date = new Date()
-
-    date.setHours(0, 0, 0, 0)
-
-    return date
-  }, [])
-
-  const maxMonth = useMemo(() => {
-    // Limitiamo il calendario ai prossimi due mesi
-    // Il backend carica le prenotazioni future fino a due mesi, quindi evitiamo mesi non coperti
-    return new Date(today.getFullYear(), today.getMonth() + 2, 1)
-  }, [today])
-
-  const [year, setYear] = useState(today.getFullYear())
-  const [month, setMonth] = useState(today.getMonth())
+  const [year,         setYear]         = useState(today.getFullYear())
+  const [month,        setMonth]        = useState(today.getMonth())
   const [selectedDate, setSelectedDate] = useState(null)
-  const [startHour, setStartHour] = useState(null)
-  const [endHour, setEndHour] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [startHour,    setStartHour]    = useState(null)
+  const [endHour,      setEndHour]      = useState(null)
+  const [loading,      setLoading]      = useState(false)
 
   const grid = useMemo(() => buildMonthGrid(year, month), [year, month])
 
-  const visibleMonthDate = new Date(year, month, 1)
-  const currentMonthDate = new Date(today.getFullYear(), today.getMonth(), 1)
+  const tags = (posto.caratteristiche ?? [])
+    .map(k => TAGS_INFO[k])
+    .filter(Boolean)
 
-  const canGoPrev = visibleMonthDate > currentMonthDate
-  const canGoNext = visibleMonthDate < maxMonth
+  const hasDisponibilita = posto.disponibilita?.length > 0
 
-  const disp = selectedDate
-    ? getDisponibilitaForDate(selectedDate, posto.disponibilita)
-    : null
-
-  const bookedHours = selectedDate
-    ? getBookedHours(selectedDate, prenotazioni)
-    : new Set()
-
-  const ore = startHour !== null && endHour !== null
-    ? endHour - startHour
-    : 0
-
-  const prezzoTotale = Math.round(ore * posto.tariffaOraria * 100) / 100
-
-  const selectionComplete = Boolean(
-    selectedDate &&
-    startHour !== null &&
-    endHour !== null
-  )
-
-  function resetSelection() {
-    // Quando cambiamo mese o giorno puliamo la selezione oraria
-    setSelectedDate(null)
-    setStartHour(null)
-    setEndHour(null)
-  }
+  // Ordina la disponibilità seguendo l'ordine dei giorni della settimana
+  const disponibilitaOrdinata = useMemo(() => {
+    const order = ['LUNEDI','MARTEDI','MERCOLEDI','GIOVEDI','VENERDI','SABATO','DOMENICA']
+    return [...(posto.disponibilita ?? [])].sort(
+      (a, b) => order.indexOf(a.giorno) - order.indexOf(b.giorno)
+    )
+  }, [posto.disponibilita])
 
   function prevMonth() {
     // Evitiamo di andare prima del mese corrente
@@ -263,24 +168,12 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
   }
 
   function isDayAvailable(date) {
-    // Un giorno è disponibile solo se non è passato e se esiste una disponibilità per quel giorno
-    if (date < today) {
-      return false
-    }
-
-    const disponibilitaGiorno = getDisponibilitaForDate(date, posto.disponibilita)
-
-    if (!disponibilitaGiorno) {
-      return false
-    }
-
-    const oreOccupate = getBookedHours(date, prenotazioni)
-
-    // Il giorno è cliccabile se almeno un'ora della fascia è libera
-    for (let hour = disponibilitaGiorno.oraInizio; hour < disponibilitaGiorno.oraFine; hour++) {
-      if (!oreOccupate.has(hour)) {
-        return true
-      }
+    if (date < today) return false
+    const disp = getDisponibilitaForDate(date, posto.disponibilita ?? [])
+    if (!disp) return false
+    const booked = getBookedHours(date, prenotazioni)
+    for (let h = disp.oraInizio; h < disp.oraFine; h++) {
+      if (!booked.has(h)) return true
     }
 
     return false
@@ -320,31 +213,19 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
   function handleHourClick(hour) {
     // Primo click: selezioniamo l'ora di inizio
     if (startHour === null) {
-      if (canUseHourAsStart(hour)) {
-        setStartHour(hour)
-        setEndHour(null)
-      }
-
-      return
-    }
-
-    // Secondo click: se l'ora è valida come fine, completiamo la selezione
-    if (canUseHourAsEnd(hour)) {
-      setEndHour(hour)
-      return
-    }
-
-    // Se il click non è valido come fine ma è valido come nuovo inizio, ricominciamo da lì
-    if (canUseHourAsStart(hour)) {
-      setStartHour(hour)
-      setEndHour(null)
+      setStartHour(h); setEndHour(null)
+    } else if (h > startHour && endHour === null) {
+      const hasOverlap = Array.from({ length: h - startHour }, (_, i) => startHour + i)
+        .some(hour => bookedHours.has(hour))
+      if (hasOverlap) { setStartHour(h); setEndHour(null) }
+      else setEndHour(h)
+    } else {
+      setStartHour(h); setEndHour(null)
     }
   }
 
-  async function handleConfirm() {
-    // Costruiamo le date complete partendo dal giorno selezionato e dalle ore scelte
-    const dataOraInizio = new Date(selectedDate)
-    const dataOraFine = new Date(selectedDate)
+  const disp       = selectedDate ? getDisponibilitaForDate(selectedDate, posto.disponibilita ?? []) : null
+  const bookedHours = selectedDate ? getBookedHours(selectedDate, prenotazioni) : new Set()
 
     dataOraInizio.setHours(startHour, 0, 0, 0)
     dataOraFine.setHours(endHour, 0, 0, 0)
@@ -362,318 +243,448 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm }) {
   }
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: 460 }}>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: '0 0 4px' }}>
-          {posto.nome}
-        </h2>
+    <div style={S.root}>
 
-        <p style={{ margin: '0 0 2px', color: '#6b7280', fontSize: 14 }}>
-          {posto.posizione?.indirizzoTestuale || 'Indirizzo non disponibile'}
-        </p>
-
-        <p style={{ margin: 0, fontWeight: 700, color: '#2563eb' }}>
-          €{Number(posto.tariffaOraria).toFixed(2)}/ora
-        </p>
+      {/* ── Intestazione posto ────────────────────────────────────── */}
+      <div style={S.header}>
+        <div style={S.headerTop}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={S.spotName}>{posto.nome}</h2>
+            {posto.posizione?.indirizzoTestuale && (
+              <p style={S.spotAddress}>{posto.posizione.indirizzoTestuale}</p>
+            )}
+          </div>
+          <span style={S.price}>€{Number(posto.tariffaOraria).toFixed(2)}/h</span>
+        </div>
 
         {posto.descrizione && (
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: '#555' }}>
-            {posto.descrizione}
-          </p>
+          <p style={S.description}>{posto.descrizione}</p>
         )}
 
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6b7280' }}>
-          Disponibilità: {formatDisponibilita(posto.disponibilita)}
-        </p>
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div style={S.tagsRow}>
+            {tags.map(tag => (
+              <span key={tag.label} style={S.tag}>
+                {tag.emoji} {tag.label}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '10px 16px',
-            background: '#f9fafb',
-            borderBottom: '1px solid #e5e7eb'
-          }}
-        >
-          <button
-            onClick={prevMonth}
-            disabled={!canGoPrev}
-            style={{
-              ...S.navBtn,
-              opacity: canGoPrev ? 1 : 0.35,
-              cursor: canGoPrev ? 'pointer' : 'not-allowed'
-            }}
-          >
-            ‹
-          </button>
-
-          <span style={{ fontWeight: 600 }}>
-            {MESI[month]} {year}
-          </span>
-
-          <button
-            onClick={nextMonth}
-            disabled={!canGoNext}
-            style={{
-              ...S.navBtn,
-              opacity: canGoNext ? 1 : 0.35,
-              cursor: canGoNext ? 'pointer' : 'not-allowed'
-            }}
-          >
-            ›
-          </button>
+      {/* ── Disponibilità settimanale ─────────────────────────────── */}
+      {hasDisponibilita ? (
+        <div style={S.availSection}>
+          <p style={S.sectionLabel}>Disponibilità settimanale</p>
+          <div style={S.availGrid}>
+            {disponibilitaOrdinata.map(slot => (
+              <div key={slot.giorno} style={S.availRow}>
+                <span style={S.availDay}>{GIORNO_SHORT[slot.giorno] ?? slot.giorno}</span>
+                <span style={S.availTime}>
+                  {padHour(slot.oraInizio)} – {padHour(slot.oraFine)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, 1fr)',
-            background: '#f9fafb',
-            borderBottom: '1px solid #e5e7eb'
-          }}
-        >
-          {GIORNI_HEADER.map((giorno) => (
-            <div
-              key={giorno}
-              style={{
-                textAlign: 'center',
-                padding: '6px 0',
-                fontSize: 12,
-                color: '#9ca3af',
-                fontWeight: 600
-              }}
-            >
-              {giorno}
-            </div>
-          ))}
+      ) : (
+        <div style={{ ...S.availSection, color: '#8a95a3', fontSize: 13 }}>
+          Disponibilità non specificata — contatta il proprietario per informazioni.
         </div>
+      )}
 
-        <div style={{ padding: 8 }}>
-          {grid.map((week, weekIndex) => (
-            <div
-              key={weekIndex}
-              style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}
-            >
-              {week.map(({ date, current }, dayIndex) => {
-                const available = current && isDayAvailable(date)
-                const selected = selectedDate && isSameDay(date, selectedDate)
-
-                let cellStyle = { ...S.dayCell }
-
-                if (!current) {
-                  cellStyle = { ...cellStyle, color: '#d1d5db' }
-                } else if (selected) {
-                  cellStyle = {
-                    ...cellStyle,
-                    background: '#2563eb',
-                    color: '#fff',
-                    fontWeight: 700
-                  }
-                } else if (available) {
-                  cellStyle = {
-                    ...cellStyle,
-                    background: 'rgba(42,157,143,0.12)',
-                    color: '#2a9d8f',
-                    fontWeight: 700
-                  }
-                } else {
-                  cellStyle = {
-                    ...cellStyle,
-                    color: '#d1d5db',
-                    cursor: 'default'
-                  }
-                }
-
-                return (
-                  <button
-                    key={dayIndex}
-                    style={cellStyle}
-                    disabled={!available}
-                    onClick={() => handleDayClick(date)}
-                  >
-                    {date.getDate()}
-                  </button>
-                )
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {selectedDate && disp && (
-        <div style={{ marginTop: 16 }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 14 }}>
-            Seleziona orario · {selectedDate.toLocaleDateString('it-IT', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long'
-            })}
-          </p>
-
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280' }}>
-            Disponibile {disp.oraInizio}:00 – {disp.oraFine}:00 ·{' '}
-            {startHour === null
-              ? 'Seleziona orario inizio'
-              : endHour === null
-                ? `Inizio: ${startHour}:00 — seleziona la fine`
-                : `${startHour}:00 → ${endHour}:00`}
-          </p>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {Array.from(
-              { length: disp.oraFine - disp.oraInizio + 1 },
-              (_, index) => disp.oraInizio + index
-            ).map((hour) => {
-              const isBooked = bookedHours.has(hour)
-              const isSelected = startHour !== null &&
-                endHour !== null &&
-                hour >= startHour &&
-                hour < endHour
-
-              const isStart = hour === startHour
-              const canStartHere = canUseHourAsStart(hour)
-              const canEndHere = canUseHourAsEnd(hour)
-              const disabled = startHour === null
-                ? !canStartHere
-                : !(canStartHere || canEndHere)
-
-              let buttonStyle = { ...S.hourBtn }
-
-              if (isBooked && disabled) {
-                buttonStyle = { ...buttonStyle, ...S.hourBtnBooked }
-              } else if (isStart || isSelected) {
-                buttonStyle = { ...buttonStyle, ...S.hourBtnSelected }
-              } else if (canEndHere) {
-                buttonStyle = { ...buttonStyle, border: '1px solid #2563eb' }
-              }
-
-              return (
-                <button
-                  key={hour}
-                  style={{
-                    ...buttonStyle,
-                    cursor: disabled ? 'not-allowed' : 'pointer'
-                  }}
-                  disabled={disabled}
-                  onClick={() => handleHourClick(hour)}
-                >
-                  {hour}:00
-                </button>
-              )
-            })}
+      {/* ── Avviso proprietario ──────────────────────────────────── */}
+      {isOwner && (
+        <div style={S.ownerNotice}>
+          <span style={{ fontSize: 22 }}>🏠</span>
+          <div>
+            <p style={{ margin: '0 0 2px', fontWeight: 700, color: '#003049', fontSize: 14 }}>
+              Questo è il tuo posto
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: '#4a5568', lineHeight: 1.5 }}>
+              Non puoi prenotare un posto che hai pubblicato tu stesso.
+            </p>
           </div>
         </div>
       )}
 
-      {selectionComplete && (
-        <div
-          style={{
-            marginTop: 16,
-            padding: 16,
-            background: '#eff6ff',
-            borderRadius: 10,
-            border: '1px solid #bfdbfe'
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 12
-            }}
-          >
-            <div>
-              <p style={{ margin: 0, fontWeight: 600 }}>
-                {posto.nome}
-              </p>
-
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>
-                {startHour}:00 – {endHour}:00 · {ore}h
-              </p>
+      {/* ── Calendario ───────────────────────────────────────────── */}
+      {hasDisponibilita && !isOwner && (
+        <>
+          <div style={S.calendarBox}>
+            {/* Navigazione mese */}
+            <div style={S.calNav}>
+              <button onClick={prevMonth} style={S.navBtn}>‹</button>
+              <span style={S.calTitle}>{MESI[month]} {year}</span>
+              <button onClick={nextMonth} style={S.navBtn}>›</button>
             </div>
 
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
-                {ore}h × €{Number(posto.tariffaOraria).toFixed(2)}
-              </p>
+            {/* Header giorni */}
+            <div style={S.weekHeader}>
+              {GIORNI_HEADER.map(g => (
+                <div key={g} style={S.weekHeaderCell}>{g}</div>
+              ))}
+            </div>
 
-              <p style={{ margin: '2px 0 0', fontWeight: 700, fontSize: 18, color: '#2563eb' }}>
-                €{prezzoTotale.toFixed(2)}
-              </p>
+            {/* Celle giorni */}
+            <div style={{ padding: '6px 8px 8px' }}>
+              {grid.map((week, wi) => (
+                <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                  {week.map(({ date, current }, di) => {
+                    const available = current && isDayAvailable(date)
+                    const selected  = selectedDate && date.toDateString() === selectedDate.toDateString()
+
+                    let cellStyle = { ...S.dayCell }
+                    if (!current)       cellStyle = { ...cellStyle, color: '#d1d5db' }
+                    else if (selected)  cellStyle = { ...cellStyle, background: '#003049', color: '#fff', fontWeight: 700 }
+                    else if (available) cellStyle = { ...cellStyle, background: 'rgba(42,157,143,0.13)', color: '#1f7a6e', fontWeight: 600 }
+                    else                cellStyle = { ...cellStyle, color: '#d1d5db', cursor: 'default' }
+
+                    return (
+                      <button
+                        key={di}
+                        style={cellStyle}
+                        disabled={!available}
+                        onClick={() => handleDayClick(date)}
+                      >
+                        {date.getDate()}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           </div>
 
-          <button
-            onClick={handleConfirm}
-            disabled={loading}
-            style={{
-              ...S.btnPrimary,
-              width: '100%',
-              padding: '12px 0',
-              fontSize: 15,
-              opacity: loading ? 0.7 : 1
-            }}
-          >
-            {loading ? 'Prenotazione in corso...' : `Prenota — €${prezzoTotale.toFixed(2)}`}
-          </button>
-        </div>
+          {/* ── Selezione orario ──────────────────────────────────── */}
+          {selectedDate && disp && (
+            <div style={S.timePicker}>
+              <p style={S.sectionLabel}>
+                {selectedDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+              <p style={S.timeHint}>
+                Fascia oraria: {padHour(disp.oraInizio)} – {padHour(disp.oraFine)}
+                {' · '}
+                {startHour === null
+                  ? 'Seleziona l\'orario di inizio'
+                  : endHour === null
+                    ? `Inizio: ${padHour(startHour)} — seleziona la fine`
+                    : `${padHour(startHour)} → ${padHour(endHour)}`}
+              </p>
+
+              <div style={S.hoursGrid}>
+                {Array.from(
+                  { length: disp.oraFine - disp.oraInizio + 1 },
+                  (_, i) => disp.oraInizio + i
+                ).map(h => {
+                  const isBooked   = bookedHours.has(h)
+                  const isSelected = startHour !== null && endHour !== null && h >= startHour && h < endHour
+                  const isStart    = h === startHour
+
+                  let btnStyle = { ...S.hourBtn }
+                  if (isBooked)                  btnStyle = { ...btnStyle, ...S.hourBtnBooked }
+                  else if (isStart || isSelected) btnStyle = { ...btnStyle, ...S.hourBtnActive }
+
+                  return (
+                    <button key={h} style={btnStyle} disabled={isBooked} onClick={() => handleHourClick(h)}>
+                      {padHour(h)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Riepilogo e conferma ──────────────────────────────── */}
+          {selectionComplete && (
+            <div style={S.summary}>
+              <div style={S.summaryRow}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, color: '#003049', fontSize: 15 }}>{posto.nome}</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 13, color: '#4a5568' }}>
+                    {selectedDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
+                    {' · '}{padHour(startHour)} – {padHour(endHour)} · {ore}h
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: '#8a95a3' }}>{ore}h × €{posto.tariffaOraria.toFixed(2)}</p>
+                  <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: 20, color: '#2a9d8f' }}>
+                    €{prezzoTotale.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleConfirm}
+                disabled={loading}
+                style={S.confirmBtn}
+              >
+                {loading ? 'Prenotazione in corso…' : `Prenota — €${prezzoTotale.toFixed(2)}`}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
 }
 
+/* ── Stili ───────────────────────────────────────────────────────── */
 const S = {
+  root: {
+    fontFamily: "'Inter', system-ui, sans-serif",
+    maxWidth: 460,
+    color: '#0d1b2a',
+  },
+
+  /* Header */
+  header: {
+    paddingBottom: 14,
+    borderBottom: '1px solid #e2e8f0',
+    marginBottom: 14,
+  },
+  headerTop: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 6,
+  },
+  spotName: {
+    margin: '0 0 2px',
+    fontSize: 18,
+    fontWeight: 800,
+    color: '#003049',
+    fontFamily: "'Sora', sans-serif",
+    letterSpacing: '-0.03em',
+    lineHeight: 1.2,
+  },
+  spotAddress: {
+    margin: 0,
+    fontSize: 13,
+    color: '#4a5568',
+    lineHeight: 1.4,
+  },
+  price: {
+    fontWeight: 800,
+    fontSize: 17,
+    color: '#2a9d8f',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  description: {
+    margin: '6px 0 8px',
+    fontSize: 13,
+    color: '#4a5568',
+    lineHeight: 1.5,
+  },
+
+  /* Tags */
+  tagsRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  tag: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#1f7a6e',
+    background: '#e6f4f2',
+    border: '1px solid rgba(42,157,143,0.22)',
+    borderRadius: 999,
+    padding: '3px 10px',
+    whiteSpace: 'nowrap',
+  },
+
+  /* Disponibilità */
+  availSection: {
+    background: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    borderRadius: 12,
+    padding: '10px 14px',
+    marginBottom: 14,
+  },
+  sectionLabel: {
+    margin: '0 0 8px',
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#8a95a3',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+  },
+  availGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px 16px',
+  },
+  availRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  availDay: {
+    fontWeight: 700,
+    fontSize: 13,
+    color: '#003049',
+    minWidth: 28,
+  },
+  availTime: {
+    fontSize: 12,
+    color: '#4a5568',
+    background: 'white',
+    border: '1px solid #e2e8f0',
+    borderRadius: 6,
+    padding: '2px 7px',
+    fontVariantNumeric: 'tabular-nums',
+  },
+
+  /* Calendario */
+  calendarBox: {
+    border: '1px solid #e2e8f0',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  calNav: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '10px 14px',
+    background: '#f8fafc',
+    borderBottom: '1px solid #e2e8f0',
+  },
+  calTitle: {
+    fontWeight: 700,
+    fontSize: 14,
+    color: '#003049',
+  },
   navBtn: {
     background: 'none',
-    border: '1px solid #e5e7eb',
+    border: '1px solid #e2e8f0',
     borderRadius: '50%',
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
+    cursor: 'pointer',
     fontSize: 18,
-    lineHeight: 1
+    lineHeight: 1,
+    color: '#4a5568',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekHeader: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(7, 1fr)',
+    background: '#f8fafc',
+    borderBottom: '1px solid #e2e8f0',
+  },
+  weekHeaderCell: {
+    textAlign: 'center',
+    padding: '6px 0',
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#8a95a3',
+    letterSpacing: '0.04em',
   },
   dayCell: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
     margin: '2px auto',
     borderRadius: '50%',
-    fontSize: 14,
+    fontSize: 13,
     cursor: 'pointer',
     border: 'none',
-    background: 'none'
+    background: 'none',
+    fontFamily: 'inherit',
+    transition: 'background 0.15s',
+  },
+
+  /* Time picker */
+  timePicker: {
+    marginBottom: 14,
+  },
+  timeHint: {
+    margin: '0 0 10px',
+    fontSize: 12,
+    color: '#4a5568',
+    lineHeight: 1.5,
+  },
+  hoursGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   hourBtn: {
     padding: '5px 10px',
-    border: '1px solid #e5e7eb',
+    border: '1.5px solid #e2e8f0',
     borderRadius: 8,
     fontSize: 13,
+    cursor: 'pointer',
     background: '#fff',
-    color: '#374151',
-    minWidth: 58
+    color: '#0d1b2a',
+    fontFamily: 'inherit',
+    fontVariantNumeric: 'tabular-nums',
+    transition: 'background 0.15s, border-color 0.15s',
+    minWidth: 60,
   },
   hourBtnBooked: {
     background: '#f3f4f6',
     color: '#d1d5db',
-    textDecoration: 'line-through'
+    borderColor: '#f3f4f6',
+    textDecoration: 'line-through',
+    cursor: 'not-allowed',
   },
-  hourBtnSelected: {
-    background: '#2563eb',
+  hourBtnActive: {
+    background: '#2a9d8f',
     color: '#fff',
-    border: '1px solid #2563eb'
+    borderColor: '#2a9d8f',
   },
-  btnPrimary: {
-    background: '#2563eb',
+
+  /* Owner notice */
+  ownerNotice: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    background: '#fef9ec',
+    border: '1px solid rgba(234,179,8,0.35)',
+    borderRadius: 12,
+    padding: '12px 16px',
+    marginBottom: 14,
+  },
+
+  /* Summary + confirm */
+  summary: {
+    background: '#e6f4f2',
+    border: '1px solid rgba(42,157,143,0.25)',
+    borderRadius: 14,
+    padding: '14px 16px',
+  },
+  summaryRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 14,
+  },
+  confirmBtn: {
+    width: '100%',
+    padding: '13px 0',
+    background: '#2a9d8f',
     color: '#fff',
     border: 'none',
-    borderRadius: 8,
-    fontWeight: 600,
-    cursor: 'pointer'
-  }
+    borderRadius: 10,
+    fontWeight: 700,
+    fontSize: 15,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: 'background 0.18s',
+  },
 }

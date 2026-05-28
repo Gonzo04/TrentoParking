@@ -1,0 +1,916 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Variables ───────────────────────────────────────────────────── */
+.db-root {
+  --db-navy:       #003049;
+  --db-navy-mid:   #01405f;
+  --db-teal:       #2a9d8f;
+  --db-teal-dark:  #1f7a6e;
+  --db-teal-light: #e6f4f2;
+  --db-gray:       #f5f6f7;
+  --db-border:     #e2e8f0;
+  --db-text:       #0d1b2a;
+  --db-text-sec:   #4a5568;
+  --db-text-muted: #8a95a3;
+  --db-white:      #ffffff;
+  --db-nav-h:      64px;
+}
+
+/* ── Reset ───────────────────────────────────────────────────────── */
+.db-root * {
+  box-sizing: border-box;
+}
+
+.db-root {
+  font-family: 'Inter', system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--db-gray);
+  color: var(--db-text);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   NAVBAR
+══════════════════════════════════════════════════════════════════ */
+.db-nav {
+  height: var(--db-nav-h);
+  min-height: var(--db-nav-h);
+  background: var(--db-navy);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  z-index: 100;
+}
+
+/* Logo */
+.db-nav-logo {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  user-select: none;
+}
+
+.db-logo-trento  { color: #ffffff; }
+.db-logo-parking { color: var(--db-teal); }
+
+/* Right side */
+.db-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.db-nav-user {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding-right: 0.5rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  margin-right: 0.25rem;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-nav-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.88);
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+
+.db-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+}
+
+.db-nav-btn--danger {
+  color: rgba(255, 180, 170, 0.9);
+  border-color: rgba(255, 130, 110, 0.25);
+}
+
+.db-nav-btn--danger:hover {
+  background: rgba(255, 100, 80, 0.15);
+  color: #ffb3a8;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MAIN LAYOUT
+══════════════════════════════════════════════════════════════════ */
+.db-layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   LEFT SIDEBAR
+══════════════════════════════════════════════════════════════════ */
+.db-sidebar {
+  width: 380px;
+  min-width: 320px;
+  background: var(--db-white);
+  border-right: 1px solid var(--db-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.db-sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--db-border) transparent;
+}
+
+.db-sidebar-scroll::-webkit-scrollbar { width: 5px; }
+.db-sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.db-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: var(--db-border);
+  border-radius: 99px;
+}
+
+/* Section blocks */
+.db-section {
+  padding: 1rem 1.125rem;
+  border-bottom: 1px solid var(--db-border);
+}
+
+.db-section--radius {
+  background: #fafbfc;
+}
+
+.db-section--filters {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  background: #fafbfc;
+}
+
+.db-section--list {
+  border-bottom: none;
+  padding-bottom: 0.5rem;
+}
+
+.db-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  gap: 0.5rem;
+}
+
+.db-section-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--db-text-sec);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.db-hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: var(--db-text-muted);
+  line-height: 1.5;
+}
+
+/* Clear search */
+.db-clear-btn {
+  background: none;
+  border: 1px solid var(--db-border);
+  color: var(--db-text-sec);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.db-clear-btn:hover {
+  background: var(--db-border);
+  color: var(--db-navy);
+}
+
+/* Loading badge */
+.db-loading-badge {
+  font-size: 0.78rem;
+  color: var(--db-teal);
+  font-weight: 600;
+  animation: db-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes db-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* ── Chips ────────────────────────────────────────────────────── */
+.db-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.db-chip {
+  background: var(--db-white);
+  border: 1.5px solid var(--db-border);
+  color: var(--db-text-sec);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.db-chip:hover:not(.db-chip--active) {
+  background: var(--db-teal-light);
+  border-color: var(--db-teal);
+  color: var(--db-teal-dark);
+}
+
+.db-chip--active {
+  background: var(--db-teal);
+  border-color: var(--db-teal);
+  color: white;
+}
+
+/* ── Spot list ────────────────────────────────────────────────── */
+.db-spot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.db-empty {
+  font-size: 0.875rem;
+  color: var(--db-text-muted);
+  text-align: center;
+  padding: 1.5rem 0;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── Spot card ────────────────────────────────────────────────── */
+.db-spot-card {
+  border: 1.5px solid var(--db-border);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.12s;
+  background: var(--db-white);
+}
+
+.db-spot-card:hover {
+  border-color: var(--db-teal);
+  box-shadow: 0 2px 16px rgba(42, 157, 143, 0.12);
+  transform: translateY(-1px);
+}
+
+.db-spot-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.db-spot-name {
+  font-weight: 700;
+  font-size: 0.925rem;
+  color: var(--db-navy);
+  line-height: 1.3;
+}
+
+.db-spot-dist {
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: var(--db-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.db-spot-address {
+  font-size: 0.8rem;
+  color: var(--db-text-sec);
+  margin: 0 0 0.65rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-spot-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.db-spot-price {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--db-teal);
+}
+
+.db-spot-book-btn {
+  background: var(--db-teal);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.db-spot-book-btn:hover:not(:disabled) {
+  background: var(--db-teal-dark);
+}
+
+.db-spot-book-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Sidebar footer ───────────────────────────────────────────── */
+.db-sidebar-footer {
+  padding: 0.875rem 1.125rem;
+  border-top: 1px solid var(--db-border);
+  background: var(--db-white);
+}
+
+.db-publish-btn {
+  width: 100%;
+  background: transparent;
+  border: 2px solid var(--db-navy);
+  color: var(--db-navy);
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.18s, color 0.18s;
+}
+
+.db-publish-btn:hover {
+  background: var(--db-navy);
+  color: white;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   USERNAME BUTTON (navbar)
+══════════════════════════════════════════════════════════════════ */
+.db-nav-username {
+  background: rgba(42, 157, 143, 0.18);
+  border: 1px solid rgba(42, 157, 143, 0.35);
+  color: var(--db-teal-muted, #7ec8bf);
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Sora', sans-serif;
+  letter-spacing: -0.01em;
+  transition: background 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+
+.db-nav-username:hover {
+  background: rgba(42, 157, 143, 0.3);
+  color: #b2e4de;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CREATE SPOT PANEL
+══════════════════════════════════════════════════════════════════ */
+.db-create-panel {
+  padding: 1.125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;            /* gap gestito dalle sezioni interne */
+}
+
+.db-create-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.db-create-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--db-navy);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* ── Sezioni interne del form ─────────────────────────────────── */
+.db-create-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--db-border);
+}
+
+.db-create-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.db-create-section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--db-text-sec);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.db-create-section-hint {
+  font-size: 0.8rem;
+  color: var(--db-text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.db-create-or {
+  font-size: 0.78rem;
+  color: var(--db-text-muted);
+  text-align: center;
+  margin: 0.25rem 0 0;
+}
+
+.db-create-cancel {
+  background: none;
+  border: 1px solid var(--db-border);
+  color: var(--db-text-sec);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.db-create-cancel:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.db-create-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: #f1f5f9;
+  border: 1px solid var(--db-border);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.85rem;
+  color: var(--db-text-sec);
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.db-create-hint--set {
+  background: var(--db-teal-light);
+  border-color: rgba(42, 157, 143, 0.3);
+  color: var(--db-teal-dark);
+}
+
+.db-create-hint-icon {
+  font-size: 1.1rem;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.db-create-hint span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.db-create-hint small {
+  font-size: 0.77rem;
+  opacity: 0.75;
+}
+
+.db-msg {
+  margin: 0;
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.db-msg--success {
+  background: #f0faf8;
+  color: var(--db-teal-dark);
+  border: 1px solid rgba(42, 157, 143, 0.2);
+}
+
+.db-msg--error {
+  background: #fff1f1;
+  color: #c0392b;
+  border: 1px solid rgba(192, 57, 43, 0.18);
+}
+
+/* Form inputs */
+.db-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.db-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--db-text);
+}
+
+.db-input {
+  border: 1.5px solid var(--db-border);
+  border-radius: 9px;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.9rem;
+  color: var(--db-text);
+  background: var(--db-gray);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+  width: 100%;
+}
+
+.db-input:focus {
+  border-color: var(--db-teal);
+  box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.13);
+  background: white;
+}
+
+.db-input::placeholder {
+  color: #b0bcc8;
+}
+
+.db-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.db-label-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--db-text-sec);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.db-label-checkbox input[type="checkbox"] {
+  margin-top: 0.15rem;
+  accent-color: var(--db-teal);
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+
+.db-publish-submit {
+  background: var(--db-teal);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.18s;
+  margin-top: 0.25rem;
+}
+
+.db-publish-submit:hover:not(:disabled) {
+  background: var(--db-teal-dark);
+}
+
+.db-publish-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MAP AREA
+══════════════════════════════════════════════════════════════════ */
+.db-map-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Override SpotMap's inline height: 500px — fill the container */
+.db-map-area .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 0 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BOOKING MODAL
+══════════════════════════════════════════════════════════════════ */
+.db-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 1rem;
+}
+
+.db-modal-card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.db-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: var(--db-gray);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--db-text-sec);
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.db-modal-close:hover {
+  background: var(--db-border);
+  color: var(--db-navy);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .db-sidebar {
+    width: 320px;
+    min-width: 280px;
+  }
+}
+
+@media (max-width: 700px) {
+  .db-layout {
+    flex-direction: column;
+  }
+
+  .db-sidebar {
+    width: 100%;
+    min-width: 0;
+    height: 45vh;
+    border-right: none;
+    border-bottom: 1px solid var(--db-border);
+  }
+
+  .db-map-area {
+    height: calc(55vh - var(--db-nav-h));
+  }
+
+  .db-nav-username {
+    display: none;
+  }
+
+  .db-nav {
+    padding: 0 1rem;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SPOT CARD — TAGS
+══════════════════════════════════════════════════════════════════ */
+.db-spot-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.4rem 0 0.5rem;
+}
+
+.db-spot-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--db-teal-dark);
+  background: var(--db-teal-light);
+  border: 1px solid rgba(42, 157, 143, 0.22);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TAGS EDITOR (create spot)
+══════════════════════════════════════════════════════════════════ */
+.db-tags-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.db-tag-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.7rem;
+  border: 1.5px solid var(--db-border);
+  border-radius: 10px;
+  background: var(--db-gray);
+  color: var(--db-text-sec);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-align: left;
+}
+
+.db-tag-toggle:hover:not(.db-tag-toggle--on) {
+  border-color: var(--db-teal);
+  background: var(--db-teal-light);
+  color: var(--db-teal-dark);
+}
+
+.db-tag-toggle--on {
+  background: #e6f4f2;
+  border-color: rgba(42, 157, 143, 0.5);
+  color: #1f7a6e;
+}
+
+.db-tag-emoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   AVAILABILITY EDITOR
+══════════════════════════════════════════════════════════════════ */
+.db-avail-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Riga bottoni giorni */
+.db-avail-days {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.db-day-btn {
+  flex: 1;
+  padding: 0.4rem 0;
+  border: 1.5px solid var(--db-border);
+  border-radius: 8px;
+  background: var(--db-gray);
+  color: var(--db-text-sec);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.db-day-btn:hover:not(.db-day-btn--on) {
+  border-color: var(--db-teal);
+  color: var(--db-teal-dark);
+  background: var(--db-teal-light);
+}
+
+.db-day-btn--on {
+  background: var(--db-teal);
+  border-color: var(--db-teal);
+  color: white;
+}
+
+/* Slot orario per giorno */
+.db-avail-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.db-avail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--db-gray);
+  border: 1px solid var(--db-border);
+  border-radius: 9px;
+  padding: 0.5rem 0.7rem;
+}
+
+.db-avail-day-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--db-navy);
+  min-width: 68px;
+}
+
+.db-avail-times {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.db-time-input {
+  border: 1.5px solid var(--db-border);
+  border-radius: 7px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: var(--db-text);
+  background: white;
+  outline: none;
+  transition: border-color 0.15s;
+  flex: 1;
+  min-width: 0;
+}
+
+.db-time-input:focus {
+  border-color: var(--db-teal);
+  box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.12);
+}
+
+.db-avail-arrow {
+  color: var(--db-text-muted);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.db-avail-empty {
+  font-size: 0.8rem;
+  color: var(--db-text-muted);
+  margin: 0;
+  padding: 0.5rem 0;
+  line-height: 1.5;
+}
+
+/* ── Etichetta "facoltativa" ──────────────────────────────────── */
+.db-label-optional {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--db-text-muted);
+}
