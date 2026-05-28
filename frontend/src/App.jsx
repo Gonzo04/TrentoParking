@@ -456,28 +456,10 @@ function App() {
   /* My Bookings */
   if (view === 'myBookings' && authenticatedUser) {
     return (
-      <div className="app-page">
-        <main className="main-layout">
-          <AuthPanel onAuthChange={handleAuthChange} />
-          <MyBookings
-            onBack={() => setView('dashboard')}
-            onPay={handlePayFromBookings}
-          />
-        </main>
-
-        {spotDetail && (
-          <div className="modal-overlay" onClick={() => setSpotDetail(null)}>
-            <div className="modal-card" onClick={e => e.stopPropagation()}>
-              <button className="modal-close" onClick={() => setSpotDetail(null)}>✕</button>
-              <BookingCalendar
-                posto={spotDetail.posto}
-                prenotazioni={spotDetail.prenotazioni}
-                onConfirm={handleBookingConfirm}
-              />
-            </div>
-          </div>
-        )}
-      </div>
+      <MyBookings
+        onBack={() => setView('dashboard')}
+        onPay={handlePayFromBookings}
+      />
     );
   }
 
