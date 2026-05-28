@@ -2,12 +2,11 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
 import { api } from './services/api';
+import { logoutUser } from './services/authService';
 import LandingPage from './components/LandingPage';
 import AuthPanel from './components/AuthPanel';
 import AuthPage from './components/AuthPage';
-import SearchBar from './components/SearchBar';
-import SpotMap from './components/SpotMap';
-import SpotSidebar from './components/SpotSidebar';
+import Dashboard from './components/Dashboard';
 import BookingCalendar from './components/BookingCalendar';
 import PaymentPage from './components/PaymentPage';
 import MyBookings from './components/MyBookings';
@@ -89,6 +88,8 @@ function App() {
     indirizzoTestuale: '',
     tariffaOraria: '',
     dichiarazioneProprietaAccettata: false,
+    caratteristiche: [],
+    disponibilita: [],
   });
 
   /* ── Reset password dal link email ──────────────────────────────── */
@@ -172,6 +173,19 @@ function App() {
     }
   }, [loadPostiPrivati]);
 
+  /* ── Logout ──────────────────────────────────────────────────────── */
+  async function handleLogout() {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) await logoutUser(token);
+    } catch {
+      // facciamo logout locale nel caso il backend fallisca
+    } finally {
+      localStorage.removeItem('authToken');
+      handleAuthChange(null);
+    }
+  }
+
   /* ── Create spot helpers ─────────────────────────────────────────── */
   function resetCreateSpotState() {
     setIsCreateSpotMode(false);
@@ -184,7 +198,29 @@ function App() {
       indirizzoTestuale: '',
       tariffaOraria: '',
       dichiarazioneProprietaAccettata: false,
+      caratteristiche: [],
+      disponibilita: [],
     });
+  }
+
+  function handleDisponibilitaChange(disponibilita) {
+    setNewSpotForm(f => ({ ...f, disponibilita }));
+  }
+
+  function handleCaratteristicheChange(caratteristiche) {
+    setNewSpotForm(f => ({ ...f, caratteristiche }));
+  }
+
+  async function handleCreateSpotAddressSelect({ lat, lng }) {
+    setCreateSpotPosition({ lat, lng });
+    setFlyTarget({ lat, lng });
+    setCreateSpotError('');
+    try {
+      const indirizzo = await reverseGeocode(lat, lng);
+      setNewSpotForm(f => ({ ...f, indirizzoTestuale: indirizzo }));
+    } catch {
+      setNewSpotForm(f => ({ ...f, indirizzoTestuale: '' }));
+    }
   }
 
   function startCreateSpotMode() {
@@ -294,7 +330,14 @@ function App() {
           indirizzoTestuale: newSpotForm.indirizzoTestuale.trim(),
         },
         tariffaOraria: tariffa,
-        disponibilita: [],
+        // Il backend si aspetta oraInizio/oraFine come interi (0-24),
+        // ma <input type="time"> restituisce stringhe tipo "08:00" → convertiamo
+        disponibilita: newSpotForm.disponibilita.map(d => ({
+          giorno: d.giorno,
+          oraInizio: parseInt(d.oraInizio.split(':')[0], 10),
+          oraFine:   parseInt(d.oraFine.split(':')[0],   10),
+        })),
+        caratteristiche: newSpotForm.caratteristiche,
         dichiarazioneProprietaAccettata: true,
       });
       await loadPostiPrivati();
@@ -357,6 +400,43 @@ function App() {
     );
   }
 
+  /* Profilo utente (placeholder — pagina completa da sviluppare) */
+  if (view === 'profile' && authenticatedUser) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f6f7', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column' }}>
+        <nav style={{ height: 64, background: '#003049', display: 'flex', alignItems: 'center', padding: '0 1.75rem', gap: '1rem' }}>
+          <button
+            onClick={() => setView('dashboard')}
+            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.88)', padding: '0.45rem 1rem', borderRadius: 999, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            ← Dashboard
+          </button>
+          <span style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.04em' }}>
+            <span style={{ color: '#fff' }}>Trento</span>
+            <span style={{ color: '#2a9d8f' }}>Parking</span>
+          </span>
+        </nav>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <div style={{ background: 'white', borderRadius: 24, padding: '3rem 2.5rem', textAlign: 'center', boxShadow: '0 4px 32px rgba(0,48,73,0.09)', maxWidth: 420, width: '100%' }}>
+            <p style={{ fontSize: '3rem', margin: '0 0 1rem' }}>🚀</p>
+            <h2 style={{ fontFamily: 'Sora, sans-serif', color: '#003049', margin: '0 0 0.5rem', fontSize: '1.5rem', letterSpacing: '-0.03em' }}>
+              Profilo in arrivo
+            </h2>
+            <p style={{ color: '#4a5568', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
+              La pagina di gestione profilo è in fase di sviluppo. Presto potrai modificare i tuoi dati, la targa e vedere le tue statistiche.
+            </p>
+            <button
+              onClick={() => setView('dashboard')}
+              style={{ background: '#2a9d8f', color: 'white', border: 'none', borderRadius: 10, padding: '0.75rem 1.5rem', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Torna alla dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   /* Payment */
   if (view === 'payment' && authenticatedUser && pendingBooking) {
     return (
@@ -401,163 +481,40 @@ function App() {
     );
   }
 
-  /* Dashboard principale (mappa) */
+  /* Dashboard principale */
   return (
-    <div className="app-page">
-      <header className="hero-section">
-        <div>
-          <h1>ParkingShare Trento</h1>
-          <p className="hero-subtitle">
-            Trova e prenota posti auto privati a Trento in modo semplice e veloce.
-          </p>
-        </div>
-      </header>
-
-      <main className="main-layout">
-        <AuthPanel onAuthChange={handleAuthChange} />
-
-        <section className="content-card dashboard-card">
-          <div className="section-heading">
-            <h2 style={{ margin: 0 }}>Posti auto disponibili</h2>
-
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {!isCreateSpotMode ? (
-                <button className="secondary-button" onClick={startCreateSpotMode}>
-                  Pubblica un posto
-                </button>
-              ) : (
-                <button className="secondary-button" onClick={resetCreateSpotState}>
-                  Annulla pubblicazione
-                </button>
-              )}
-              <button className="secondary-button" onClick={() => setView('myBookings')}>
-                Le mie prenotazioni
-              </button>
-            </div>
-          </div>
-
-          {!isCreateSpotMode && (
-            <>
-              <div style={{ marginTop: '1rem' }}>
-                <SearchBar onSelect={handleSearchSelect} />
-              </div>
-              <p style={{ margin: '0.6rem 0 0', fontSize: 13, color: '#6b7280' }}>
-                {searchCircle
-                  ? 'Clicca sulla mappa per spostare il punto di ricerca.'
-                  : 'Cerca un luogo o clicca sulla mappa per trovare posti nelle vicinanze.'}
-              </p>
-            </>
-          )}
-
-          {isCreateSpotMode && (
-            <div className="create-spot-panel">
-              <div className="create-spot-instructions">
-                <h3>Pubblica il tuo posto auto</h3>
-                <p>
-                  Clicca sulla mappa per selezionare il punto esatto del posto.
-                  Puoi cliccare di nuovo per spostare il pin prima di pubblicare.
-                </p>
-                {createSpotPosition ? (
-                  <p>
-                    Posizione selezionata:{' '}
-                    <strong>
-                      {createSpotPosition.lat.toFixed(5)}, {createSpotPosition.lng.toFixed(5)}
-                    </strong>
-                  </p>
-                ) : (
-                  <p>Nessun punto selezionato. Seleziona il punto sulla mappa per continuare.</p>
-                )}
-              </div>
-
-              {createSpotMessage && <p className="success-message">{createSpotMessage}</p>}
-              {createSpotError   && <p className="error-message">{createSpotError}</p>}
-
-              {createSpotPosition && (
-                <form className="create-spot-form" onSubmit={handleCreatePrivateSpot}>
-                  <label>
-                    Nome posto
-                    <input name="nome" value={newSpotForm.nome} onChange={handleNewSpotFormChange}
-                      placeholder="Esempio: Posto coperto vicino al centro" required />
-                  </label>
-
-                  <label>
-                    Indirizzo o riferimento
-                    <input name="indirizzoTestuale" value={newSpotForm.indirizzoTestuale} onChange={handleNewSpotFormChange}
-                      placeholder="Puoi correggere o descrivere meglio l'indirizzo" />
-                  </label>
-
-                  <label>
-                    Tariffa oraria
-                    <input name="tariffaOraria" type="number" min="0" step="0.5"
-                      value={newSpotForm.tariffaOraria} onChange={handleNewSpotFormChange}
-                      placeholder="Esempio: 2.50" required />
-                  </label>
-
-                  <label>
-                    Descrizione
-                    <textarea name="descrizione" value={newSpotForm.descrizione} onChange={handleNewSpotFormChange}
-                      placeholder="Aggiungi dettagli utili per chi prenota" rows={3} />
-                  </label>
-
-                  <label className="create-spot-checkbox">
-                    <input name="dichiarazioneProprietaAccettata" type="checkbox"
-                      checked={newSpotForm.dichiarazioneProprietaAccettata} onChange={handleNewSpotFormChange} />
-                    <span>
-                      Dichiaro di essere proprietario del posto auto o di avere
-                      l&apos;autorizzazione a pubblicarlo
-                    </span>
-                  </label>
-
-                  <button className="primary-button" type="submit" disabled={createSpotLoading}>
-                    {createSpotLoading ? 'Pubblicazione...' : 'Pubblica posto'}
-                  </button>
-                </form>
-              )}
-            </div>
-          )}
-        </section>
-
-        <div className={searchCircle ? 'map-area map-area--with-sidebar' : 'map-area'}>
-          {searchCircle && !isCreateSpotMode && (
-            <SpotSidebar
-              spots={nearbySpots}
-              radiusM={searchCircle.radiusM}
-              onRadiusChange={handleRadiusChange}
-              onClear={() => setSearchCircle(null)}
-              onSelectSpot={handleSelectSpot}
-            />
-          )}
-
-          <section className="content-card map-section">
-            {detailLoading && (
-              <p style={{ color: '#6b7280', marginBottom: 8 }}>Caricamento posto...</p>
-            )}
-            <SpotMap
-              spots={spots}
-              onSelectSpot={handleSelectSpot}
-              searchCircle={searchCircle}
-              onMapClick={handleMapClick}
-              flyTarget={flyTarget}
-              isCreateSpotMode={isCreateSpotMode}
-              createSpotPosition={createSpotPosition}
-            />
-          </section>
-        </div>
-      </main>
-
-      {spotDetail && (
-        <div className="modal-overlay" onClick={() => setSpotDetail(null)}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setSpotDetail(null)}>✕</button>
-            <BookingCalendar
-              posto={spotDetail.posto}
-              prenotazioni={spotDetail.prenotazioni}
-              onConfirm={handleBookingConfirm}
-            />
-          </div>
-        </div>
-      )}
-    </div>
+    <Dashboard
+      authenticatedUser={authenticatedUser}
+      spots={spots}
+      nearbySpots={nearbySpots}
+      searchCircle={searchCircle}
+      flyTarget={flyTarget}
+      detailLoading={detailLoading}
+      isCreateSpotMode={isCreateSpotMode}
+      createSpotPosition={createSpotPosition}
+      createSpotLoading={createSpotLoading}
+      createSpotMessage={createSpotMessage}
+      createSpotError={createSpotError}
+      newSpotForm={newSpotForm}
+      spotDetail={spotDetail}
+      onLogout={handleLogout}
+      onMyBookings={() => setView('myBookings')}
+      onProfileClick={() => setView('profile')}
+      onSearchSelect={handleSearchSelect}
+      onRadiusChange={handleRadiusChange}
+      onClearSearch={() => setSearchCircle(null)}
+      onSelectSpot={handleSelectSpot}
+      onMapClick={handleMapClick}
+      onStartCreateSpot={startCreateSpotMode}
+      onCancelCreateSpot={resetCreateSpotState}
+      onNewSpotFormChange={handleNewSpotFormChange}
+      onCreateSpot={handleCreatePrivateSpot}
+      onCreateSpotAddressSelect={handleCreateSpotAddressSelect}
+      onDisponibilitaChange={handleDisponibilitaChange}
+      onCaratteristicheChange={handleCaratteristicheChange}
+      onCloseDetail={() => setSpotDetail(null)}
+      onBookingConfirm={handleBookingConfirm}
+    />
   );
 }
 

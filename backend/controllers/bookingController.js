@@ -69,6 +69,10 @@ async function createBooking(req, res, next) {
     if (!posto) return res.status(404).json({ error: 'Posto non trovato' });
     if (!posto.attivo) return res.status(400).json({ error: 'Posto non disponibile' });
 
+    // Un host non può prenotare il proprio posto
+    if (posto.hostId.toString() === req.user.userId)
+      return res.status(403).json({ error: 'Non puoi prenotare il tuo stesso posto auto' });
+
     // Controlla sovrapposizioni con prenotazioni esistenti
     const overlap = await Prenotazione.findOne({
       postoPrivatoId,

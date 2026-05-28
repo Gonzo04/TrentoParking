@@ -139,6 +139,7 @@ async function createPostoPrivato(req, res, next) {
       posizione,
       tariffaOraria,
       disponibilita,
+      caratteristiche,
       dichiarazioneProprietaAccettata
     } = req.body;
 
@@ -182,6 +183,11 @@ async function createPostoPrivato(req, res, next) {
       return res.status(400).json({ error: 'Disponibilità non valida' });
     }
 
+    // Accettiamo solo stringhe non vuote; valori non conformi vengono ignorati silenziosamente
+    const caratteristicheValidate = Array.isArray(caratteristiche)
+      ? caratteristiche.filter(c => typeof c === 'string' && c.trim().length > 0)
+      : [];
+
     const posto = await PostoPrivato.create({
       hostId: req.user.userId,
       nome: nomePulito,
@@ -193,6 +199,7 @@ async function createPostoPrivato(req, res, next) {
       },
       tariffaOraria: tariffa,
       disponibilita: disponibilitaValidata,
+      caratteristiche: caratteristicheValidate,
       attivo: true,
       statoVerifica: 'NON_VERIFICATO',
       dichiarazioneProprietaAccettata: true,
