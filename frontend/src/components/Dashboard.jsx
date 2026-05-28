@@ -1,47 +1,29 @@
 import { useState } from 'react';
 import './Dashboard.css';
+import { TAGS } from '../utils/SpotOptions';
+import { AvailabilityEditor, TagsEditor } from './SpotFormControls';
 import SearchBar from './SearchBar';
 import SpotMap from './SpotMap';
 import BookingCalendar from './BookingCalendar';
 
-/* ══════════════════════════════════════════════════════════════════
-   Costanti
-══════════════════════════════════════════════════════════════════ */
-export const GIORNI = [
-  { key: 'lunedi',    short: 'Lun', full: 'Lunedì'    },
-  { key: 'martedi',   short: 'Mar', full: 'Martedì'   },
-  { key: 'mercoledi', short: 'Mer', full: 'Mercoledì' },
-  { key: 'giovedi',   short: 'Gio', full: 'Giovedì'   },
-  { key: 'venerdi',   short: 'Ven', full: 'Venerdì'   },
-  { key: 'sabato',    short: 'Sab', full: 'Sabato'    },
-  { key: 'domenica',  short: 'Dom', full: 'Domenica'  },
-];
-
-export const TAGS = [
-  { key: 'coperto',          emoji: '🏠', label: 'Coperto'          },
-  { key: 'vicino_centro',    emoji: '📍', label: 'Vicino al centro' },
-  { key: 'sorvegliato',      emoji: '🔒', label: 'Sorvegliato'      },
-  { key: 'carica_elettrica', emoji: '⚡', label: 'Ricarica EV'      },
-  { key: 'facile_accesso',   emoji: '✅', label: 'Facile accesso'   },
-  { key: 'accessibile',      emoji: '♿', label: 'Accessibile'      },
-];
-
 const RADIUS_OPTIONS = [
-  { value: 200,  label: '200 m' },
-  { value: 500,  label: '500 m' },
-  { value: 1000, label: '1 km'  },
-  { value: 2000, label: '2 km'  },
+  { value: 200, label: '200 m' },
+  { value: 500, label: '500 m' },
+  { value: 1000, label: '1 km' },
+  { value: 2000, label: '2 km' },
 ];
 
 function distanceM(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
+
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) ** 2;
+
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -49,150 +31,14 @@ function formatDist(m) {
   return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
-// Opzioni ora inizio: 00:00 → 23:00
-const ORA_INIZIO_OPTS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
-// Opzioni ora fine: 01:00 → 24:00
-const ORA_FINE_OPTS   = Array.from({ length: 24 }, (_, i) => String(i + 1).padStart(2, '0') + ':00');
-
 /* ══════════════════════════════════════════════════════════════════
-   Disponibilità parcheggio
-══════════════════════════════════════════════════════════════════ */
-export function AvailabilityEditor({ disponibilita, onChange }) {
-  function toggleDay(giorno) {
-    const exists = disponibilita.find(d => d.giorno === giorno);
-    if (exists) {
-      onChange(disponibilita.filter(d => d.giorno !== giorno));
-    } else {
-      const next = [...disponibilita, { giorno, oraInizio: '08:00', oraFine: '20:00' }];
-      next.sort((a, b) =>
-        GIORNI.findIndex(g => g.key === a.giorno) -
-        GIORNI.findIndex(g => g.key === b.giorno)
-      );
-      onChange(next);
-    }
-  }
-
-  function updateTime(giorno, field, value) {
-    onChange(disponibilita.map(d => {
-      if (d.giorno !== giorno) return d;
-      const updated = { ...d, [field]: value };
-      // garantisce che oraFine sia sempre > oraInizio
-      if (parseInt(updated.oraFine, 10) <= parseInt(updated.oraInizio, 10)) {
-        const h = Math.min(parseInt(updated.oraInizio, 10) + 1, 24);
-        updated.oraFine = String(h).padStart(2, '0') + ':00';
-      }
-      return updated;
-    }));
-  }
-
-  const activeDays = GIORNI.filter(g => disponibilita.some(d => d.giorno === g.key));
-
-  return (
-    <div className="db-avail-editor">
-      {/* Riga bottoni giorno */}
-      <div className="db-avail-days">
-        {GIORNI.map(g => {
-          const active = disponibilita.some(d => d.giorno === g.key);
-          return (
-            <button
-              key={g.key}
-              type="button"
-              className={`db-day-btn${active ? ' db-day-btn--on' : ''}`}
-              onClick={() => toggleDay(g.key)}
-              title={g.full}
-            >
-              {g.short}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Slot orario per ogni giorno attivo */}
-      {activeDays.length > 0 && (
-        <div className="db-avail-slots">
-          {activeDays.map(g => {
-            const slot = disponibilita.find(d => d.giorno === g.key);
-            const fineOpts = ORA_FINE_OPTS.filter(
-              t => parseInt(t, 10) > parseInt(slot.oraInizio, 10)
-            );
-            return (
-              <div key={g.key} className="db-avail-row">
-                <span className="db-avail-day-name">{g.full}</span>
-                <div className="db-avail-times">
-                  <select
-                    value={slot.oraInizio}
-                    onChange={e => updateTime(g.key, 'oraInizio', e.target.value)}
-                    className="db-time-input"
-                  >
-                    {ORA_INIZIO_OPTS.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                  <span className="db-avail-arrow">→</span>
-                  <select
-                    value={slot.oraFine}
-                    onChange={e => updateTime(g.key, 'oraFine', e.target.value)}
-                    className="db-time-input"
-                  >
-                    {fineOpts.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {activeDays.length === 0 && (
-        <p className="db-avail-empty">
-          Nessun giorno selezionato. Il posto risulterà disponibile su richiesta.
-        </p>
-      )}
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   Tag
-══════════════════════════════════════════════════════════════════ */
-export function TagsEditor({ caratteristiche, onChange }) {
-  function toggle(key) {
-    if (caratteristiche.includes(key)) {
-      onChange(caratteristiche.filter(c => c !== key));
-    } else {
-      onChange([...caratteristiche, key]);
-    }
-  }
-
-  return (
-    <div className="db-tags-grid">
-      {TAGS.map(tag => {
-        const active = caratteristiche.includes(tag.key);
-        return (
-          <button
-            key={tag.key}
-            type="button"
-            className={`db-tag-toggle${active ? ' db-tag-toggle--on' : ''}`}
-            onClick={() => toggle(tag.key)}
-          >
-            <span className="db-tag-emoji">{active ? '✓' : tag.emoji}</span>
-            <span>{tag.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   Card latterale a sinistra (singola)
+   Card laterale a sinistra
 ══════════════════════════════════════════════════════════════════ */
 function SpotCard({ spot, searchCircle, onSelect, isLoading, onHover, onHoverEnd }) {
   const spotId = spot.id || spot._id;
 
   let distText = null;
+
   if (
     searchCircle &&
     spot.posizione &&
@@ -201,7 +47,8 @@ function SpotCard({ spot, searchCircle, onSelect, isLoading, onHover, onHoverEnd
   ) {
     distText = formatDist(
       distanceM(
-        searchCircle.lat, searchCircle.lng,
+        searchCircle.lat,
+        searchCircle.lng,
         Number(spot.posizione.latitudine),
         Number(spot.posizione.longitudine)
       )
@@ -243,9 +90,13 @@ function SpotCard({ spot, searchCircle, onSelect, isLoading, onHover, onHoverEnd
         <span className="db-spot-price">
           €{Number(spot.tariffaOraria ?? 0).toFixed(2)}/h
         </span>
+
         <button
           className="db-spot-book-btn"
-          onClick={(e) => { e.stopPropagation(); onSelect(spotId); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(spotId);
+          }}
           disabled={isLoading}
         >
           Prenota
@@ -256,7 +107,7 @@ function SpotCard({ spot, searchCircle, onSelect, isLoading, onHover, onHoverEnd
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Crazione posto parcheggio (form)
+   Creazione posto parcheggio
 ══════════════════════════════════════════════════════════════════ */
 function CreateSpotPanel({
   createSpotPosition,
@@ -273,22 +124,20 @@ function CreateSpotPanel({
 }) {
   return (
     <div className="db-create-panel">
-      {/* Header */}
       <div className="db-create-header">
         <h3 className="db-create-title">Pubblica il tuo posto</h3>
+
         <button className="db-create-cancel" type="button" onClick={onCancel}>
           ✕ Annulla
         </button>
       </div>
 
-      {/* Ricerca indirizzo */}
       <div className="db-create-section">
         <p className="db-create-section-label">Posizione</p>
         <SearchBar onSelect={onAddressSelect} />
         <p className="db-create-or">oppure clicca direttamente sulla mappa</p>
       </div>
 
-      {/* Stato posizione */}
       <div className={`db-create-hint${createSpotPosition ? ' db-create-hint--set' : ''}`}>
         {createSpotPosition ? (
           <>
@@ -310,13 +159,10 @@ function CreateSpotPanel({
       </div>
 
       {createSpotMessage && <p className="db-msg db-msg--success">{createSpotMessage}</p>}
-      {createSpotError   && <p className="db-msg db-msg--error">{createSpotError}</p>}
+      {createSpotError && <p className="db-msg db-msg--error">{createSpotError}</p>}
 
-      {/* Form — visibile solo dopo aver selezionato la posizione */}
       {createSpotPosition && (
         <form className="db-create-form" onSubmit={onSubmit}>
-
-          {/* ── Dati base ─────────────────────────────────────── */}
           <div className="db-create-section">
             <p className="db-create-section-label">Dati del posto</p>
 
@@ -371,31 +217,30 @@ function CreateSpotPanel({
             </label>
           </div>
 
-          {/* ── Caratteristiche ───────────────────────────────── */}
           <div className="db-create-section">
             <p className="db-create-section-label">Caratteristiche</p>
             <p className="db-create-section-hint">
-              Seleziona i tag che descrivono meglio il tuo posto — saranno mostrati agli utenti.
+              Seleziona i tag che descrivono meglio il tuo posto: saranno mostrati agli utenti.
             </p>
+
             <TagsEditor
               caratteristiche={newSpotForm.caratteristiche}
               onChange={onCaratteristicheChange}
             />
           </div>
 
-          {/* ── Disponibilità ─────────────────────────────────── */}
           <div className="db-create-section">
             <p className="db-create-section-label">Disponibilità settimanale</p>
             <p className="db-create-section-hint">
               Indica i giorni e gli orari in cui il posto è prenotabile.
             </p>
+
             <AvailabilityEditor
               disponibilita={newSpotForm.disponibilita}
               onChange={onDisponibilitaChange}
             />
           </div>
 
-          {/* ── Dichiarazione ─────────────────────────────────── */}
           <label className="db-label-checkbox">
             <input
               type="checkbox"
@@ -440,6 +285,7 @@ function Dashboard({
   spotDetail,
   onLogout,
   onMyBookings,
+  onReceivedBookings,
   onProfileClick,
   onSearchSelect,
   onRadiusChange,
@@ -462,8 +308,10 @@ function Dashboard({
   const baseSpots = searchCircle ? nearbySpots : spots;
 
   const filteredSpots = baseSpots.filter((spot) => {
-    if (activeFilter !== 'all')
+    if (activeFilter !== 'all') {
       return spot.caratteristiche?.includes(activeFilter);
+    }
+
     return true;
   });
 
@@ -473,8 +321,6 @@ function Dashboard({
 
   return (
     <div className="db-root">
-
-      {/* ══ NAVBAR ═══════════════════════════════════════════════════ */}
       <nav className="db-nav">
         <div className="db-nav-logo">
           <span className="db-logo-trento">Trento</span>
@@ -483,26 +329,34 @@ function Dashboard({
 
         <div className="db-nav-actions">
           {authenticatedUser && (
-            <button className="db-nav-username" onClick={onProfileClick} title="Gestisci il tuo profilo">
+            <button
+              className="db-nav-username"
+              onClick={onProfileClick}
+              title="Gestisci il tuo profilo"
+            >
               {authenticatedUser.nomeUtente}
             </button>
           )}
+
           <button className="db-nav-btn" onClick={onMyBookings}>
             Le mie prenotazioni
           </button>
+
+          {authenticatedUser?.ruolo === 'HOST' && (
+            <button className="db-nav-btn" onClick={onReceivedBookings}>
+              Prenotazioni ricevute
+            </button>
+          )}
+
           <button className="db-nav-btn db-nav-btn--danger" onClick={onLogout}>
             Logout
           </button>
         </div>
       </nav>
 
-      {/* ══ LAYOUT ═══════════════════════════════════════════════════ */}
       <div className="db-layout">
-
-        {/* ── SIDEBAR ──────────────────────────────────────────────── */}
         <aside className="db-sidebar">
           <div className="db-sidebar-scroll">
-
             {isCreateSpotMode ? (
               <CreateSpotPanel
                 createSpotPosition={createSpotPosition}
@@ -519,7 +373,6 @@ function Dashboard({
               />
             ) : (
               <>
-                {/* Ricerca */}
                 <div className="db-section">
                   <SearchBar onSelect={onSearchSelect} />
                   <p className="db-hint">
@@ -529,15 +382,16 @@ function Dashboard({
                   </p>
                 </div>
 
-                {/* Raggio — solo quando c'è un cerchio di ricerca */}
                 {searchCircle && (
                   <div className="db-section db-section--radius">
                     <div className="db-section-header">
                       <span className="db-section-label">Raggio di ricerca</span>
+
                       <button className="db-clear-btn" onClick={onClearSearch}>
                         Cancella
                       </button>
                     </div>
+
                     <div className="db-chips-row">
                       {RADIUS_OPTIONS.map((opt) => (
                         <button
@@ -552,7 +406,6 @@ function Dashboard({
                   </div>
                 )}
 
-                {/* Filtri rapidi */}
                 <div className="db-section db-section--filters">
                   <div className="db-chips-row">
                     <button
@@ -561,6 +414,7 @@ function Dashboard({
                     >
                       Tutti
                     </button>
+
                     {TAGS.map(tag => (
                       <button
                         key={tag.key}
@@ -573,7 +427,6 @@ function Dashboard({
                   </div>
                 </div>
 
-                {/* Lista posti */}
                 <div className="db-section db-section--list">
                   <div className="db-section-header">
                     <span className="db-section-label">{spotsLabel}</span>
@@ -608,7 +461,6 @@ function Dashboard({
             )}
           </div>
 
-          {/* Footer fisso — pubblica posto */}
           {!isCreateSpotMode && (
             <div className="db-sidebar-footer">
               <button className="db-publish-btn" onClick={onStartCreateSpot}>
@@ -618,7 +470,6 @@ function Dashboard({
           )}
         </aside>
 
-        {/* ── MAPPA ────────────────────────────────────────────────── */}
         <main className="db-map-area">
           <SpotMap
             spots={spots}
@@ -633,11 +484,11 @@ function Dashboard({
         </main>
       </div>
 
-      {/* ══ MODAL PRENOTAZIONE ══════════════════════════════════════ */}
       {spotDetail && (
         <div className="db-modal-overlay" onClick={onCloseDetail}>
           <div className="db-modal-card" onClick={(e) => e.stopPropagation()}>
             <button className="db-modal-close" onClick={onCloseDetail}>✕</button>
+
             <BookingCalendar
               posto={spotDetail.posto}
               prenotazioni={spotDetail.prenotazioni}

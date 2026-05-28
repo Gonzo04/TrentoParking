@@ -254,27 +254,36 @@ async function createPostoPrivato(req, res, next) {
   }
 }
 
-// Restituisce tutti i posti (anche non attivi) pubblicati dall'utente loggato.
+// Restituisce tutti i posti non eliminati pubblicati dall'utente loggato
+// Includiamo anche quelli non attivi, così l'host può riattivarli dal profilo
 async function getMieiPosti(req, res, next) {
   try {
-    const posti = await PostoPrivato.find({ hostId: req.user.userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const posti = await PostoPrivato.find({
+      hostId: req.user.userId,
+      eliminato: { $ne: true }
+    })
+        .sort({ createdAt: -1 })
+        .lean();
+
     return res.json(posti);
   } catch (err) {
     return next(err);
   }
 }
 
-// Aggiorna nome, descrizione, tariffaOraria, disponibilita e/o caratteristiche.
-// Solo l'host proprietario può modificare il proprio posto.
-async function updatePostoPrivato(req, res, next) {
-  try {
-    const posto = await PostoPrivato.findById(req.params.id);
-    if (!posto) return res.status(404).json({ error: 'Posto non trovato' });
-    if (posto.hostId.toString() !== req.user.userId)
-      return res.status(403).json({ error: 'Non autorizzato' });
+// Aggiorna nome, descrizione, tariffaOraria, disponibilita e/o caratteristiche
+// Solo l'host proprietario può modificare il proprio posto
+    async function updatePostoPrivato(req, res, next) {
+      try {
+        const posto = await PostoPrivato.findById(req.params.id);
 
+        if (!posto || posto.eliminato) {
+          return res.status(404).json({ error: 'Posto non trovato' });
+        }
+
+        if (posto.hostId.toString() !== req.user.userId) {
+          return res.status(403).json({ error: 'Non autorizzato' });
+        }
     const { nome, descrizione, tariffaOraria, disponibilita, caratteristiche, attivo } = req.body;
 
     if (nome !== undefined) {
@@ -320,19 +329,30 @@ async function updatePostoPrivato(req, res, next) {
   }
 }
 
-// Elimina definitivamente il posto dal database.
-// Il posto deve essere già disattivato (attivo: false) prima di poter essere eliminato.
+// Elimina logicamente il posto dal punto di vista dell'utente
+// Non cancelliamo il documento dal database perché può servire per storico e controlli futuri
 async function deletePostoPrivato(req, res, next) {
   try {
     const posto = await PostoPrivato.findById(req.params.id);
-    if (!posto) return res.status(404).json({ error: 'Posto non trovato' });
-    if (posto.hostId.toString() !== req.user.userId)
-      return res.status(403).json({ error: 'Non autorizzato' });
-    if (posto.attivo)
-      return res.status(400).json({ error: 'Disattiva il posto prima di eliminarlo definitivamente' });
 
-    await PostoPrivato.findByIdAndDelete(req.params.id);
-    return res.json({ message: 'Posto eliminato correttamente' });
+    if (!posto || posto.eliminato) {
+      return res.status(404).json({ error: 'Posto non trovato' });
+    }
+
+    if (posto.hostId.toString() !== req.user.userId) {
+      return res.status(403).json({ error: 'Non autorizzato' });
+    }
+
+    posto.attivo = false;
+    posto.eliminato = true;
+    posto.eliminatoIl = new Date();
+
+    await posto.save();
+
+    return res.json({
+      message: 'Posto eliminato correttamente',
+      posto
+    });
   } catch (err) {
     return next(err);
   }

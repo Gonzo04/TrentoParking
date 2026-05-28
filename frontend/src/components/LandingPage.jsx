@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
 import './LandingPage.css';
-
 
 /* ── Mappa Leaflet read-only ─────────────────────────────────────── */
 function HeroMap({ height = 120 }) {
   const containerRef = useRef(null);
 
   useEffect(() => {
-    // Leaflet è già installato nel progetto (usato da SpotMap)
-    const L = window.L || require('leaflet');
-
+    // Usiamo l'import ES perché Vite non supporta require nel frontend
     const map = L.map(containerRef.current, {
-      center: [46.0679, 11.1211], // Trento centro
+      center: [46.0679, 11.1211],
       zoom: 14,
       zoomControl: false,
       dragging: false,
@@ -53,7 +51,6 @@ function HeroMap({ height = 120 }) {
   );
 }
 
-
 const STEPS = [
   {
     title: 'Cerca un posto vicino a te',
@@ -83,7 +80,12 @@ const STEPS = [
         <div className="lp-vc-label">Seleziona orario</div>
         <div className="lp-vc-time-grid">
           {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00'].map((t, i) => (
-            <div key={t} className={`lp-vc-time-slot ${i === 1 ? 'lp-vc-time-slot--active' : 'lp-vc-time-slot--inactive'}`}>{t}</div>
+            <div
+              key={t}
+              className={`lp-vc-time-slot ${i === 1 ? 'lp-vc-time-slot--active' : 'lp-vc-time-slot--inactive'}`}
+            >
+              {t}
+            </div>
           ))}
         </div>
         <div className="lp-vc-summary">
@@ -105,7 +107,9 @@ const STEPS = [
             <div className="lp-vc-confirmed-sub">Ricevuta inviata via email</div>
           </div>
         </div>
+
         <hr className="lp-vc-divider" />
+
         <div className="lp-vc-rows">
           {[['Posto', 'Via Manci 12 – P1'], ['Data', 'Oggi, 09:00–11:00'], ['Totale', '€4,00']].map(([k, v]) => (
             <div key={k} className="lp-vc-row">
@@ -120,10 +124,26 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { icon: '🗺️', title: 'Mappa in tempo reale',   desc: 'Vedi tutti i posti disponibili su una mappa interattiva con filtri per orario e distanza.' },
-  { icon: '📅', title: 'Calendario prenotazioni', desc: 'Gestisci tutte le prenotazioni da un\'unica dashboard con vista calendario mensile.' },
-  { icon: '🔒', title: 'Pagamenti sicuri',         desc: 'Transazioni protette direttamente in app. Nessun contante, nessun problema.' },
-  { icon: '🚗', title: 'Pubblica il tuo posto',    desc: 'Hai un posto libero? Pubblicalo in pochi click e inizia a guadagnare subito.' },
+  {
+    icon: '🗺️',
+    title: 'Mappa in tempo reale',
+    desc: 'Vedi tutti i posti disponibili su una mappa interattiva con filtri per orario e distanza.',
+  },
+  {
+    icon: '📅',
+    title: 'Calendario prenotazioni',
+    desc: 'Gestisci tutte le prenotazioni da un\'unica dashboard con vista calendario mensile.',
+  },
+  {
+    icon: '🔒',
+    title: 'Pagamenti sicuri',
+    desc: 'Transazioni protette direttamente in app. Nessun contante, nessun problema.',
+  },
+  {
+    icon: '🚗',
+    title: 'Pubblica il tuo posto',
+    desc: 'Hai un posto libero? Pubblicalo in pochi click e inizia a guadagnare subito.',
+  },
 ];
 
 /* ── Componente ──────────────────────────────────────────────────── */
@@ -132,7 +152,6 @@ export default function LandingPage({ onLogin, onRegister }) {
 
   return (
     <div className="lp-root">
-
       {/* NAVBAR */}
       <nav className="lp-nav">
         <div className="lp-nav-logo">
@@ -154,7 +173,6 @@ export default function LandingPage({ onLogin, onRegister }) {
       {/* HERO */}
       <div className="lp-hero-wrap">
         <div className="lp-hero">
-
           <div>
             <div className="lp-hero-eyebrow">🅿 Parcheggio privato a Trento</div>
 
@@ -164,7 +182,7 @@ export default function LandingPage({ onLogin, onRegister }) {
             </h1>
 
             <p className="lp-hero-subtitle">
-              Prenota posti auto privati a Trento in pochi click.<br></br>
+              Prenota posti auto privati a Trento in pochi click.<br />
               Senza stress, senza giri a vuoto: trovi, prenoti e paghi tutto dall&apos;app.
             </p>
 
@@ -200,19 +218,18 @@ export default function LandingPage({ onLogin, onRegister }) {
                     <span className="lp-spot-tag">A 200 m</span>
                   </div>
                 </div>
+
                 <div style={{ textAlign: 'right' }}>
                   <div className="lp-spot-price">€2,50<span>/h</span></div>
                   <span className="lp-spot-badge">Disponibile</span>
                 </div>
               </div>
+
               <div style={{ marginTop: '1rem' }}>
                 <HeroMap height={180} />
               </div>
             </div>
-
-
           </div>
-
         </div>
       </div>
 
@@ -327,7 +344,6 @@ export default function LandingPage({ onLogin, onRegister }) {
           © {new Date().getFullYear()} Trento Parking. Tutti i diritti riservati.
         </div>
       </footer>
-
     </div>
   );
 }
