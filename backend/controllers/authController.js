@@ -431,6 +431,42 @@ async function me(req, res) {
   }
 }
 
+// Aggiorna i dati modificabili del profilo: nome, cognome, targa.
+// Non tocca email, password o nomeUtente per sicurezza.
+async function updateMe(req, res) {
+  try {
+    const user = await Utente.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'Utente non trovato' });
+
+    const { nome, cognome, targa } = req.body;
+
+    if (nome !== undefined) {
+      const n = nome.trim();
+      if (!n) return res.status(400).json({ message: 'Il nome è obbligatorio' });
+      user.nome = n;
+    }
+
+    if (cognome !== undefined) {
+      const c = cognome.trim();
+      if (!c) return res.status(400).json({ message: 'Il cognome è obbligatorio' });
+      user.cognome = c;
+    }
+
+    if (targa !== undefined) {
+      const t = targa.trim().toUpperCase();
+      if (!/^[A-Z0-9]{5,10}$/.test(t))
+        return res.status(400).json({ message: 'Targa non valida (5-10 caratteri alfanumerici)' });
+      user.targa = t;
+    }
+
+    await user.save();
+    return res.json({ user: buildUserResponse(user) });
+  } catch (err) {
+    console.error('Errore updateMe:', err);
+    return res.status(500).json({ message: 'Errore interno' });
+  }
+}
+
 // Logout dell'utente.
 //
 // In questa versione il JWT è stateless.
@@ -449,6 +485,7 @@ module.exports = {
   register,
   login,
   me,
+  updateMe,
   logout,
   resendVerificationEmail,
   richiediResetPassword,

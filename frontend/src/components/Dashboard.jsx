@@ -7,7 +7,7 @@ import BookingCalendar from './BookingCalendar';
 /* ══════════════════════════════════════════════════════════════════
    Costanti
 ══════════════════════════════════════════════════════════════════ */
-const GIORNI = [
+export const GIORNI = [
   { key: 'lunedi',    short: 'Lun', full: 'Lunedì'    },
   { key: 'martedi',   short: 'Mar', full: 'Martedì'   },
   { key: 'mercoledi', short: 'Mer', full: 'Mercoledì' },
@@ -49,16 +49,20 @@ function formatDist(m) {
   return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
+// Opzioni ora inizio: 00:00 → 23:00
+const ORA_INIZIO_OPTS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
+// Opzioni ora fine: 01:00 → 24:00
+const ORA_FINE_OPTS   = Array.from({ length: 24 }, (_, i) => String(i + 1).padStart(2, '0') + ':00');
+
 /* ══════════════════════════════════════════════════════════════════
    Disponibilità parcheggio
 ══════════════════════════════════════════════════════════════════ */
-function AvailabilityEditor({ disponibilita, onChange }) {
+export function AvailabilityEditor({ disponibilita, onChange }) {
   function toggleDay(giorno) {
     const exists = disponibilita.find(d => d.giorno === giorno);
     if (exists) {
       onChange(disponibilita.filter(d => d.giorno !== giorno));
     } else {
-      // ordina per giorni
       const next = [...disponibilita, { giorno, oraInizio: '08:00', oraFine: '20:00' }];
       next.sort((a, b) =>
         GIORNI.findIndex(g => g.key === a.giorno) -
@@ -69,7 +73,16 @@ function AvailabilityEditor({ disponibilita, onChange }) {
   }
 
   function updateTime(giorno, field, value) {
-    onChange(disponibilita.map(d => d.giorno === giorno ? { ...d, [field]: value } : d));
+    onChange(disponibilita.map(d => {
+      if (d.giorno !== giorno) return d;
+      const updated = { ...d, [field]: value };
+      // garantisce che oraFine sia sempre > oraInizio
+      if (parseInt(updated.oraFine, 10) <= parseInt(updated.oraInizio, 10)) {
+        const h = Math.min(parseInt(updated.oraInizio, 10) + 1, 24);
+        updated.oraFine = String(h).padStart(2, '0') + ':00';
+      }
+      return updated;
+    }));
   }
 
   const activeDays = GIORNI.filter(g => disponibilita.some(d => d.giorno === g.key));
@@ -99,23 +112,32 @@ function AvailabilityEditor({ disponibilita, onChange }) {
         <div className="db-avail-slots">
           {activeDays.map(g => {
             const slot = disponibilita.find(d => d.giorno === g.key);
+            const fineOpts = ORA_FINE_OPTS.filter(
+              t => parseInt(t, 10) > parseInt(slot.oraInizio, 10)
+            );
             return (
               <div key={g.key} className="db-avail-row">
                 <span className="db-avail-day-name">{g.full}</span>
                 <div className="db-avail-times">
-                  <input
-                    type="time"
+                  <select
                     value={slot.oraInizio}
                     onChange={e => updateTime(g.key, 'oraInizio', e.target.value)}
                     className="db-time-input"
-                  />
+                  >
+                    {ORA_INIZIO_OPTS.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                   <span className="db-avail-arrow">→</span>
-                  <input
-                    type="time"
+                  <select
                     value={slot.oraFine}
                     onChange={e => updateTime(g.key, 'oraFine', e.target.value)}
                     className="db-time-input"
-                  />
+                  >
+                    {fineOpts.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             );
@@ -135,7 +157,7 @@ function AvailabilityEditor({ disponibilita, onChange }) {
 /* ══════════════════════════════════════════════════════════════════
    Tag
 ══════════════════════════════════════════════════════════════════ */
-function TagsEditor({ caratteristiche, onChange }) {
+export function TagsEditor({ caratteristiche, onChange }) {
   function toggle(key) {
     if (caratteristiche.includes(key)) {
       onChange(caratteristiche.filter(c => c !== key));
@@ -155,7 +177,7 @@ function TagsEditor({ caratteristiche, onChange }) {
             className={`db-tag-toggle${active ? ' db-tag-toggle--on' : ''}`}
             onClick={() => toggle(tag.key)}
           >
-            <span className="db-tag-emoji">{tag.emoji}</span>
+            <span className="db-tag-emoji">{active ? '✓' : tag.emoji}</span>
             <span>{tag.label}</span>
           </button>
         );

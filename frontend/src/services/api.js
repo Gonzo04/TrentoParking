@@ -69,6 +69,24 @@ export const api = {
     body: JSON.stringify(body),
   }),
 
+  // Profilo utente
+  updateMe: (body) => request('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  }),
+
+  // Posti dell'host loggato (attivi e non)
+  getMieiPosti: () => request('/posti-privati/miei'),
+
+  updatePosto: (id, body) => request(`/posti-privati/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  }),
+
+  deletePosto: (id) => request(`/posti-privati/${id}`, {
+    method: 'DELETE',
+  }),
+
   // Bookings
   listMyBookings: () => request('/bookings'),
 

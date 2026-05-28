@@ -10,6 +10,7 @@ import Dashboard from './components/Dashboard';
 import BookingCalendar from './components/BookingCalendar';
 import PaymentPage from './components/PaymentPage';
 import MyBookings from './components/MyBookings';
+import ProfilePage from './components/ProfilePage';
 
 /* ── Utility ─────────────────────────────────────────────────────── */
 function distanceM(lat1, lon1, lat2, lon2) {
@@ -400,40 +401,14 @@ function App() {
     );
   }
 
-  /* Profilo utente (placeholder — pagina completa da sviluppare) */
+  /* Profilo utente */
   if (view === 'profile' && authenticatedUser) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f6f7', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column' }}>
-        <nav style={{ height: 64, background: '#003049', display: 'flex', alignItems: 'center', padding: '0 1.75rem', gap: '1rem' }}>
-          <button
-            onClick={() => setView('dashboard')}
-            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.88)', padding: '0.45rem 1rem', borderRadius: 999, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            ← Dashboard
-          </button>
-          <span style={{ fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.04em' }}>
-            <span style={{ color: '#fff' }}>Trento</span>
-            <span style={{ color: '#2a9d8f' }}>Parking</span>
-          </span>
-        </nav>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-          <div style={{ background: 'white', borderRadius: 24, padding: '3rem 2.5rem', textAlign: 'center', boxShadow: '0 4px 32px rgba(0,48,73,0.09)', maxWidth: 420, width: '100%' }}>
-            <p style={{ fontSize: '3rem', margin: '0 0 1rem' }}>🚀</p>
-            <h2 style={{ fontFamily: 'Sora, sans-serif', color: '#003049', margin: '0 0 0.5rem', fontSize: '1.5rem', letterSpacing: '-0.03em' }}>
-              Profilo in arrivo
-            </h2>
-            <p style={{ color: '#4a5568', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
-              La pagina di gestione profilo è in fase di sviluppo. Presto potrai modificare i tuoi dati, la targa e vedere le tue statistiche.
-            </p>
-            <button
-              onClick={() => setView('dashboard')}
-              style={{ background: '#2a9d8f', color: 'white', border: 'none', borderRadius: 10, padding: '0.75rem 1.5rem', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Torna alla dashboard
-            </button>
-          </div>
-        </div>
-      </div>
+      <ProfilePage
+        authenticatedUser={authenticatedUser}
+        onBack={() => { loadPostiPrivati().catch(console.error); setView('dashboard'); }}
+        onUpdateUser={(updatedUser) => setAuthenticatedUser(updatedUser)}
+      />
     );
   }
 

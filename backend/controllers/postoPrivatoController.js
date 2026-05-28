@@ -223,9 +223,96 @@ async function createPostoPrivato(req, res, next) {
   }
 }
 
+// Restituisce tutti i posti (anche non attivi) pubblicati dall'utente loggato.
+async function getMieiPosti(req, res, next) {
+  try {
+    const posti = await PostoPrivato.find({ hostId: req.user.userId })
+      .sort({ createdAt: -1 })
+      .lean();
+    return res.json(posti);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+// Aggiorna nome, descrizione, tariffaOraria, disponibilita e/o caratteristiche.
+// Solo l'host proprietario può modificare il proprio posto.
+async function updatePostoPrivato(req, res, next) {
+  try {
+    const posto = await PostoPrivato.findById(req.params.id);
+    if (!posto) return res.status(404).json({ error: 'Posto non trovato' });
+    if (posto.hostId.toString() !== req.user.userId)
+      return res.status(403).json({ error: 'Non autorizzato' });
+
+    const { nome, descrizione, tariffaOraria, disponibilita, caratteristiche, attivo } = req.body;
+
+    if (nome !== undefined) {
+      const nomePulito = normalizeString(nome);
+      if (!nomePulito)
+        return res.status(400).json({ error: 'Il nome del posto è obbligatorio' });
+      posto.nome = nomePulito;
+    }
+
+    if (descrizione !== undefined) {
+      posto.descrizione = normalizeString(descrizione);
+    }
+
+    if (tariffaOraria !== undefined) {
+      const tariffa = Number(tariffaOraria);
+      if (!Number.isFinite(tariffa) || tariffa < 0)
+        return res.status(400).json({ error: 'Tariffa oraria non valida' });
+      posto.tariffaOraria = tariffa;
+    }
+
+    if (disponibilita !== undefined) {
+      const dispValidata = validateDisponibilita(disponibilita);
+      if (dispValidata === null)
+        return res.status(400).json({ error: 'Disponibilità non valida' });
+      posto.disponibilita = dispValidata;
+    }
+
+    if (caratteristiche !== undefined) {
+      posto.caratteristiche = Array.isArray(caratteristiche)
+        ? caratteristiche.filter(c => typeof c === 'string' && c.trim().length > 0)
+        : [];
+    }
+
+    if (attivo !== undefined) {
+      posto.attivo = Boolean(attivo);
+    }
+
+    await posto.save();
+    const updated = await PostoPrivato.findById(posto._id).lean();
+    return res.json(updated);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+// Elimina definitivamente il posto dal database.
+// Il posto deve essere già disattivato (attivo: false) prima di poter essere eliminato.
+async function deletePostoPrivato(req, res, next) {
+  try {
+    const posto = await PostoPrivato.findById(req.params.id);
+    if (!posto) return res.status(404).json({ error: 'Posto non trovato' });
+    if (posto.hostId.toString() !== req.user.userId)
+      return res.status(403).json({ error: 'Non autorizzato' });
+    if (posto.attivo)
+      return res.status(400).json({ error: 'Disattiva il posto prima di eliminarlo definitivamente' });
+
+    await PostoPrivato.findByIdAndDelete(req.params.id);
+    return res.json({ message: 'Posto eliminato correttamente' });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listPostiPrivati,
   getPostoPrivatoById,
   getPostoConPrenotazioni,
-  createPostoPrivato
+  createPostoPrivato,
+  getMieiPosti,
+  updatePostoPrivato,
+  deletePostoPrivato,
 };

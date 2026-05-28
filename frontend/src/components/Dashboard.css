@@ -793,9 +793,9 @@
 }
 
 .db-tag-toggle--on {
-  background: var(--db-teal-light);
-  border-color: var(--db-teal);
-  color: var(--db-teal-dark);
+  background: #e6f4f2;
+  border-color: rgba(42, 157, 143, 0.5);
+  color: #1f7a6e;
 }
 
 .db-tag-emoji {
