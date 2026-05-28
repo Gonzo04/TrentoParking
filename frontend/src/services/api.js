@@ -59,7 +59,20 @@ export const api = {
     return data.posti || [];
   },
 
-  // Questa rotta servirà quando collegheremo davvero disponibilità e prenotazioni
+  // Restituisce solo i posti pubblicati dall'utente autenticato
+  // Serve per costruire la pagina "I miei posti"
+  listMySpots: async () => {
+    const data = await request('/posti-privati/miei');
+
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return data.posti || [];
+  },
+
+  // Questa rotta serve per caricare un posto con le sue prenotazioni future
+  // Viene usata dal calendario di prenotazione
   getPostoConPrenotazioni: (id) => request(`/posti-privati/${id}/prenotazioni`),
 
   // Crea un nuovo posto privato
@@ -89,6 +102,9 @@ export const api = {
 
   // Bookings
   listMyBookings: () => request('/bookings'),
+
+  // Restituisce le prenotazioni ricevute sui posti pubblicati dall'host autenticato
+  listReceivedBookings: () => request('/bookings/ricevute'),
 
   createBooking: (body) => request('/bookings', {
     method: 'POST',

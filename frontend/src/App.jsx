@@ -14,6 +14,8 @@ import ProfilePage from './components/ProfilePage';
 
 /* ── Utility ─────────────────────────────────────────────────────── */
 function distanceM(lat1, lon1, lat2, lon2) {
+  // Calcola la distanza approssimata tra due coordinate geografiche
+  // Serve per filtrare i posti vicini al punto cercato dall'utente
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -26,6 +28,8 @@ function distanceM(lat1, lon1, lat2, lon2) {
 }
 
 async function reverseGeocode(lat, lng) {
+  // Converte le coordinate selezionate sulla mappa in un indirizzo testuale
+  // Lo usiamo per aiutare l'host a compilare automaticamente il riferimento del posto
   const params = new URLSearchParams({
     format: 'jsonv2',
     lat: String(lat),
@@ -100,6 +104,8 @@ function App() {
     : null;
 
   useEffect(() => {
+    // Legge eventuali parametri presenti nell'URL dopo verifica email o reset password
+    // Dopo averli letti puliamo l'URL per evitare messaggi ripetuti al refresh
     const params = new URLSearchParams(window.location.search);
 
     if (params.get('verified') === 'true') {
@@ -145,6 +151,8 @@ function App() {
   }, [authenticatedUser]);
 
   const loadPostiPrivati = useCallback(async () => {
+    // Carica i posti privati visibili sulla mappa
+    // Questa funzione viene riusata dopo creazione, modifica o eliminazione di un posto
     const posti = await api.listPosti();
     setSpots(posti);
     return posti;
@@ -152,6 +160,7 @@ function App() {
 
   /* ── Auth cambio ─────────────────────────────────────────────────── */
   const handleAuthChange = useCallback((user) => {
+    // Aggiorna lo stato dell'utente quando avviene login, logout o refresh del profilo
     setAuthenticatedUser(user);
 
     if (user) {
@@ -189,10 +198,13 @@ function App() {
 
   /* ── Create spot helpers ─────────────────────────────────────────── */
   function resetCreateSpotState() {
+    // Riporta il form di pubblicazione allo stato iniziale
+    // Serve dopo annullamento o pubblicazione completata
     setIsCreateSpotMode(false);
     setCreateSpotPosition(null);
     setCreateSpotMessage('');
     setCreateSpotError('');
+
     setNewSpotForm({
       nome: '',
       descrizione: '',
@@ -225,6 +237,7 @@ function App() {
   }
 
   function startCreateSpotMode() {
+    // Attiva la modalità in cui il click sulla mappa serve per scegliere il punto del posto
     setIsCreateSpotMode(true);
     setCreateSpotMessage('');
     setCreateSpotError('');
@@ -233,6 +246,9 @@ function App() {
 
   /* ── Spot detail ─────────────────────────────────────────────────── */
   async function handleSelectSpot(spotId) {
+    // Carica dettaglio del posto e prenotazioni future
+    // Se il posto è di un altro host verrà mostrato il calendario
+    // Se il posto è dell'utente loggato verrà mostrato il pannello di gestione
     setDetailLoading(true);
     setSpotDetail(null);
     try {
@@ -247,6 +263,8 @@ function App() {
 
   /* ── Booking / payment ───────────────────────────────────────────── */
   async function handleBookingConfirm(params) {
+    // Crea una prenotazione sul posto selezionato
+    // Dopo la creazione l'utente viene mandato alla pagina di pagamento mock
     try {
       const booking = await api.createBooking({
         postoPrivatoId: spotDetail.posto._id || spotDetail.posto.id,
@@ -262,12 +280,14 @@ function App() {
   }
 
   async function handlePaymentDone() {
+    // Dopo il pagamento torniamo alla mappa e ricarichiamo i posti
     setPendingBooking(null);
     setView('dashboard');
     try { await loadPostiPrivati(); } catch (e) { console.error(e); }
   }
 
   function handlePayFromBookings(booking) {
+    // Permette di pagare una prenotazione rimasta in attesa dalla pagina Le mie prenotazioni
     setPendingBooking(booking);
     setView('payment');
   }
@@ -299,11 +319,14 @@ function App() {
   }
 
   function handleNewSpotFormChange(event) {
+    // Gestisce sia gli input normali sia le checkbox dei giorni di disponibilità
     const { name, value, type, checked } = event.target;
     setNewSpotForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
   }
 
   async function handleCreatePrivateSpot(event) {
+    // Valida i dati del form e crea un nuovo posto privato tramite API
+    // L'hostId non viene mai mandato dal frontend perché lo decide il backend dal token
     event.preventDefault();
     setCreateSpotMessage('');
     setCreateSpotError('');
@@ -320,6 +343,14 @@ function App() {
       return;
     }
 
+    // Trasformiamo i giorni selezionati nel formato richiesto dal backend
+    // Ogni giorno usa la stessa fascia oraria scelta nel form
+    const disponibilita = newSpotForm.disponibilitaGiorni.map((giorno) => ({
+      giorno,
+      oraInizio,
+      oraFine
+    }));
+
     setCreateSpotLoading(true);
     try {
       await api.createPostoPrivato({
@@ -332,7 +363,7 @@ function App() {
         },
         tariffaOraria: tariffa,
         // Il backend si aspetta oraInizio/oraFine come interi (0-24),
-        // ma <input type="time"> restituisce stringhe tipo "08:00" → convertiamo
+        // ma <input type="time"> restituisce stringhe tipo "08:00" quindi lo convertiamo
         disponibilita: newSpotForm.disponibilita.map(d => ({
           giorno: d.giorno,
           oraInizio: parseInt(d.oraInizio.split(':')[0], 10),
@@ -346,6 +377,7 @@ function App() {
       setAuthenticatedUser(data.user);
       setCreateSpotMessage('Posto auto privato pubblicato correttamente');
       resetCreateSpotState();
+      setCreateSpotMessage('Posto auto privato pubblicato correttamente');
     } catch (error) {
       setCreateSpotError(error.message);
     } finally {

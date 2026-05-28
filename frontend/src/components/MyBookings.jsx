@@ -19,8 +19,8 @@ function durataOre(inizio, fine) {
 /* ── Componente ───────────────────────────────────────────────────── */
 export default function MyBookings({ onBack, onPay }) {
   const [bookings, setBookings] = useState([])
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     api.listMyBookings()
@@ -31,9 +31,17 @@ export default function MyBookings({ onBack, onPay }) {
 
   async function handleCancel(id) {
     if (!confirm('Vuoi davvero annullare questa prenotazione?')) return
+
     try {
       const updated = await api.cancelBooking(id)
-      setBookings(bs => bs.map(b => b._id === id ? { ...b, stato: updated.stato } : b))
+
+      setBookings(bs => (
+        bs.map(b => (
+          b._id === id
+            ? { ...b, stato: updated.stato }
+            : b
+        ))
+      ))
     } catch (e) {
       alert(e.message)
     }

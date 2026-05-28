@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const MESI = [
@@ -37,18 +37,39 @@ function buildMonthGrid(year, month) {
   const startDow = (first.getDay() + 6) % 7 // Lun = 0
 
   const cells = []
-  for (let i = startDow; i > 0; i--)
-    cells.push({ date: new Date(year, month, 1 - i), current: false })
-  for (let d = 1; d <= last.getDate(); d++)
-    cells.push({ date: new Date(year, month, d), current: true })
+
+  for (let i = startDow; i > 0; i--) {
+    cells.push({
+      date: new Date(year, month, 1 - i),
+      current: false
+    })
+  }
+
+  for (let d = 1; d <= last.getDate(); d++) {
+    cells.push({
+      date: new Date(year, month, d),
+      current: true
+    })
+  }
+
   while (cells.length % 7 !== 0) {
     const prev = cells[cells.length - 1].date
-    const next = new Date(prev); next.setDate(prev.getDate() + 1)
-    cells.push({ date: next, current: false })
+    const next = new Date(prev)
+
+    next.setDate(prev.getDate() + 1)
+
+    cells.push({
+      date: next,
+      current: false
+    })
   }
 
   const weeks = []
-  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+
+  for (let i = 0; i < cells.length; i += 7) {
+    weeks.push(cells.slice(i, i + 7))
+  }
+
   return weeks
 }
 
@@ -58,16 +79,28 @@ function getDisponibilitaForDate(date, disponibilita) {
 }
 
 function getBookedHours(date, prenotazioni) {
+  // Restituisce le ore già occupate in una certa data
+  // Ogni ora occupata viene inserita in un Set per controllarla velocemente
   const booked = new Set()
-  prenotazioni.forEach(p => {
-    const start = new Date(p.dataOraInizio)
-    const end   = new Date(p.dataOraFine)
-    const cur   = new Date(start)
-    while (cur < end) {
-      if (cur.toDateString() === date.toDateString()) booked.add(cur.getHours())
-      cur.setHours(cur.getHours() + 1)
+
+  if (!Array.isArray(prenotazioni)) {
+    return booked
+  }
+
+  prenotazioni.forEach((prenotazione) => {
+    const start = new Date(prenotazione.dataOraInizio)
+    const end = new Date(prenotazione.dataOraFine)
+    const current = new Date(start)
+
+    while (current < end) {
+      if (isSameDay(current, date)) {
+        booked.add(current.getHours())
+      }
+
+      current.setHours(current.getHours() + 1)
     }
   })
+
   return booked
 }
 
@@ -103,16 +136,36 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
   }, [posto.disponibilita])
 
   function prevMonth() {
-    if (month === 0) { setMonth(11); setYear(y => y - 1) }
-    else setMonth(m => m - 1)
+    // Evitiamo di andare prima del mese corrente
+    if (!canGoPrev) {
+      return
+    }
+
+    if (month === 0) {
+      setMonth(11)
+      setYear((currentYear) => currentYear - 1)
+    } else {
+      setMonth((currentMonth) => currentMonth - 1)
+    }
+
     resetSelection()
   }
+
   function nextMonth() {
-    if (month === 11) { setMonth(0); setYear(y => y + 1) }
-    else setMonth(m => m + 1)
+    // Evitiamo di andare oltre il limite coperto dal backend
+    if (!canGoNext) {
+      return
+    }
+
+    if (month === 11) {
+      setMonth(0)
+      setYear((currentYear) => currentYear + 1)
+    } else {
+      setMonth((currentMonth) => currentMonth + 1)
+    }
+
     resetSelection()
   }
-  function resetSelection() { setSelectedDate(null); setStartHour(null); setEndHour(null) }
 
   function isDayAvailable(date) {
     if (date < today) return false
@@ -122,17 +175,43 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
     for (let h = disp.oraInizio; h < disp.oraFine; h++) {
       if (!booked.has(h)) return true
     }
+
     return false
   }
 
   function handleDayClick(date) {
-    if (!isDayAvailable(date)) return
-    setSelectedDate(date)
+    // Se il giorno non è disponibile, non facciamo nulla
+    if (!isDayAvailable(date)) {
+      return
+    }
+
+    setSelectedDate(new Date(date))
     setStartHour(null)
     setEndHour(null)
   }
 
-  function handleHourClick(h) {
+  function canUseHourAsStart(hour) {
+    // L'ora finale della fascia non può essere usata come inizio
+    // Esempio: se il posto è disponibile 8-18, 18 può essere solo fine, non inizio
+    if (!disp) {
+      return false
+    }
+
+    return hour < disp.oraFine && !bookedHours.has(hour)
+  }
+
+  function canUseHourAsEnd(hour) {
+    // L'ora di fine deve essere maggiore dell'ora di inizio
+    // Inoltre l'intervallo scelto non deve attraversare ore già prenotate
+    if (startHour === null || hour <= startHour) {
+      return false
+    }
+
+    return !hasBookedHourInsideInterval(startHour, hour, bookedHours)
+  }
+
+  function handleHourClick(hour) {
+    // Primo click: selezioniamo l'ora di inizio
     if (startHour === null) {
       setStartHour(h); setEndHour(null)
     } else if (h > startHour && endHour === null) {
@@ -148,18 +227,15 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
   const disp       = selectedDate ? getDisponibilitaForDate(selectedDate, posto.disponibilita ?? []) : null
   const bookedHours = selectedDate ? getBookedHours(selectedDate, prenotazioni) : new Set()
 
-  const ore = (startHour !== null && endHour !== null) ? endHour - startHour : 0
-  const prezzoTotale = Math.round(ore * posto.tariffaOraria * 100) / 100
-  const selectionComplete = selectedDate && startHour !== null && endHour !== null
+    dataOraInizio.setHours(startHour, 0, 0, 0)
+    dataOraFine.setHours(endHour, 0, 0, 0)
 
-  async function handleConfirm() {
-    const dataOraInizio = new Date(selectedDate); dataOraInizio.setHours(startHour, 0, 0, 0)
-    const dataOraFine   = new Date(selectedDate); dataOraFine.setHours(endHour,   0, 0, 0)
     setLoading(true)
+
     try {
       await onConfirm({
         dataOraInizio: dataOraInizio.toISOString(),
-        dataOraFine:   dataOraFine.toISOString(),
+        dataOraFine: dataOraFine.toISOString()
       })
     } finally {
       setLoading(false)
