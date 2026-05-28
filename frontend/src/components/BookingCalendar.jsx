@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState, useMemo } from 'react'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const MESI = [
@@ -15,10 +15,6 @@ const GIORNO_SHORT = {
   LUNEDI: 'Lun', MARTEDI: 'Mar', MERCOLEDI: 'Mer',
   GIOVEDI: 'Gio', VENERDI: 'Ven', SABATO: 'Sab', DOMENICA: 'Dom',
 }
-const GIORNO_FULL = {
-  LUNEDI: 'Lunedì', MARTEDI: 'Martedì', MERCOLEDI: 'Mercoledì',
-  GIOVEDI: 'Giovedì', VENERDI: 'Venerdì', SABATO: 'Sabato', DOMENICA: 'Domenica',
-}
 
 // Stessi tag definiti in Dashboard.jsx (duplicati qui per evitare dipendenze circolari)
 const TAGS_INFO = {
@@ -32,75 +28,42 @@ const TAGS_INFO = {
 
 /* ── Helpers griglia calendario ──────────────────────────────────── */
 function buildMonthGrid(year, month) {
-  const first   = new Date(year, month, 1)
-  const last    = new Date(year, month + 1, 0)
+  const first    = new Date(year, month, 1)
+  const last     = new Date(year, month + 1, 0)
   const startDow = (first.getDay() + 6) % 7 // Lun = 0
 
   const cells = []
-
-  for (let i = startDow; i > 0; i--) {
-    cells.push({
-      date: new Date(year, month, 1 - i),
-      current: false
-    })
-  }
-
-  for (let d = 1; d <= last.getDate(); d++) {
-    cells.push({
-      date: new Date(year, month, d),
-      current: true
-    })
-  }
-
+  for (let i = startDow; i > 0; i--)
+    cells.push({ date: new Date(year, month, 1 - i), current: false })
+  for (let d = 1; d <= last.getDate(); d++)
+    cells.push({ date: new Date(year, month, d), current: true })
   while (cells.length % 7 !== 0) {
     const prev = cells[cells.length - 1].date
-    const next = new Date(prev)
-
-    next.setDate(prev.getDate() + 1)
-
-    cells.push({
-      date: next,
-      current: false
-    })
+    const next = new Date(prev); next.setDate(prev.getDate() + 1)
+    cells.push({ date: next, current: false })
   }
 
   const weeks = []
-
-  for (let i = 0; i < cells.length; i += 7) {
-    weeks.push(cells.slice(i, i + 7))
-  }
-
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
   return weeks
 }
 
 function getDisponibilitaForDate(date, disponibilita) {
-  const giorno = GIORNO_IT[date.getDay()] // es. 'LUNEDI'
+  const giorno = GIORNO_IT[date.getDay()]
   return disponibilita.find(d => d.giorno === giorno) || null
 }
 
 function getBookedHours(date, prenotazioni) {
-  // Restituisce le ore già occupate in una certa data
-  // Ogni ora occupata viene inserita in un Set per controllarla velocemente
   const booked = new Set()
-
-  if (!Array.isArray(prenotazioni)) {
-    return booked
-  }
-
-  prenotazioni.forEach((prenotazione) => {
-    const start = new Date(prenotazione.dataOraInizio)
-    const end = new Date(prenotazione.dataOraFine)
-    const current = new Date(start)
-
-    while (current < end) {
-      if (isSameDay(current, date)) {
-        booked.add(current.getHours())
-      }
-
-      current.setHours(current.getHours() + 1)
+  prenotazioni.forEach(p => {
+    const start = new Date(p.dataOraInizio)
+    const end   = new Date(p.dataOraFine)
+    const cur   = new Date(start)
+    while (cur < end) {
+      if (cur.toDateString() === date.toDateString()) booked.add(cur.getHours())
+      cur.setHours(cur.getHours() + 1)
     }
   })
-
   return booked
 }
 
@@ -127,7 +90,6 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
 
   const hasDisponibilita = posto.disponibilita?.length > 0
 
-  // Ordina la disponibilità seguendo l'ordine dei giorni della settimana
   const disponibilitaOrdinata = useMemo(() => {
     const order = ['LUNEDI','MARTEDI','MERCOLEDI','GIOVEDI','VENERDI','SABATO','DOMENICA']
     return [...(posto.disponibilita ?? [])].sort(
@@ -135,35 +97,24 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
     )
   }, [posto.disponibilita])
 
+  // Limite navigazione: non prima del mese corrente, non oltre 2 mesi avanti
+  const limitMonth = new Date(today.getFullYear(), today.getMonth() + 2, 1)
+  const canGoPrev  = !(year === today.getFullYear() && month === today.getMonth())
+  const canGoNext  = new Date(year, month + 1, 1) < limitMonth
+
+  function resetSelection() { setSelectedDate(null); setStartHour(null); setEndHour(null) }
+
   function prevMonth() {
-    // Evitiamo di andare prima del mese corrente
-    if (!canGoPrev) {
-      return
-    }
-
-    if (month === 0) {
-      setMonth(11)
-      setYear((currentYear) => currentYear - 1)
-    } else {
-      setMonth((currentMonth) => currentMonth - 1)
-    }
-
+    if (!canGoPrev) return
+    if (month === 0) { setMonth(11); setYear(y => y - 1) }
+    else setMonth(m => m - 1)
     resetSelection()
   }
 
   function nextMonth() {
-    // Evitiamo di andare oltre il limite coperto dal backend
-    if (!canGoNext) {
-      return
-    }
-
-    if (month === 11) {
-      setMonth(0)
-      setYear((currentYear) => currentYear + 1)
-    } else {
-      setMonth((currentMonth) => currentMonth + 1)
-    }
-
+    if (!canGoNext) return
+    if (month === 11) { setMonth(0); setYear(y => y + 1) }
+    else setMonth(m => m + 1)
     resetSelection()
   }
 
@@ -175,67 +126,44 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
     for (let h = disp.oraInizio; h < disp.oraFine; h++) {
       if (!booked.has(h)) return true
     }
-
     return false
   }
 
   function handleDayClick(date) {
-    // Se il giorno non è disponibile, non facciamo nulla
-    if (!isDayAvailable(date)) {
-      return
-    }
-
-    setSelectedDate(new Date(date))
+    if (!isDayAvailable(date)) return
+    setSelectedDate(date)
     setStartHour(null)
     setEndHour(null)
   }
 
-  function canUseHourAsStart(hour) {
-    // L'ora finale della fascia non può essere usata come inizio
-    // Esempio: se il posto è disponibile 8-18, 18 può essere solo fine, non inizio
-    if (!disp) {
-      return false
-    }
-
-    return hour < disp.oraFine && !bookedHours.has(hour)
-  }
-
-  function canUseHourAsEnd(hour) {
-    // L'ora di fine deve essere maggiore dell'ora di inizio
-    // Inoltre l'intervallo scelto non deve attraversare ore già prenotate
-    if (startHour === null || hour <= startHour) {
-      return false
-    }
-
-    return !hasBookedHourInsideInterval(startHour, hour, bookedHours)
-  }
-
   function handleHourClick(hour) {
-    // Primo click: selezioniamo l'ora di inizio
     if (startHour === null) {
-      setStartHour(h); setEndHour(null)
-    } else if (h > startHour && endHour === null) {
-      const hasOverlap = Array.from({ length: h - startHour }, (_, i) => startHour + i)
-        .some(hour => bookedHours.has(hour))
-      if (hasOverlap) { setStartHour(h); setEndHour(null) }
-      else setEndHour(h)
+      setStartHour(hour); setEndHour(null)
+    } else if (hour > startHour && endHour === null) {
+      const hasOverlap = Array.from({ length: hour - startHour }, (_, i) => startHour + i)
+        .some(h => bookedHours.has(h))
+      if (hasOverlap) { setStartHour(hour); setEndHour(null) }
+      else setEndHour(hour)
     } else {
-      setStartHour(h); setEndHour(null)
+      setStartHour(hour); setEndHour(null)
     }
   }
 
-  const disp       = selectedDate ? getDisponibilitaForDate(selectedDate, posto.disponibilita ?? []) : null
+  const disp        = selectedDate ? getDisponibilitaForDate(selectedDate, posto.disponibilita ?? []) : null
   const bookedHours = selectedDate ? getBookedHours(selectedDate, prenotazioni) : new Set()
 
-    dataOraInizio.setHours(startHour, 0, 0, 0)
-    dataOraFine.setHours(endHour, 0, 0, 0)
+  const ore             = (startHour !== null && endHour !== null) ? endHour - startHour : 0
+  const prezzoTotale    = Math.round(ore * posto.tariffaOraria * 100) / 100
+  const selectionComplete = selectedDate && startHour !== null && endHour !== null
 
+  async function handleConfirm() {
+    const dataOraInizio = new Date(selectedDate); dataOraInizio.setHours(startHour, 0, 0, 0)
+    const dataOraFine   = new Date(selectedDate); dataOraFine.setHours(endHour,   0, 0, 0)
     setLoading(true)
-
     try {
       await onConfirm({
         dataOraInizio: dataOraInizio.toISOString(),
-        dataOraFine: dataOraFine.toISOString()
+        dataOraFine:   dataOraFine.toISOString(),
       })
     } finally {
       setLoading(false)
@@ -261,7 +189,6 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
           <p style={S.description}>{posto.descrizione}</p>
         )}
 
-        {/* Tags */}
         {tags.length > 0 && (
           <div style={S.tagsRow}>
             {tags.map(tag => (
@@ -313,21 +240,24 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
       {hasDisponibilita && !isOwner && (
         <>
           <div style={S.calendarBox}>
-            {/* Navigazione mese */}
             <div style={S.calNav}>
-              <button onClick={prevMonth} style={S.navBtn}>‹</button>
+              <button
+                onClick={prevMonth}
+                style={{ ...S.navBtn, opacity: canGoPrev ? 1 : 0.3, cursor: canGoPrev ? 'pointer' : 'default' }}
+              >‹</button>
               <span style={S.calTitle}>{MESI[month]} {year}</span>
-              <button onClick={nextMonth} style={S.navBtn}>›</button>
+              <button
+                onClick={nextMonth}
+                style={{ ...S.navBtn, opacity: canGoNext ? 1 : 0.3, cursor: canGoNext ? 'pointer' : 'default' }}
+              >›</button>
             </div>
 
-            {/* Header giorni */}
             <div style={S.weekHeader}>
               {GIORNI_HEADER.map(g => (
                 <div key={g} style={S.weekHeaderCell}>{g}</div>
               ))}
             </div>
 
-            {/* Celle giorni */}
             <div style={{ padding: '6px 8px 8px' }}>
               {grid.map((week, wi) => (
                 <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
@@ -383,7 +313,7 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
                   const isStart    = h === startHour
 
                   let btnStyle = { ...S.hourBtn }
-                  if (isBooked)                  btnStyle = { ...btnStyle, ...S.hourBtnBooked }
+                  if (isBooked)                   btnStyle = { ...btnStyle, ...S.hourBtnBooked }
                   else if (isStart || isSelected) btnStyle = { ...btnStyle, ...S.hourBtnActive }
 
                   return (
@@ -415,11 +345,7 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
                 </div>
               </div>
 
-              <button
-                onClick={handleConfirm}
-                disabled={loading}
-                style={S.confirmBtn}
-              >
+              <button onClick={handleConfirm} disabled={loading} style={S.confirmBtn}>
                 {loading ? 'Prenotazione in corso…' : `Prenota — €${prezzoTotale.toFixed(2)}`}
               </button>
             </div>
@@ -437,8 +363,6 @@ const S = {
     maxWidth: 460,
     color: '#0d1b2a',
   },
-
-  /* Header */
   header: {
     paddingBottom: 14,
     borderBottom: '1px solid #e2e8f0',
@@ -479,8 +403,6 @@ const S = {
     color: '#4a5568',
     lineHeight: 1.5,
   },
-
-  /* Tags */
   tagsRow: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -500,8 +422,6 @@ const S = {
     padding: '3px 10px',
     whiteSpace: 'nowrap',
   },
-
-  /* Disponibilità */
   availSection: {
     background: '#f8fafc',
     border: '1px solid #e2e8f0',
@@ -542,8 +462,6 @@ const S = {
     padding: '2px 7px',
     fontVariantNumeric: 'tabular-nums',
   },
-
-  /* Calendario */
   calendarBox: {
     border: '1px solid #e2e8f0',
     borderRadius: 14,
@@ -569,7 +487,6 @@ const S = {
     borderRadius: '50%',
     width: 30,
     height: 30,
-    cursor: 'pointer',
     fontSize: 18,
     lineHeight: 1,
     color: '#4a5568',
@@ -606,8 +523,6 @@ const S = {
     fontFamily: 'inherit',
     transition: 'background 0.15s',
   },
-
-  /* Time picker */
   timePicker: {
     marginBottom: 14,
   },
@@ -647,8 +562,6 @@ const S = {
     color: '#fff',
     borderColor: '#2a9d8f',
   },
-
-  /* Owner notice */
   ownerNotice: {
     display: 'flex',
     alignItems: 'center',
@@ -659,8 +572,6 @@ const S = {
     padding: '12px 16px',
     marginBottom: 14,
   },
-
-  /* Summary + confirm */
   summary: {
     background: '#e6f4f2',
     border: '1px solid rgba(42,157,143,0.25)',

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
 import { api } from './services/api';
@@ -126,9 +126,21 @@ function App() {
     }
   }, [resetToken]);
 
+  // isPopStateNavigation blocca il pushState quando il cambio view viene da popstate
+  // currentViewRef serve per confrontare la view corrente dentro il handler senza dipendenze
+  const isPopStateNavigation = useRef(false);
+  const currentViewRef       = useRef('landing');
+
+  // Tiene sincronizzato currentViewRef ad ogni cambio di view
+  useEffect(() => { currentViewRef.current = view; }, [view]);
+
   /* ── Spots ───────────────────────────────────────────────────────── */
   // Registra ogni cambio di view nella cronologia del browser
   useEffect(() => {
+    if (isPopStateNavigation.current) {
+      isPopStateNavigation.current = false;
+      return;
+    }
     if (!resetToken) {
       window.history.pushState({ view }, '', '');
     }
@@ -137,14 +149,27 @@ function App() {
   // Gestisce il tasto "indietro" del browser/mouse
   useEffect(() => {
     function handlePopState(event) {
-      const previousView = event.state?.view;
-      if (!previousView) { setView('landing'); return; }
-      // Se l'utente non è loggato non può tornare a view autenticate
-      if (!authenticatedUser && (previousView === 'dashboard' || previousView === 'payment' || previousView === 'myBookings')) {
-        setView('landing');
-        return;
+      const targetView = event.state?.view ?? 'landing';
+
+      // Calcola la view effettiva verso cui navigare
+      let newView = targetView;
+
+      // Un utente già autenticato non può tornare alla view 'auth'.
+      if (authenticatedUser && newView === 'auth') {
+        newView = 'landing';
       }
-      setView(previousView);
+
+      // Un utente non autenticato non può raggiungere view protette via back
+      if (!authenticatedUser && ['dashboard', 'payment', 'myBookings', 'profile'].includes(newView)) {
+        newView = 'landing';
+      }
+
+      // Imposta il flag SOLO se la view cambierà davvero.
+      if (newView !== currentViewRef.current) {
+        isPopStateNavigation.current = true;
+      }
+
+      setView(newView);
     }
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -342,14 +367,6 @@ function App() {
       setCreateSpotError('Devi dichiarare di essere proprietario o autorizzato a pubblicare il posto');
       return;
     }
-
-    // Trasformiamo i giorni selezionati nel formato richiesto dal backend
-    // Ogni giorno usa la stessa fascia oraria scelta nel form
-    const disponibilita = newSpotForm.disponibilitaGiorni.map((giorno) => ({
-      giorno,
-      oraInizio,
-      oraFine
-    }));
 
     setCreateSpotLoading(true);
     try {
