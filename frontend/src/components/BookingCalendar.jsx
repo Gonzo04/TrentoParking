@@ -72,7 +72,7 @@ function padHour(h) {
 }
 
 /* ── Componente ──────────────────────────────────────────────────── */
-export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwner = false }) {
+export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwner = false, onViewHostReviews }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
 
   const [year,         setYear]         = useState(today.getFullYear())
@@ -187,6 +187,25 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
 
         {posto.descrizione && (
           <p style={S.description}>{posto.descrizione}</p>
+        )}
+
+        {posto.hostId && (
+          <div style={S.hostRow}>
+            <span style={S.hostLabel}>Host:</span>
+            {onViewHostReviews ? (
+              <button
+                style={S.hostLink}
+                onClick={() => onViewHostReviews(posto.hostId._id ?? posto.hostId)}
+              >
+                👤 {posto.hostId.nome} {posto.hostId.cognome}
+                <span style={S.hostLinkHint}>· vedi recensioni</span>
+              </button>
+            ) : (
+              <span style={S.hostName}>
+                {posto.hostId.nome} {posto.hostId.cognome}
+              </span>
+            )}
+          </div>
         )}
 
         {tags.length > 0 && (
@@ -584,6 +603,26 @@ const S = {
     alignItems: 'flex-start',
     gap: 12,
     marginBottom: 14,
+  },
+  hostRow: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    marginTop: 8,
+  },
+  hostLabel: {
+    fontSize: 12, fontWeight: 700, color: '#8a95a3',
+    textTransform: 'uppercase', letterSpacing: '0.05em',
+  },
+  hostLink: {
+    background: 'none', border: 'none', padding: 0,
+    cursor: 'pointer', color: '#2a9d8f',
+    fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+  },
+  hostLinkHint: {
+    fontSize: 11, color: '#8a95a3', fontWeight: 400,
+  },
+  hostName: {
+    fontSize: 13, color: '#374151',
   },
   confirmBtn: {
     width: '100%',

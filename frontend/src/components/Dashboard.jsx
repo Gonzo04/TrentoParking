@@ -301,6 +301,7 @@ function Dashboard({
   onCaratteristicheChange,
   onCloseDetail,
   onBookingConfirm,
+  onViewHostReviews,
 }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [hoveredSpotId, setHoveredSpotId] = useState(null);
@@ -497,6 +498,7 @@ function Dashboard({
                 !!authenticatedUser &&
                 String(spotDetail.posto.hostId?._id ?? spotDetail.posto.hostId) === String(authenticatedUser.id)
               }
+              onViewHostReviews={onViewHostReviews}
             />
           </div>
         </div>

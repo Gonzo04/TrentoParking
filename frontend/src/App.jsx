@@ -11,6 +11,7 @@ import PaymentPage from './components/PaymentPage';
 import MyBookings from './components/MyBookings';
 import MyReceivedBookings from './components/MyReceivedBookings';
 import ProfilePage from './components/ProfilePage';
+import HostReviewsPage from './components/HostReviewsPage';
 
 function distanceM(lat1, lon1, lat2, lon2) {
   // Calcola la distanza approssimata tra due coordinate geografiche
@@ -58,8 +59,9 @@ async function reverseGeocode(lat, lng) {
 }
 
 function App() {
-  // 'landing' | 'auth' | 'dashboard' | 'payment' | 'myBookings' | 'receivedBookings' | 'profile'
+  // 'landing' | 'auth' | 'dashboard' | 'payment' | 'myBookings' | 'receivedBookings' | 'profile' | 'hostReviews'
   const [view, setView] = useState('landing');
+  const [reviewHostId, setReviewHostId] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
 
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
@@ -155,7 +157,7 @@ function App() {
 
       if (
         !authenticatedUser &&
-        ['dashboard', 'payment', 'myBookings', 'receivedBookings', 'profile'].includes(newView)
+        ['dashboard', 'payment', 'myBookings', 'receivedBookings', 'profile', 'hostReviews'].includes(newView)
       ) {
         newView = 'landing';
       }
@@ -218,7 +220,8 @@ function App() {
         prev === 'payment' ||
         prev === 'myBookings' ||
         prev === 'receivedBookings' ||
-        prev === 'profile'
+        prev === 'profile' ||
+        prev === 'hostReviews'
           ? 'landing'
           : prev
       );
@@ -268,6 +271,11 @@ function App() {
       cancelled = true;
     };
   }, [handleAuthChange, shouldSkipSessionRestore]);
+
+  function handleViewHostReviews(hostId) {
+    setReviewHostId(String(hostId))
+    setView('hostReviews')
+  }
 
   async function handleLogout() {
     try {
@@ -566,23 +574,27 @@ function App() {
     );
   }
 
+  if (view === 'hostReviews' && reviewHostId) {
+    return (
+      <HostReviewsPage
+        hostId={reviewHostId}
+        onBack={() => setView(authenticatedUser ? 'myBookings' : 'landing')}
+      />
+    );
+  }
+
   if (view === 'myBookings' && authenticatedUser) {
     return (
       <MyBookings
         onBack={() => setView('dashboard')}
         onPay={handlePayFromBookings}
+        onViewHostReviews={handleViewHostReviews}
       />
     );
   }
 
   if (view === 'receivedBookings' && authenticatedUser?.ruolo === 'HOST') {
-    return (
-      <div className="app-page">
-        <main className="main-layout">
-          <MyReceivedBookings onBack={() => setView('dashboard')} />
-        </main>
-      </div>
-    );
+    return <MyReceivedBookings onBack={() => setView('dashboard')} />;
   }
 
   return (
@@ -618,6 +630,7 @@ function App() {
       onCaratteristicheChange={handleCaratteristicheChange}
       onCloseDetail={() => setSpotDetail(null)}
       onBookingConfirm={handleBookingConfirm}
+      onViewHostReviews={handleViewHostReviews}
     />
   );
 }
