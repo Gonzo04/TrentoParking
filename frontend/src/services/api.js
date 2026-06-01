@@ -59,7 +59,20 @@ export const api = {
     return data.posti || [];
   },
 
-  // Questa rotta servirà quando collegheremo davvero disponibilità e prenotazioni
+  // Restituisce solo i posti pubblicati dall'utente autenticato
+  // Serve per costruire la pagina "I miei posti"
+  listMySpots: async () => {
+    const data = await request('/posti-privati/miei');
+
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return data.posti || [];
+  },
+
+  // Questa rotta serve per caricare un posto con le sue prenotazioni future
+  // Viene usata dal calendario di prenotazione
   getPostoConPrenotazioni: (id) => request(`/posti-privati/${id}/prenotazioni`),
 
   // Crea un nuovo posto privato
@@ -84,8 +97,29 @@ export const api = {
     return data;
   },
 
+  // Profilo utente
+  updateMe: (body) => request('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  }),
+
+  // Posti dell'host loggato (attivi e non)
+  getMieiPosti: () => request('/posti-privati/miei'),
+
+  updatePosto: (id, body) => request(`/posti-privati/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  }),
+
+  deletePosto: (id) => request(`/posti-privati/${id}`, {
+    method: 'DELETE',
+  }),
+
   // Bookings
   listMyBookings: () => request('/bookings'),
+
+  // Restituisce le prenotazioni ricevute sui posti pubblicati dall'host autenticato
+  listReceivedBookings: () => request('/bookings/ricevute'),
 
   createBooking: (body) => request('/bookings', {
     method: 'POST',
@@ -99,4 +133,16 @@ export const api = {
   cancelBooking: (id) => request(`/bookings/${id}`, {
     method: 'DELETE',
   }),
+
+  // Recensioni
+  createRecensione: (body) => request('/recensioni', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }),
+
+  getMediaPosti: () => request('/recensioni/medie-posti'),
+
+  getRecensioniHost: (hostId) => request(`/recensioni/host/${hostId}`),
+
+  getRecensioniPosto: (postoId) => request(`/recensioni/posto/${postoId}`),
 };
