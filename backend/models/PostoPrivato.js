@@ -197,6 +197,11 @@ const postoPrivatoSchema = new mongoose.Schema({
     default: '',
     trim: true,
     maxlength: [500, 'Le note di verifica non possono superare 500 caratteri.']
+  },
+
+  foto: {
+    type: [String],
+    default: []
   }
 }, {
   collection: 'posti_privati',

@@ -254,6 +254,30 @@ async function createPostoPrivato(req, res, next) {
   }
 }
 
+// POST /api/posti-privati/:id/foto
+// Aggiunge foto a un posto esistente. Solo l'host proprietario può farlo.
+async function uploadFoto(req, res, next) {
+  try {
+    const posto = await PostoPrivato.findOne({
+      _id: req.params.id,
+      hostId: req.user.userId,
+    });
+
+    if (!posto) return res.status(404).json({ error: 'Posto non trovato' });
+
+    if (!req.files || req.files.length === 0)
+      return res.status(400).json({ error: 'Nessuna immagine caricata' });
+
+    const nuoveFoto = req.files.map(f => `/uploads/${f.filename}`);
+    posto.foto = [...posto.foto, ...nuoveFoto].slice(0, 10);
+    await posto.save();
+
+    res.json({ foto: posto.foto });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Restituisce tutti i posti non eliminati pubblicati dall'utente loggato
 // Includiamo anche quelli non attivi, così l'host può riattivarli dal profilo
 async function getMieiPosti(req, res, next) {
@@ -364,6 +388,7 @@ module.exports = {
   getPostoPrivatoById,
   getPostoConPrenotazioni,
   createPostoPrivato,
+  uploadFoto,
   getMieiPosti,
   updatePostoPrivato,
   deletePostoPrivato,

@@ -1,10 +1,12 @@
 const express = require('express');
 const requireAuth = require('../middleware/auth');
+const upload = require('../utils/upload');
 const {
   listPostiPrivati,
   getPostoPrivatoById,
   getPostoConPrenotazioni,
   createPostoPrivato,
+  uploadFoto,
   getMieiPosti,
   updatePostoPrivato,
   deletePostoPrivato,
@@ -28,6 +30,10 @@ router.post('/', createPostoPrivato);
 
 // GET /api/posti-privati/:id/prenotazioni
 router.get('/:id/prenotazioni', getPostoConPrenotazioni);
+
+// POST /api/posti-privati/:id/foto
+// Caricamento foto per un posto privato (solo l'host proprietario).
+router.post('/:id/foto', upload.array('foto', 10), uploadFoto);
 
 // GET /api/posti-privati/:id
 router.get('/:id', getPostoPrivatoById);

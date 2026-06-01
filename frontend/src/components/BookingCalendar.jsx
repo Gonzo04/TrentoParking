@@ -188,6 +188,19 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
 
       {/* ── Intestazione posto ────────────────────────────────────── */}
       <div style={S.header}>
+        {posto.foto && posto.foto.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto' }}>
+            {posto.foto.map((url, i) => (
+              <img
+                key={i}
+                src={`http://localhost:8080${url}`}
+                alt=""
+                style={{ height: 120, minWidth: 160, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+              />
+            ))}
+          </div>
+        )}
+
         <div style={S.headerTop}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={S.spotName}>{posto.nome}</h2>

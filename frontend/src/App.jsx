@@ -98,6 +98,7 @@ function App() {
     caratteristiche: [],
     disponibilita: [],
   });
+  const [photoFiles, setPhotoFiles] = useState([]);
 
   const path = window.location.pathname;
   const resetToken = path.startsWith('/reset-password/')
@@ -206,6 +207,7 @@ function App() {
       caratteristiche: [],
       disponibilita: [],
     });
+    setPhotoFiles([]);
   }
 
   const handleAuthChange = useCallback((user) => {
@@ -466,7 +468,7 @@ function App() {
     setCreateSpotLoading(true);
 
     try {
-      await api.createPostoPrivato({
+      const posto = await api.createPostoPrivato({
         nome: newSpotForm.nome.trim(),
         descrizione: newSpotForm.descrizione.trim(),
         posizione: {
@@ -483,6 +485,10 @@ function App() {
         caratteristiche: newSpotForm.caratteristiche,
         dichiarazioneProprietaAccettata: true,
       });
+
+      if (photoFiles.length > 0) {
+        await api.uploadFoto(posto._id, photoFiles);
+      }
 
       await loadPostiPrivati();
 
@@ -624,6 +630,8 @@ function App() {
       createSpotError={createSpotError}
       newSpotForm={newSpotForm}
       spotDetail={spotDetail}
+      photoFiles={photoFiles}
+      onPhotoFilesChange={files => setPhotoFiles(files)}
       onLogout={handleLogout}
       onMyBookings={() => setView('myBookings')}
       onReceivedBookings={() => setView('receivedBookings')}

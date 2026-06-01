@@ -124,12 +124,14 @@ function CreateSpotPanel({
   createSpotMessage,
   createSpotError,
   newSpotForm,
+  photoFiles,
   onFormChange,
   onSubmit,
   onCancel,
   onAddressSelect,
   onDisponibilitaChange,
   onCaratteristicheChange,
+  onPhotoFilesChange,
 }) {
   return (
     <div className="db-create-panel">
@@ -250,6 +252,23 @@ function CreateSpotPanel({
             />
           </div>
 
+          <label className="db-label">
+            Foto del posto <span className="db-label-optional">(facoltative, max 10)</span>
+            <input
+              className="db-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={e => onPhotoFilesChange(Array.from(e.target.files))}
+              style={{ marginTop: 4 }}
+            />
+            {photoFiles && photoFiles.length > 0 && (
+              <span style={{ fontSize: 12, color: '#6b7280' }}>
+                {photoFiles.length} {photoFiles.length === 1 ? 'foto selezionata' : 'foto selezionate'}
+              </span>
+            )}
+          </label>
+
           <label className="db-label-checkbox">
             <input
               type="checkbox"
@@ -292,6 +311,8 @@ function Dashboard({
   createSpotError,
   newSpotForm,
   spotDetail,
+  photoFiles,
+  onPhotoFilesChange,
   onLogout,
   onMyBookings,
   onReceivedBookings,
@@ -381,6 +402,8 @@ function Dashboard({
                 onAddressSelect={onCreateSpotAddressSelect}
                 onDisponibilitaChange={onDisponibilitaChange}
                 onCaratteristicheChange={onCaratteristicheChange}
+                photoFiles={photoFiles}
+                onPhotoFilesChange={onPhotoFilesChange}
               />
             ) : (
               <>
