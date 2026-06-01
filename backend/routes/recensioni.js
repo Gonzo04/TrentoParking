@@ -1,12 +1,11 @@
 const express = require('express');
-const requireAuth = require('../middleware/auth');
-const { createRecensione, getRecensioniByPosto, getMyRecensioni } = require('../controllers/recensioneController');
-
 const router = express.Router();
-router.use(requireAuth);
+const requireAuth = require('../middleware/auth');
+const { createRecensione, getRecensioniHost, getRecensioniPosto, getMediaPosti } = require('../controllers/recensioneController');
 
-router.get('/mie', getMyRecensioni);
-router.get('/posto/:id', getRecensioniByPosto);
-router.post('/', createRecensione);
+router.post('/', requireAuth, createRecensione);
+router.get('/medie-posti', getMediaPosti);
+router.get('/host/:hostId', getRecensioniHost);
+router.get('/posto/:postoId', getRecensioniPosto);
 
 module.exports = router;

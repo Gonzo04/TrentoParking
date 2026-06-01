@@ -7,24 +7,28 @@ const {
   getPostoConPrenotazioni,
   createPostoPrivato,
   uploadFoto,
+  getMieiPosti,
+  updatePostoPrivato,
+  deletePostoPrivato,
 } = require('../controllers/postoPrivatoController');
 
 const router = express.Router();
 
 // Tutte le rotte dei posti privati richiedono autenticazione.
-// Questa scelta è coerente con la UI attuale: la mappa e i posti sono visibili solo dopo login.
 router.use(requireAuth);
 
 // GET /api/posti-privati
-// Lista dei posti privati attivi da mostrare sulla mappa.
 router.get('/', listPostiPrivati);
 
+// GET /api/posti-privati/miei
+// Lista dei posti pubblicati dall'utente autenticato
+// Deve stare prima di /:id, altrimenti Express leggerebbe "miei" come id
+router.get('/miei', getMieiPosti);
+
 // POST /api/posti-privati
-// Creazione di un nuovo posto privato da parte dell'utente autenticato.
 router.post('/', createPostoPrivato);
 
 // GET /api/posti-privati/:id/prenotazioni
-// Dettaglio del posto con prenotazioni future, usato dal calendario.
 router.get('/:id/prenotazioni', getPostoConPrenotazioni);
 
 // POST /api/posti-privati/:id/foto
@@ -32,7 +36,12 @@ router.get('/:id/prenotazioni', getPostoConPrenotazioni);
 router.post('/:id/foto', upload.array('foto', 10), uploadFoto);
 
 // GET /api/posti-privati/:id
-// Dettaglio semplice di un posto privato.
 router.get('/:id', getPostoPrivatoById);
+
+// PATCH /api/posti-privati/:id
+router.patch('/:id', updatePostoPrivato);
+
+// DELETE /api/posti-privati/:id
+router.delete('/:id', deletePostoPrivato);
 
 module.exports = router;

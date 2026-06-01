@@ -354,6 +354,15 @@ button:disabled {
   box-shadow: 0 4px 16px rgba(42, 157, 143, 0.45);
 }
 
+.price-marker--highlighted {
+  background: #2a9d8f;
+  color: #fff;
+  box-shadow: 0 6px 22px rgba(42, 157, 143, 0.6);
+  transform: translate(-50%, -50%) scale(1.3);
+  outline: 3px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 1px;
+}
+
 /* ── Range search layout ───────────────────────────────────────── */
 .map-area {
   display: contents;

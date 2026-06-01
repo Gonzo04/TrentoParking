@@ -1,43 +1,49 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
 import { api } from './services/api';
+import { logoutUser } from './services/authService';
+import LandingPage from './components/LandingPage';
 import AuthPanel from './components/AuthPanel';
-import SearchBar from './components/SearchBar';
-import SpotMap from './components/SpotMap';
-import SpotSidebar from './components/SpotSidebar';
-import BookingCalendar from './components/BookingCalendar';
+import AuthPage from './components/AuthPage';
+import Dashboard from './components/Dashboard';
 import PaymentPage from './components/PaymentPage';
 import MyBookings from './components/MyBookings';
-import EmailVerificationPage from './components/VerificaMail';
-import ResetPasswordPage from './components/ResetPassword';
+import MyReceivedBookings from './components/MyReceivedBookings';
+import ProfilePage from './components/ProfilePage';
+import HostReviewsPage from './components/HostReviewsPage';
 
 function distanceM(lat1, lon1, lat2, lon2) {
+  // Calcola la distanza approssimata tra due coordinate geografiche
+  // Serve per filtrare i posti vicini al punto cercato dall'utente
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) ** 2;
 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
 async function reverseGeocode(lat, lng) {
+  // Converte le coordinate selezionate sulla mappa in un indirizzo testuale
+  // Lo usiamo per aiutare l'host a compilare automaticamente il riferimento del posto
   const params = new URLSearchParams({
     format: 'jsonv2',
     lat: String(lat),
     lon: String(lng),
-    addressdetails: '1'
+    addressdetails: '1',
   });
 
   const response = await fetch(
     `https://nominatim.openstreetmap.org/reverse?${params.toString()}`
   );
 
-  if (!response.ok) {
-    throw new Error('Impossibile recuperare l indirizzo dalle coordinate');
-  }
+  if (!response.ok) throw new Error('Impossibile recuperare l\'indirizzo');
 
   const data = await response.json();
 
@@ -46,26 +52,34 @@ async function reverseGeocode(lat, lng) {
     const houseNumber = data.address.house_number || '';
     const city = data.address.city || data.address.town || data.address.village || '';
 
-    const shortAddress = [road, houseNumber, city]
-      .filter(Boolean)
-      .join(', ');
-
-    return shortAddress || data.display_name || '';
+    return [road, houseNumber, city].filter(Boolean).join(', ') || data.display_name || '';
   }
 
   return data.display_name || '';
 }
+
 function App() {
+  // 'landing' | 'auth' | 'dashboard' | 'payment' | 'myBookings' | 'receivedBookings' | 'profile' | 'hostReviews'
+  const [view, setView] = useState('landing');
+  const [reviewHostId, setReviewHostId] = useState(null);
+  const [reviewPosto, setReviewPosto]   = useState(null); // { _id, nome, posizione }
+  const [authChecked, setAuthChecked] = useState(false);
+
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
-  const [view, setView] = useState('map');
+  const [authInitialTab, setAuthInitialTab] = useState('login');
+
   const [spots, setSpots] = useState([]);
   const [spotDetail, setSpotDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
   const [pendingBooking, setPendingBooking] = useState(null);
+
   const [waitingVerification, setWaitingVerification] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+
   const [resetSuccess, setResetSuccess] = useState(false);
+
   const [searchCircle, setSearchCircle] = useState(null);
   const [flyTarget, setFlyTarget] = useState(null);
 
@@ -80,7 +94,9 @@ function App() {
     descrizione: '',
     indirizzoTestuale: '',
     tariffaOraria: '',
-    dichiarazioneProprietaAccettata: false
+    dichiarazioneProprietaAccettata: false,
+    caratteristiche: [],
+    disponibilita: [],
   });
   const [photoFiles, setPhotoFiles] = useState([]);
 
@@ -89,45 +105,220 @@ function App() {
     ? path.split('/reset-password/')[1]
     : null;
 
+  const shouldSkipSessionRestore = Boolean(resetToken) ||
+    window.location.search.includes('verified=true') ||
+    window.location.search.includes('reset=success');
+
   useEffect(() => {
+    // Legge eventuali parametri presenti nell'URL dopo verifica email o reset password
+    // Dopo averli letti puliamo l'URL per evitare messaggi ripetuti al refresh
     const params = new URLSearchParams(window.location.search);
 
     if (params.get('verified') === 'true') {
       setVerificationSuccess(true);
       window.history.replaceState({}, document.title, '/');
+      setView('auth');
     }
 
     if (params.get('reset') === 'success') {
       setResetSuccess(true);
+      setView('auth');
     }
-  }, []);
+
+    if (resetToken) {
+      setView('auth');
+    }
+  }, [resetToken]);
+
+  const isPopStateNavigation = useRef(false);
+  const currentViewRef = useRef('landing');
+
+  useEffect(() => {
+    currentViewRef.current = view;
+  }, [view]);
+
+  useEffect(() => {
+    if (isPopStateNavigation.current) {
+      isPopStateNavigation.current = false;
+      return;
+    }
+
+    if (!resetToken) {
+      window.history.pushState({ view }, '', '');
+    }
+  }, [view, resetToken]);
+
+  useEffect(() => {
+    function handlePopState(event) {
+      const targetView = event.state?.view ?? 'landing';
+      let newView = targetView;
+
+      if (authenticatedUser && newView === 'auth') {
+        newView = 'landing';
+      }
+
+      if (
+        !authenticatedUser &&
+        ['dashboard', 'payment', 'myBookings', 'receivedBookings', 'profile', 'hostReviews'].includes(newView)
+      ) {
+        newView = 'landing';
+      }
+
+      if (newView !== currentViewRef.current) {
+        isPopStateNavigation.current = true;
+      }
+
+      setView(newView);
+    }
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [authenticatedUser]);
 
   const loadPostiPrivati = useCallback(async () => {
-    const posti = await api.listPosti();
-    setSpots(posti);
-    return posti;
+    // Carica i posti privati visibili sulla mappa e mostra la media delle recensioni
+    const [posti, medie] = await Promise.all([
+      api.listPosti(),
+      api.getMediaPosti().catch(() => []),
+    ]);
+    const medieMap = Object.fromEntries(medie.map(m => [String(m._id), m]));
+    const postiArricchiti = posti.map(p => {
+      const stat = medieMap[String(p._id)];
+      return stat ? { ...p, mediaStelle: stat.media, totaleRecensioni: stat.totale } : p;
+    });
+    setSpots(postiArricchiti);
+    return postiArricchiti;
   }, []);
 
+  function resetCreateSpotState() {
+    // Riporta il form di pubblicazione allo stato iniziale
+    // Serve dopo annullamento o pubblicazione completata
+    setIsCreateSpotMode(false);
+    setCreateSpotPosition(null);
+    setCreateSpotMessage('');
+    setCreateSpotError('');
+
+    setNewSpotForm({
+      nome: '',
+      descrizione: '',
+      indirizzoTestuale: '',
+      tariffaOraria: '',
+      dichiarazioneProprietaAccettata: false,
+      caratteristiche: [],
+      disponibilita: [],
+    });
+  }
+
   const handleAuthChange = useCallback((user) => {
+    // Aggiorna lo stato dell'utente quando avviene login, logout o refresh del profilo
     setAuthenticatedUser(user);
 
     if (user) {
       loadPostiPrivati().catch(console.error);
+      setView('dashboard');
     } else {
       setSpots([]);
-      setView('map');
       setSpotDetail(null);
       setPendingBooking(null);
       setSearchCircle(null);
       setFlyTarget(null);
       resetCreateSpotState();
+
+      setView(prev =>
+        prev === 'dashboard' ||
+        prev === 'payment' ||
+        prev === 'myBookings' ||
+        prev === 'receivedBookings' ||
+        prev === 'profile' ||
+        prev === 'hostReviews'
+          ? 'landing'
+          : prev
+      );
     }
   }, [loadPostiPrivati]);
 
-  function resetCreateSpotState() {
-    setIsCreateSpotMode(false);
-    setCreateSpotPosition(null);
-    setCreateSpotMessage('');
+  useEffect(() => {
+    // Se esiste già un token valido, ripristiniamo la sessione dopo il refresh
+    // Così l'utente loggato non viene riportato inutilmente alla landing page
+    let cancelled = false;
+
+    async function restoreSession() {
+      if (shouldSkipSessionRestore) {
+        setAuthChecked(true);
+        return;
+      }
+
+      const token = localStorage.getItem('authToken');
+
+      if (!token) {
+        setAuthChecked(true);
+        return;
+      }
+
+      try {
+        const data = await api.me();
+
+        if (!cancelled) {
+          handleAuthChange(data.user);
+        }
+      } catch {
+        localStorage.removeItem('authToken');
+
+        if (!cancelled) {
+          setAuthenticatedUser(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthChecked(true);
+        }
+      }
+    }
+
+    restoreSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handleAuthChange, shouldSkipSessionRestore]);
+
+  function handleViewHostReviews(hostId) {
+    setReviewHostId(String(hostId))
+    setReviewPosto(null)
+    setView('hostReviews')
+  }
+
+  function handleViewPostoReviews(posto) {
+    setReviewPosto(posto)
+    setReviewHostId(null)
+    setView('hostReviews')
+  }
+
+  async function handleLogout() {
+    try {
+      const token = localStorage.getItem('authToken');
+
+      if (token) {
+        await logoutUser(token);
+      }
+    } catch {
+      // Facciamo logout locale nel caso il backend fallisca
+    } finally {
+      localStorage.removeItem('authToken');
+      handleAuthChange(null);
+    }
+  }
+
+  function handleDisponibilitaChange(disponibilita) {
+    setNewSpotForm(f => ({ ...f, disponibilita }));
+  }
+
+  function handleCaratteristicheChange(caratteristiche) {
+    setNewSpotForm(f => ({ ...f, caratteristiche }));
+  }
+
+  async function handleCreateSpotAddressSelect({ lat, lng }) {
+    setCreateSpotPosition({ lat, lng });
+    setFlyTarget({ lat, lng });
     setCreateSpotError('');
     setNewSpotForm({
       nome: '',
@@ -137,20 +328,26 @@ function App() {
       dichiarazioneProprietaAccettata: false
     });
     setPhotoFiles([]);
+
+    try {
+      const indirizzo = await reverseGeocode(lat, lng);
+      setNewSpotForm(f => ({ ...f, indirizzoTestuale: indirizzo }));
+    } catch {
+      setNewSpotForm(f => ({ ...f, indirizzoTestuale: '' }));
+    }
   }
 
   function startCreateSpotMode() {
+    // Attiva la modalità in cui il click sulla mappa serve per scegliere il punto del posto
     setIsCreateSpotMode(true);
     setCreateSpotMessage('');
     setCreateSpotError('');
     setSearchCircle(null);
   }
 
-  function cancelCreateSpotMode() {
-    resetCreateSpotState();
-  }
-
   async function handleSelectSpot(spotId) {
+    // Carica dettaglio del posto e prenotazioni future
+    // Se il posto è di un altro host verrà mostrato il calendario
     setDetailLoading(true);
     setSpotDetail(null);
 
@@ -168,6 +365,8 @@ function App() {
   }
 
   async function handleBookingConfirm(params) {
+    // Crea una prenotazione sul posto selezionato
+    // Dopo la creazione l'utente viene mandato alla pagina di pagamento mock
     try {
       const booking = await api.createBooking({
         postoPrivatoId: spotDetail.posto._id || spotDetail.posto.id,
@@ -175,6 +374,7 @@ function App() {
       });
 
       booking.postoPrivatoId = spotDetail.posto;
+
       setPendingBooking(booking);
       setSpotDetail(null);
       setView('payment');
@@ -184,89 +384,72 @@ function App() {
   }
 
   async function handlePaymentDone() {
+    // Dopo il pagamento torniamo alla mappa e ricarichiamo i posti
     setPendingBooking(null);
-    setView('map');
+    setView('dashboard');
 
     try {
       await loadPostiPrivati();
-    } catch (error) {
-      console.error(error);
+    } catch (e) {
+      console.error(e);
     }
   }
 
   function handlePayFromBookings(booking) {
+    // Permette di pagare una prenotazione rimasta in attesa dalla pagina Le mie prenotazioni
     setPendingBooking(booking);
     setView('payment');
   }
 
   async function handleMapClick(latlng) {
-  if (isCreateSpotMode) {
-    setCreateSpotPosition({
-      lat: latlng.lat,
-      lng: latlng.lng
-    });
+    if (isCreateSpotMode) {
+      setCreateSpotPosition({ lat: latlng.lat, lng: latlng.lng });
+      setCreateSpotError('');
 
-    setCreateSpotError('');
+      try {
+        const indirizzo = await reverseGeocode(latlng.lat, latlng.lng);
+        setNewSpotForm(f => ({ ...f, indirizzoTestuale: indirizzo }));
+      } catch {
+        setNewSpotForm(f => ({ ...f, indirizzoTestuale: '' }));
+      }
 
-    try {
-      const indirizzo = await reverseGeocode(latlng.lat, latlng.lng);
-
-      setNewSpotForm((currentForm) => ({
-        ...currentForm,
-        indirizzoTestuale: indirizzo
-      }));
-    } catch (error) {
-      console.error(error);
-
-      setNewSpotForm((currentForm) => ({
-        ...currentForm,
-        indirizzoTestuale: ''
-      }));
+      return;
     }
 
-    return;
+    setSearchCircle(c => ({
+      lat: latlng.lat,
+      lng: latlng.lng,
+      radiusM: c?.radiusM ?? 500,
+    }));
   }
 
-  setSearchCircle((currentCircle) => ({
-    lat: latlng.lat,
-    lng: latlng.lng,
-    radiusM: currentCircle?.radiusM ?? 500
-  }));
-}
-
   function handleSearchSelect({ lat, lng }) {
-    const target = { lat, lng };
-
-    setFlyTarget(target);
-    setSearchCircle((currentCircle) => ({
-      lat,
-      lng,
-      radiusM: currentCircle?.radiusM ?? 500
-    }));
+    setFlyTarget({ lat, lng });
+    setSearchCircle(c => ({ lat, lng, radiusM: c?.radiusM ?? 500 }));
 
     if (isCreateSpotMode) {
-      setCreateSpotPosition(target);
+      setCreateSpotPosition({ lat, lng });
     }
   }
 
   function handleRadiusChange(radiusM) {
-    setSearchCircle((currentCircle) => (
-      currentCircle ? { ...currentCircle, radiusM } : null
-    ));
+    setSearchCircle(c => c ? { ...c, radiusM } : null);
   }
 
   function handleNewSpotFormChange(event) {
+    // Gestisce sia gli input normali sia le checkbox
     const { name, value, type, checked } = event.target;
 
-    setNewSpotForm((currentForm) => ({
-      ...currentForm,
-      [name]: type === 'checkbox' ? checked : value
+    setNewSpotForm(f => ({
+      ...f,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   }
 
   async function handleCreatePrivateSpot(event) {
+    // Valida i dati del form e crea un nuovo posto privato tramite API
+    // L'hostId non viene mai mandato dal frontend perché lo decide il backend dal token
     event.preventDefault();
-
     setCreateSpotMessage('');
     setCreateSpotError('');
 
@@ -301,11 +484,16 @@ function App() {
         posizione: {
           latitudine: createSpotPosition.lat,
           longitudine: createSpotPosition.lng,
-          indirizzoTestuale: newSpotForm.indirizzoTestuale.trim()
+          indirizzoTestuale: newSpotForm.indirizzoTestuale.trim(),
         },
         tariffaOraria: tariffa,
-        disponibilita: [],
-        dichiarazioneProprietaAccettata: true
+        disponibilita: newSpotForm.disponibilita.map(d => ({
+          giorno: d.giorno,
+          oraInizio: parseInt(d.oraInizio.split(':')[0], 10),
+          oraFine: parseInt(d.oraFine.split(':')[0], 10),
+        })),
+        caratteristiche: newSpotForm.caratteristiche,
+        dichiarazioneProprietaAccettata: true,
       });
 
       if (photoFiles.length > 0) {
@@ -317,8 +505,8 @@ function App() {
       const data = await api.me();
       setAuthenticatedUser(data.user);
 
-      setCreateSpotMessage('Posto auto privato pubblicato correttamente');
       resetCreateSpotState();
+      setCreateSpotMessage('Posto auto privato pubblicato correttamente');
     } catch (error) {
       setCreateSpotError(error.message);
     } finally {
@@ -327,11 +515,9 @@ function App() {
   }
 
   const nearbySpots = useMemo(() => {
-    if (!searchCircle) {
-      return spots;
-    }
+    if (!searchCircle) return spots;
 
-    return spots.filter((spot) => (
+    return spots.filter(spot =>
       spot.posizione &&
       Number.isFinite(Number(spot.posizione.latitudine)) &&
       Number.isFinite(Number(spot.posizione.longitudine)) &&
@@ -341,311 +527,146 @@ function App() {
         Number(spot.posizione.latitudine),
         Number(spot.posizione.longitudine)
       ) <= searchCircle.radiusM
-    ));
+    );
   }, [spots, searchCircle]);
 
-  return (
-    <div className="app-page">
-      <header className="hero-section">
-        <div>
-          <h1>ParkingShare Trento</h1>
+  if (!authChecked && !shouldSkipSessionRestore) {
+    return (
+      <div className="app-page">
+        <main className="main-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
+          <p>Caricamento sessione...</p>
+        </main>
+      </div>
+    );
+  }
 
-          <p className="hero-subtitle">
-            Trova e prenota posti auto privati a Trento in modo semplice e veloce.
-          </p>
-        </div>
-      </header>
+  if (view === 'landing') {
+    return (
+      <LandingPage
+        onLogin={() => {
+          setAuthInitialTab('login');
+          setView('auth');
+        }}
+        onRegister={() => {
+          setAuthInitialTab('register');
+          setView('auth');
+        }}
+      />
+    );
+  }
 
-      <main className="main-layout">
-        {!authenticatedUser && (
-          <section className="landing-card">
-            <div className="landing-content">
-              <h2>Trova o condividi un posto auto, senza stress</h2>
+  if (view === 'auth') {
+    return (
+      <AuthPage
+        authInitialTab={authInitialTab}
+        onAuthChange={handleAuthChange}
+        verificationSuccess={verificationSuccess}
+        resetSuccess={resetSuccess}
+        waitingVerification={waitingVerification}
+        pendingEmail={pendingEmail}
+        resetToken={resetToken}
+        onBack={() => setView('landing')}
+        onRegisterSuccess={(email) => {
+          setPendingEmail(email);
+          setWaitingVerification(true);
+        }}
+      />
+    );
+  }
 
-              <p>
-                Accedi alla piattaforma per cercare, prenotare o pubblicare
-                un posto auto privato.
-              </p>
+  if (view === 'profile' && authenticatedUser) {
+    return (
+      <ProfilePage
+        authenticatedUser={authenticatedUser}
+        onBack={() => {
+          loadPostiPrivati().catch(console.error);
+          setView('dashboard');
+        }}
+        onUpdateUser={(updatedUser) => setAuthenticatedUser(updatedUser)}
+        onViewPostoReviews={handleViewPostoReviews}
+      />
+    );
+  }
 
-              <ul className="landing-list">
-                <li>Trova posti auto privati disponibili</li>
-                <li>Prenota indicando l&apos;orario</li>
-                <li>Pubblica il tuo posto auto in modo semplice</li>
-              </ul>
-            </div>
-
-            {resetToken ? (
-              <ResetPasswordPage
-                token={resetToken}
-                onSuccess={() => { window.location.href = '/?reset=success'; }}
-              />
-            ) : waitingVerification ? (
-              <EmailVerificationPage email={pendingEmail} />
-            ) : (
-              <AuthPanel
-                onAuthChange={handleAuthChange}
-                verificationSuccess={verificationSuccess}
-                resetSuccess={resetSuccess}
-                onRegisterSuccess={(email) => {
-                  setPendingEmail(email);
-                  setWaitingVerification(true);
-                }}
-              />
-            )}
-          </section>
-        )}
-
-        {authenticatedUser && view === 'payment' && pendingBooking ? (
+  if (view === 'payment' && authenticatedUser && pendingBooking) {
+    return (
+      <div className="app-page">
+        <main className="main-layout">
+          <AuthPanel onAuthChange={handleAuthChange} />
           <PaymentPage
             booking={pendingBooking}
-            onDone={handlePaymentDone}
-            onCancel={() => {
-              setView('map');
+            onPaid={handlePaymentDone}
+            onBack={() => {
+              setView('dashboard');
               setPendingBooking(null);
             }}
           />
-        ) : authenticatedUser && view === 'myBookings' ? (
-          <>
-            <AuthPanel onAuthChange={handleAuthChange} />
+        </main>
+      </div>
+    );
+  }
 
-            <MyBookings
-              onBack={() => setView('map')}
-              onPay={handlePayFromBookings}
-            />
-          </>
-        ) : authenticatedUser ? (
-          <>
-            <AuthPanel onAuthChange={handleAuthChange} />
+  if (view === 'hostReviews' && (reviewHostId || reviewPosto)) {
+    return (
+      <HostReviewsPage
+        hostId={reviewHostId}
+        posto={reviewPosto}
+        onBack={() => history.back()}
+      />
+    );
+  }
 
-            <section className="content-card dashboard-card">
-              <div className="section-heading">
-                <h2 style={{ margin: 0 }}>Posti auto disponibili</h2>
+  if (view === 'myBookings' && authenticatedUser) {
+    return (
+      <MyBookings
+        onBack={() => setView('dashboard')}
+        onPay={handlePayFromBookings}
+        onViewHostReviews={handleViewHostReviews}
+      />
+    );
+  }
 
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {!isCreateSpotMode ? (
-                    <button
-                      className="secondary-button"
-                      onClick={startCreateSpotMode}
-                    >
-                      Pubblica un posto
-                    </button>
-                  ) : (
-                    <button
-                      className="secondary-button"
-                      onClick={cancelCreateSpotMode}
-                    >
-                      Annulla pubblicazione
-                    </button>
-                  )}
+  if (view === 'receivedBookings' && authenticatedUser?.ruolo === 'HOST') {
+    return <MyReceivedBookings onBack={() => setView('dashboard')} />;
+  }
 
-                  <button
-                    className="secondary-button"
-                    onClick={() => setView('myBookings')}
-                  >
-                    Le mie prenotazioni
-                  </button>
-                </div>
-              </div>
-
-              {!isCreateSpotMode && (
-                <>
-                  <div style={{ marginTop: '1rem' }}>
-                    <SearchBar onSelect={handleSearchSelect} />
-                  </div>
-
-                  <p style={{ margin: '0.6rem 0 0', fontSize: 13, color: '#6b7280' }}>
-                    {searchCircle
-                      ? 'Clicca sulla mappa per spostare il punto di ricerca.'
-                      : 'Cerca un luogo o clicca sulla mappa per trovare posti nelle vicinanze.'}
-                  </p>
-                </>
-              )}
-
-              {isCreateSpotMode && (
-                <div className="create-spot-panel">
-                  <div className="create-spot-instructions">
-                    <h3>Pubblica il tuo posto auto</h3>
-
-                    <p>
-                      Clicca sulla mappa per selezionare il punto esatto del posto.
-                      Puoi cliccare di nuovo sulla mappa per spostare il pin prima di pubblicare.
-                    </p>
-
-                    {createSpotPosition ? (
-                      <p>
-                        Posizione selezionata:{' '}
-                        <strong>
-                          {createSpotPosition.lat.toFixed(5)}, {createSpotPosition.lng.toFixed(5)}
-                        </strong>
-                      </p>
-                    ) : (
-                      <p>
-                        Nessun punto selezionato. Seleziona il punto sulla mappa per continuare.
-                      </p>
-                    )}
-                  </div>
-
-                  {createSpotMessage && (
-                    <p className="success-message">
-                      {createSpotMessage}
-                    </p>
-                  )}
-
-                  {createSpotError && (
-                    <p className="error-message">
-                      {createSpotError}
-                    </p>
-                  )}
-
-                  {createSpotPosition && (
-                    <form
-                      className="create-spot-form"
-                      onSubmit={handleCreatePrivateSpot}
-                    >
-                      <label>
-                        Nome posto
-                        <input
-                          name="nome"
-                          value={newSpotForm.nome}
-                          onChange={handleNewSpotFormChange}
-                          placeholder="Esempio: Posto coperto vicino al centro"
-                          required
-                        />
-                      </label>
-
-                      <label>
-                        Indirizzo o riferimento
-                        <input
-                          name="indirizzoTestuale"
-                          value={newSpotForm.indirizzoTestuale}
-                          onChange={handleNewSpotFormChange}
-                          placeholder="Puoi correggere o descrivere meglio l'indirizzo"
-                        />
-                      </label>
-
-                      <label>
-                        Tariffa oraria
-                        <input
-                          name="tariffaOraria"
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={newSpotForm.tariffaOraria}
-                          onChange={handleNewSpotFormChange}
-                          placeholder="Esempio: 2.50"
-                          required
-                        />
-                      </label>
-
-                      <label>
-                        Descrizione
-                        <textarea
-                          name="descrizione"
-                          value={newSpotForm.descrizione}
-                          onChange={handleNewSpotFormChange}
-                          placeholder="Aggiungi dettagli utili per chi prenota"
-                          rows={3}
-                        />
-                      </label>
-
-                      <label>
-                        Foto del posto (opzionale, max 10)
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          multiple
-                          onChange={e => setPhotoFiles(Array.from(e.target.files))}
-                          style={{ marginTop: 4 }}
-                        />
-                        {photoFiles.length > 0 && (
-                          <span style={{ fontSize: 12, color: '#6b7280' }}>
-                            {photoFiles.length} {photoFiles.length === 1 ? 'foto selezionata' : 'foto selezionate'}
-                          </span>
-                        )}
-                      </label>
-
-                      <label className="create-spot-checkbox">
-                        <input
-                          name="dichiarazioneProprietaAccettata"
-                          type="checkbox"
-                          checked={newSpotForm.dichiarazioneProprietaAccettata}
-                          onChange={handleNewSpotFormChange}
-                        />
-
-                        <span>
-                          Dichiaro di essere proprietario del posto auto o di avere
-                          l&apos;autorizzazione a pubblicarlo
-                        </span>
-                      </label>
-
-                      <button
-                        className="primary-button"
-                        type="submit"
-                        disabled={createSpotLoading}
-                      >
-                        {createSpotLoading ? 'Pubblicazione...' : 'Pubblica posto'}
-                      </button>
-                    </form>
-                  )}
-                </div>
-              )}
-            </section>
-
-            <div className={searchCircle ? 'map-area map-area--with-sidebar' : 'map-area'}>
-              {searchCircle && !isCreateSpotMode && (
-                <SpotSidebar
-                  spots={nearbySpots}
-                  radiusM={searchCircle.radiusM}
-                  onRadiusChange={handleRadiusChange}
-                  onClear={() => setSearchCircle(null)}
-                  onSelectSpot={handleSelectSpot}
-                />
-              )}
-
-              <section className="content-card map-section">
-                {detailLoading && (
-                  <p style={{ color: '#6b7280', marginBottom: 8 }}>
-                    Caricamento posto...
-                  </p>
-                )}
-
-                <SpotMap
-                  spots={spots}
-                  onSelectSpot={handleSelectSpot}
-                  searchCircle={searchCircle}
-                  onMapClick={handleMapClick}
-                  flyTarget={flyTarget}
-                  isCreateSpotMode={isCreateSpotMode}
-                  createSpotPosition={createSpotPosition}
-                />
-              </section>
-            </div>
-          </>
-        ) : null}
-      </main>
-
-      {spotDetail && (
-        <div className="modal-overlay" onClick={() => setSpotDetail(null)}>
-          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-            <button
-              className="modal-close"
-              onClick={() => setSpotDetail(null)}
-            >
-              ✕
-            </button>
-
-            <BookingCalendar
-              posto={spotDetail.posto}
-              prenotazioni={spotDetail.prenotazioni}
-              recensioni={spotDetail.recensioni}
-              mediaVoti={spotDetail.mediaVoti}
-              onConfirm={handleBookingConfirm}
-            />
-          </div>
-        </div>
-      )}
-    </div>
+  return (
+    <Dashboard
+      authenticatedUser={authenticatedUser}
+      spots={spots}
+      nearbySpots={nearbySpots}
+      searchCircle={searchCircle}
+      flyTarget={flyTarget}
+      detailLoading={detailLoading}
+      isCreateSpotMode={isCreateSpotMode}
+      createSpotPosition={createSpotPosition}
+      createSpotLoading={createSpotLoading}
+      createSpotMessage={createSpotMessage}
+      createSpotError={createSpotError}
+      newSpotForm={newSpotForm}
+      spotDetail={spotDetail}
+      onLogout={handleLogout}
+      onMyBookings={() => setView('myBookings')}
+      onReceivedBookings={() => setView('receivedBookings')}
+      onProfileClick={() => setView('profile')}
+      onSearchSelect={handleSearchSelect}
+      onRadiusChange={handleRadiusChange}
+      onClearSearch={() => setSearchCircle(null)}
+      onSelectSpot={handleSelectSpot}
+      onMapClick={handleMapClick}
+      onStartCreateSpot={startCreateSpotMode}
+      onCancelCreateSpot={resetCreateSpotState}
+      onNewSpotFormChange={handleNewSpotFormChange}
+      onCreateSpot={handleCreatePrivateSpot}
+      onCreateSpotAddressSelect={handleCreateSpotAddressSelect}
+      onDisponibilitaChange={handleDisponibilitaChange}
+      onCaratteristicheChange={handleCaratteristicheChange}
+      onCloseDetail={() => setSpotDetail(null)}
+      onBookingConfirm={handleBookingConfirm}
+      onViewHostReviews={handleViewHostReviews}
+      onViewPostoReviews={handleViewPostoReviews}
+    />
   );
 }
 
-export default App;
+export default App;           
