@@ -371,10 +371,10 @@ function App() {
     }
   }
 
-  async function handlePaymentDone() {
-    // Dopo il pagamento torniamo alla mappa e ricarichiamo i posti
+  async function handlePaymentDone(updatedBooking) {
+    const fromMyBookings = pendingBooking?._fromMyBookings;
     setPendingBooking(null);
-    setView('dashboard');
+    setView(fromMyBookings ? 'myBookings' : 'dashboard');
 
     try {
       await loadPostiPrivati();
@@ -385,7 +385,7 @@ function App() {
 
   function handlePayFromBookings(booking) {
     // Permette di pagare una prenotazione rimasta in attesa dalla pagina Le mie prenotazioni
-    setPendingBooking(booking);
+    setPendingBooking({ ...booking, _fromMyBookings: true });
     setView('payment');
   }
 
@@ -574,19 +574,14 @@ function App() {
 
   if (view === 'payment' && authenticatedUser && pendingBooking) {
     return (
-      <div className="app-page">
-        <main className="main-layout">
-          <AuthPanel onAuthChange={handleAuthChange} />
-          <PaymentPage
-            booking={pendingBooking}
-            onPaid={handlePaymentDone}
-            onBack={() => {
-              setView('dashboard');
-              setPendingBooking(null);
-            }}
-          />
-        </main>
-      </div>
+      <PaymentPage
+        booking={pendingBooking}
+        onPaid={handlePaymentDone}
+        onBack={() => {
+          setView(pendingBooking._fromMyBookings ? 'myBookings' : 'dashboard');
+          setPendingBooking(null);
+        }}
+      />
     );
   }
 
