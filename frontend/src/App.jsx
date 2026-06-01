@@ -62,6 +62,7 @@ function App() {
   // 'landing' | 'auth' | 'dashboard' | 'payment' | 'myBookings' | 'receivedBookings' | 'profile' | 'hostReviews'
   const [view, setView] = useState('landing');
   const [reviewHostId, setReviewHostId] = useState(null);
+  const [reviewPosto, setReviewPosto]   = useState(null); // { _id, nome, posizione }
   const [authChecked, setAuthChecked] = useState(false);
 
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
@@ -174,11 +175,18 @@ function App() {
   }, [authenticatedUser]);
 
   const loadPostiPrivati = useCallback(async () => {
-    // Carica i posti privati visibili sulla mappa
-    // Questa funzione viene riusata dopo creazione, modifica o eliminazione di un posto
-    const posti = await api.listPosti();
-    setSpots(posti);
-    return posti;
+    // Carica i posti privati visibili sulla mappa e mostra la media delle recensioni
+    const [posti, medie] = await Promise.all([
+      api.listPosti(),
+      api.getMediaPosti().catch(() => []),
+    ]);
+    const medieMap = Object.fromEntries(medie.map(m => [String(m._id), m]));
+    const postiArricchiti = posti.map(p => {
+      const stat = medieMap[String(p._id)];
+      return stat ? { ...p, mediaStelle: stat.media, totaleRecensioni: stat.totale } : p;
+    });
+    setSpots(postiArricchiti);
+    return postiArricchiti;
   }, []);
 
   function resetCreateSpotState() {
@@ -274,6 +282,13 @@ function App() {
 
   function handleViewHostReviews(hostId) {
     setReviewHostId(String(hostId))
+    setReviewPosto(null)
+    setView('hostReviews')
+  }
+
+  function handleViewPostoReviews(posto) {
+    setReviewPosto(posto)
+    setReviewHostId(null)
     setView('hostReviews')
   }
 
@@ -552,6 +567,7 @@ function App() {
           setView('dashboard');
         }}
         onUpdateUser={(updatedUser) => setAuthenticatedUser(updatedUser)}
+        onViewPostoReviews={handleViewPostoReviews}
       />
     );
   }
@@ -574,11 +590,12 @@ function App() {
     );
   }
 
-  if (view === 'hostReviews' && reviewHostId) {
+  if (view === 'hostReviews' && (reviewHostId || reviewPosto)) {
     return (
       <HostReviewsPage
         hostId={reviewHostId}
-        onBack={() => setView(authenticatedUser ? 'myBookings' : 'landing')}
+        posto={reviewPosto}
+        onBack={() => history.back()}
       />
     );
   }
@@ -631,6 +648,7 @@ function App() {
       onCloseDetail={() => setSpotDetail(null)}
       onBookingConfirm={handleBookingConfirm}
       onViewHostReviews={handleViewHostReviews}
+      onViewPostoReviews={handleViewPostoReviews}
     />
   );
 }

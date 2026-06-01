@@ -31,6 +31,10 @@ async function createRecensione(req, res, next) {
       return res.status(400).json({ error: 'Puoi recensire solo prenotazioni pagate' });
     }
 
+    if (new Date(prenotazione.dataOraFine) > new Date()) {
+      return res.status(400).json({ error: 'Puoi recensire solo dopo che hai usufruito della prenotazione' });
+    }
+
     if (prenotazione.recensioneId) {
       return res.status(409).json({ error: 'Hai già lasciato una recensione per questa prenotazione' });
     }
@@ -127,4 +131,29 @@ async function getRecensioniPosto(req, res, next) {
   }
 }
 
-module.exports = { createRecensione, getRecensioniHost, getRecensioniPosto };
+// Restituisce media stelle e totale recensioni per ogni posto che ha almeno una recensione
+async function getMediaPosti(req, res, next) {
+  try {
+    const medie = await Recensione.aggregate([
+      {
+        $group: {
+          _id: '$postoPrivatoId',
+          media: { $avg: '$stelle' },
+          totale: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          media: { $round: ['$media', 1] },
+          totale: 1,
+        },
+      },
+    ]);
+    return res.json(medie);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { createRecensione, getRecensioniHost, getRecensioniPosto, getMediaPosti };

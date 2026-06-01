@@ -86,6 +86,15 @@ function SpotCard({ spot, searchCircle, onSelect, isLoading, onHover, onHoverEnd
         </div>
       )}
 
+      {spot.mediaStelle != null && (
+        <div className="db-spot-rating">
+          {[1,2,3,4,5].map(i => (
+            <span key={i} style={{ color: i <= Math.round(spot.mediaStelle) ? '#f59e0b' : '#e2e8f0', fontSize: 13 }}>★</span>
+          ))}
+          <span className="db-spot-rating-text">{spot.mediaStelle} ({spot.totaleRecensioni})</span>
+        </div>
+      )}
+
       <div className="db-spot-card-footer">
         <span className="db-spot-price">
           €{Number(spot.tariffaOraria ?? 0).toFixed(2)}/h
@@ -302,6 +311,7 @@ function Dashboard({
   onCloseDetail,
   onBookingConfirm,
   onViewHostReviews,
+  onViewPostoReviews,
 }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [hoveredSpotId, setHoveredSpotId] = useState(null);
@@ -498,7 +508,7 @@ function Dashboard({
                 !!authenticatedUser &&
                 String(spotDetail.posto.hostId?._id ?? spotDetail.posto.hostId) === String(authenticatedUser.id)
               }
-              onViewHostReviews={onViewHostReviews}
+              onViewSpotReviews={onViewPostoReviews}
             />
           </div>
         </div>

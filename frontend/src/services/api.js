@@ -125,6 +125,8 @@ export const api = {
     body: JSON.stringify(body),
   }),
 
+  getMediaPosti: () => request('/recensioni/medie-posti'),
+
   getRecensioniHost: (hostId) => request(`/recensioni/host/${hostId}`),
 
   getRecensioniPosto: (postoId) => request(`/recensioni/posto/${postoId}`),

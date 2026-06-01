@@ -224,7 +224,7 @@ function BookingCard({ booking: b, now, onPay, onCancel, onReview, onViewHostRev
         <span style={S.cardPrice}>€{b.prezzoTotale?.toFixed(2)}</span>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {b.stato === 'PAGATA' && (
+          {b.stato === 'PAGATA' && isExpired && (
             b.recensioneId ? (
               <span style={S.reviewedBadge}>✓ Recensito</span>
             ) : (
