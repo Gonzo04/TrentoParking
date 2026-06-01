@@ -11,6 +11,7 @@ import PaymentPage from './components/PaymentPage';
 import MyBookings from './components/MyBookings';
 import MyReceivedBookings from './components/MyReceivedBookings';
 import ProfilePage from './components/ProfilePage';
+import HostReviewsPage from './components/HostReviewsPage';
 
 function distanceM(lat1, lon1, lat2, lon2) {
   // Calcola la distanza approssimata tra due coordinate geografiche
@@ -58,8 +59,10 @@ async function reverseGeocode(lat, lng) {
 }
 
 function App() {
-  // 'landing' | 'auth' | 'dashboard' | 'payment' | 'myBookings' | 'receivedBookings' | 'profile'
+  // 'landing' | 'auth' | 'dashboard' | 'payment' | 'myBookings' | 'receivedBookings' | 'profile' | 'hostReviews'
   const [view, setView] = useState('landing');
+  const [reviewHostId, setReviewHostId] = useState(null);
+  const [reviewPosto, setReviewPosto]   = useState(null); // { _id, nome, posizione }
   const [authChecked, setAuthChecked] = useState(false);
 
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
@@ -155,7 +158,7 @@ function App() {
 
       if (
         !authenticatedUser &&
-        ['dashboard', 'payment', 'myBookings', 'receivedBookings', 'profile'].includes(newView)
+        ['dashboard', 'payment', 'myBookings', 'receivedBookings', 'profile', 'hostReviews'].includes(newView)
       ) {
         newView = 'landing';
       }
@@ -172,11 +175,18 @@ function App() {
   }, [authenticatedUser]);
 
   const loadPostiPrivati = useCallback(async () => {
-    // Carica i posti privati visibili sulla mappa
-    // Questa funzione viene riusata dopo creazione, modifica o eliminazione di un posto
-    const posti = await api.listPosti();
-    setSpots(posti);
-    return posti;
+    // Carica i posti privati visibili sulla mappa e mostra la media delle recensioni
+    const [posti, medie] = await Promise.all([
+      api.listPosti(),
+      api.getMediaPosti().catch(() => []),
+    ]);
+    const medieMap = Object.fromEntries(medie.map(m => [String(m._id), m]));
+    const postiArricchiti = posti.map(p => {
+      const stat = medieMap[String(p._id)];
+      return stat ? { ...p, mediaStelle: stat.media, totaleRecensioni: stat.totale } : p;
+    });
+    setSpots(postiArricchiti);
+    return postiArricchiti;
   }, []);
 
   function resetCreateSpotState() {
@@ -218,7 +228,8 @@ function App() {
         prev === 'payment' ||
         prev === 'myBookings' ||
         prev === 'receivedBookings' ||
-        prev === 'profile'
+        prev === 'profile' ||
+        prev === 'hostReviews'
           ? 'landing'
           : prev
       );
@@ -268,6 +279,18 @@ function App() {
       cancelled = true;
     };
   }, [handleAuthChange, shouldSkipSessionRestore]);
+
+  function handleViewHostReviews(hostId) {
+    setReviewHostId(String(hostId))
+    setReviewPosto(null)
+    setView('hostReviews')
+  }
+
+  function handleViewPostoReviews(posto) {
+    setReviewPosto(posto)
+    setReviewHostId(null)
+    setView('hostReviews')
+  }
 
   async function handleLogout() {
     try {
@@ -544,6 +567,7 @@ function App() {
           setView('dashboard');
         }}
         onUpdateUser={(updatedUser) => setAuthenticatedUser(updatedUser)}
+        onViewPostoReviews={handleViewPostoReviews}
       />
     );
   }
@@ -566,23 +590,28 @@ function App() {
     );
   }
 
+  if (view === 'hostReviews' && (reviewHostId || reviewPosto)) {
+    return (
+      <HostReviewsPage
+        hostId={reviewHostId}
+        posto={reviewPosto}
+        onBack={() => history.back()}
+      />
+    );
+  }
+
   if (view === 'myBookings' && authenticatedUser) {
     return (
       <MyBookings
         onBack={() => setView('dashboard')}
         onPay={handlePayFromBookings}
+        onViewHostReviews={handleViewHostReviews}
       />
     );
   }
 
   if (view === 'receivedBookings' && authenticatedUser?.ruolo === 'HOST') {
-    return (
-      <div className="app-page">
-        <main className="main-layout">
-          <MyReceivedBookings onBack={() => setView('dashboard')} />
-        </main>
-      </div>
-    );
+    return <MyReceivedBookings onBack={() => setView('dashboard')} />;
   }
 
   return (
@@ -618,6 +647,8 @@ function App() {
       onCaratteristicheChange={handleCaratteristicheChange}
       onCloseDetail={() => setSpotDetail(null)}
       onBookingConfirm={handleBookingConfirm}
+      onViewHostReviews={handleViewHostReviews}
+      onViewPostoReviews={handleViewPostoReviews}
     />
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
+import ReviewModal from './ReviewModal'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const STATO = {
@@ -17,10 +18,11 @@ function durataOre(inizio, fine) {
 }
 
 /* ── Componente ───────────────────────────────────────────────────── */
-export default function MyBookings({ onBack, onPay }) {
+export default function MyBookings({ onBack, onPay, onViewHostReviews }) {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [reviewBooking, setReviewBooking] = useState(null)
 
   useEffect(() => {
     api.listMyBookings()
@@ -47,11 +49,27 @@ export default function MyBookings({ onBack, onPay }) {
     }
   }
 
+  function handleReviewSubmitted(rec) {
+    setBookings(bs => bs.map(b =>
+      b._id === reviewBooking._id ? { ...b, recensioneId: rec._id } : b
+    ))
+    setReviewBooking(null)
+  }
+
+  const now = new Date()
   const attive   = bookings.filter(b => b.stato !== 'ANNULLATA')
   const passate  = bookings.filter(b => b.stato === 'ANNULLATA')
 
   return (
     <div style={S.page}>
+
+      {reviewBooking && (
+        <ReviewModal
+          booking={reviewBooking}
+          onClose={() => setReviewBooking(null)}
+          onSubmitted={handleReviewSubmitted}
+        />
+      )}
 
       {/* ── Navbar ─────────────────────────────────────────────────── */}
       <nav style={S.nav}>
@@ -112,8 +130,11 @@ export default function MyBookings({ onBack, onPay }) {
                 <BookingCard
                   key={b._id}
                   booking={b}
+                  now={now}
                   onPay={onPay}
                   onCancel={handleCancel}
+                  onReview={setReviewBooking}
+                  onViewHostReviews={onViewHostReviews}
                 />
               ))}
             </div>
@@ -129,8 +150,11 @@ export default function MyBookings({ onBack, onPay }) {
                 <BookingCard
                   key={b._id}
                   booking={b}
+                  now={now}
                   onPay={onPay}
                   onCancel={handleCancel}
+                  onReview={setReviewBooking}
+                  onViewHostReviews={onViewHostReviews}
                 />
               ))}
             </div>
@@ -142,7 +166,7 @@ export default function MyBookings({ onBack, onPay }) {
 }
 
 /* ── BookingCard ──────────────────────────────────────────────────── */
-function BookingCard({ booking: b, onPay, onCancel }) {
+function BookingCard({ booking: b, now, onPay, onCancel, onReview, onViewHostReviews }) {
   const spot  = b.postoPrivatoId
   const stato = STATO[b.stato] ?? { label: b.stato, bg: '#f3f4f6', color: '#374151', dot: '#9ca3af' }
   const ore   = durataOre(b.dataOraInizio, b.dataOraFine)
@@ -150,6 +174,10 @@ function BookingCard({ booking: b, onPay, onCancel }) {
   const giorno = fmt(b.dataOraInizio, { weekday: 'long', day: 'numeric', month: 'long' })
   const orariO = fmt(b.dataOraInizio, { hour: '2-digit', minute: '2-digit' })
   const orarioF = fmt(b.dataOraFine,  { hour: '2-digit', minute: '2-digit' })
+
+  const isExpired  = new Date(b.dataOraFine) < now
+  const canReview  = b.stato === 'PAGATA' && isExpired && !b.recensioneId
+  const hostId     = spot?.hostId?._id ?? spot?.hostId
 
   return (
     <div style={S.card}>
@@ -160,6 +188,14 @@ function BookingCard({ booking: b, onPay, onCancel }) {
           <p style={S.cardSpotName}>{spot?.nome ?? '—'}</p>
           {spot?.posizione?.indirizzoTestuale && (
             <p style={S.cardAddress}>{spot.posizione.indirizzoTestuale}</p>
+          )}
+          {hostId && onViewHostReviews && (
+            <button
+              onClick={() => onViewHostReviews(hostId)}
+              style={S.hostLink}
+            >
+              👤 {spot.hostId?.nome} {spot.hostId?.cognome}
+            </button>
           )}
         </div>
         <span style={{ ...S.statoBadge, background: stato.bg, color: stato.color }}>
@@ -187,18 +223,29 @@ function BookingCard({ booking: b, onPay, onCancel }) {
       <div style={S.cardFooter}>
         <span style={S.cardPrice}>€{b.prezzoTotale?.toFixed(2)}</span>
 
-        {b.stato !== 'ANNULLATA' && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            {b.stato === 'IN_ATTESA_PAGAMENTO' && (
-              <button onClick={() => onPay(b)} style={S.btnPay}>
-                Paga ora
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {b.stato === 'PAGATA' && isExpired && (
+            b.recensioneId ? (
+              <span style={S.reviewedBadge}>✓ Recensito</span>
+            ) : (
+              <button onClick={() => onReview(b)} style={S.btnReview}>
+                ⭐ Lascia recensione
               </button>
-            )}
-            <button onClick={() => onCancel(b._id)} style={S.btnCancel}>
-              Annulla
-            </button>
-          </div>
-        )}
+            )
+          )}
+          {b.stato !== 'ANNULLATA' && !isExpired && (
+            <>
+              {b.stato === 'IN_ATTESA_PAGAMENTO' && (
+                <button onClick={() => onPay(b)} style={S.btnPay}>
+                  Paga ora
+                </button>
+              )}
+              <button onClick={() => onCancel(b._id)} style={S.btnCancel}>
+                Annulla
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -414,6 +461,32 @@ const S = {
     fontWeight: 800,
     fontSize: 18,
     color: '#2a9d8f',
+  },
+
+  /* Host link */
+  hostLink: {
+    background: 'none', border: 'none', padding: 0,
+    cursor: 'pointer', color: '#2a9d8f',
+    fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+    marginTop: 3,
+  },
+
+  /* Reviewed badge */
+  reviewedBadge: {
+    display: 'inline-flex', alignItems: 'center',
+    padding: '7px 12px',
+    background: '#f0fdf4', color: '#16a34a',
+    border: '1px solid #bbf7d0',
+    borderRadius: 8, fontSize: 12, fontWeight: 600,
+  },
+
+  /* Review button */
+  btnReview: {
+    padding: '7px 14px',
+    background: '#fef9ec', color: '#92400e',
+    border: '1px solid rgba(234,179,8,0.4)',
+    borderRadius: 8, cursor: 'pointer',
+    fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
   },
 
   /* Bottoni */

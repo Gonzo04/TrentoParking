@@ -20,6 +20,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/posti-privati', postiPrivatiRoutes);
 app.use('/api/bookings', require('./routes/booking'));
+app.use('/api/recensioni', require('./routes/recensioni'));
 
 app.use((err, req, res, next) => {
   console.error(err);

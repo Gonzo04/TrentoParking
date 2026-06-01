@@ -20,7 +20,7 @@ function dispToBackend(disp) {
 }
 
 /* ── Componente principale ────────────────────────────────────────── */
-export default function ProfilePage({ authenticatedUser, onBack, onUpdateUser }) {
+export default function ProfilePage({ authenticatedUser, onBack, onUpdateUser, onViewPostoReviews }) {
   return (
     <div style={S.page}>
 
@@ -35,7 +35,7 @@ export default function ProfilePage({ authenticatedUser, onBack, onUpdateUser })
 
       <div style={S.content}>
         <UserSection user={authenticatedUser} onUpdateUser={onUpdateUser} />
-        {authenticatedUser?.ruolo === 'HOST' && <MieiPosti />}
+        {authenticatedUser?.ruolo === 'HOST' && <MieiPosti onViewPostoReviews={onViewPostoReviews} />}
       </div>
     </div>
   )
@@ -158,15 +158,20 @@ function InfoRow({ icon, label, children }) {
 }
 
 /* ── Sezione posti dell'host ──────────────────────────────────────── */
-function MieiPosti() {
+function MieiPosti({ onViewPostoReviews }) {
   const [posti,   setPosti]   = useState([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
+  const [medieMap, setMedieMap] = useState({})
 
   useEffect(() => {
-    api.getMieiPosti()
-      .then(setPosti)
-      .catch(e => setError(e.message))
+    Promise.all([
+      api.getMieiPosti(),
+      api.getMediaPosti().catch(() => []),
+    ]).then(([p, medie]) => {
+      setPosti(p)
+      setMedieMap(Object.fromEntries(medie.map(m => [String(m._id), m])))
+    }).catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
@@ -208,7 +213,7 @@ function MieiPosti() {
           <p style={S.subLabel}>Attivi</p>
           <div style={S.postoList}>
             {attivi.map(p => (
-              <PostoRow key={p._id} posto={p} onUpdated={handleUpdated} onDeleted={handleDeleted} onDisattivato={handleDisattivato} />
+              <PostoRow key={p._id} posto={p} stat={medieMap[String(p._id)]} onUpdated={handleUpdated} onDeleted={handleDeleted} onDisattivato={handleDisattivato} onViewReviews={onViewPostoReviews} />
             ))}
           </div>
         </div>
@@ -219,7 +224,7 @@ function MieiPosti() {
           <p style={S.subLabel}>Non attivi</p>
           <div style={S.postoList}>
             {inattivi.map(p => (
-              <PostoRow key={p._id} posto={p} onUpdated={handleUpdated} onDeleted={handleDeleted} onDisattivato={handleDisattivato} />
+              <PostoRow key={p._id} posto={p} stat={medieMap[String(p._id)]} onUpdated={handleUpdated} onDeleted={handleDeleted} onDisattivato={handleDisattivato} onViewReviews={onViewPostoReviews} />
             ))}
           </div>
         </div>
@@ -228,8 +233,22 @@ function MieiPosti() {
   )
 }
 
+/* ── Stelline mini ────────────────────────────────────────────────── */
+function StarsMini({ n, total }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+      {[1,2,3,4,5].map(i => (
+        <span key={i} style={{ fontSize: 13, color: i <= Math.round(n) ? '#f59e0b' : '#e2e8f0', lineHeight: 1 }}>★</span>
+      ))}
+      <span style={{ fontSize: 12, color: '#8a95a3', marginLeft: 3, fontWeight: 600 }}>
+        {n} ({total} {total === 1 ? 'rec.' : 'rec.'})
+      </span>
+    </span>
+  )
+}
+
 /* ── Singolo posto con form di modifica inline ────────────────────── */
-function PostoRow({ posto, onUpdated, onDeleted, onDisattivato }) {
+function PostoRow({ posto, stat, onUpdated, onDeleted, onDisattivato, onViewReviews }) {
   const [expanded, setExpanded] = useState(false)
   const [saving,   setSaving]   = useState(false)
   const [error,    setError]    = useState('')
@@ -323,6 +342,14 @@ function PostoRow({ posto, onUpdated, onDeleted, onDisattivato }) {
           <p style={S.postoName}>{posto.nome}</p>
           {posto.posizione?.indirizzoTestuale && (
             <p style={S.postoAddress}>{posto.posizione.indirizzoTestuale}</p>
+          )}
+          {onViewReviews && (
+            <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {stat && <StarsMini n={stat.media} total={stat.totale} />}
+              <button onClick={() => onViewReviews(posto)} style={S.reviewLink}>
+                {stat ? 'Vedi recensioni →' : '⭐ Vedi recensioni'}
+              </button>
+            </div>
           )}
           {visibleTags.length > 0 && (
             <div style={S.tagsRow}>
@@ -612,6 +639,12 @@ const S = {
     margin: '0 0 6px',
     fontSize: 12,
     color: '#8a95a3',
+  },
+  reviewLink: {
+    background: 'none', border: 'none', padding: 0,
+    cursor: 'pointer', color: '#2a9d8f',
+    fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+    marginLeft: 6,
   },
   postoPrice: {
     margin: '0 0 4px',

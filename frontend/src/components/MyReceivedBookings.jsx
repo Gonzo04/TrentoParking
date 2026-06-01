@@ -1,185 +1,367 @@
-import { useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { useEffect, useState } from 'react'
+import { api } from '../services/api'
 
-const STATO_LABEL = {
-  IN_ATTESA_PAGAMENTO: { label: 'In attesa di pagamento', color: '#d97706' },
-  PAGATA: { label: 'Confermata', color: '#16a34a' },
-  ANNULLATA: { label: 'Annullata', color: '#dc2626' },
-};
-
-function getUserName(user) {
-  // Se il backend non ha popolato l'utente, mostriamo un testo sicuro
-  if (!user || typeof user === 'string') {
-    return 'Utente non disponibile';
-  }
-
-  // Costruiamo il nome completo solo con i campi realmente presenti
-  const nomeCompleto = [user.nome, user.cognome]
-    .filter(Boolean)
-    .join(' ');
-
-  // Se nome e cognome non esistono, usiamo il nome utente come fallback
-  return nomeCompleto || user.nomeUtente || 'Utente non disponibile';
+/* ── Costanti ─────────────────────────────────────────────────────── */
+const STATO = {
+  IN_ATTESA_PAGAMENTO: { label: 'In attesa di pagamento', bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' },
+  PAGATA:              { label: 'Confermata',              bg: '#dcfce7', color: '#14532d', dot: '#16a34a' },
+  ANNULLATA:           { label: 'Annullata',               bg: '#fee2e2', color: '#7f1d1d', dot: '#dc2626' },
 }
 
-function getUserContact(user) {
-  // Il contatto viene mostrato solo perché esiste una prenotazione reale
-  if (!user || typeof user === 'string') {
-    return '';
-  }
-
-  return user.email || user.nomeUtente || '';
+function fmt(iso, opts) {
+  return new Date(iso).toLocaleString('it-IT', opts)
 }
 
-function formatDateTimeRange(booking) {
-  // Centralizziamo la formattazione della data per non ripeterla nel JSX
-  const inizio = new Date(booking.dataOraInizio);
-  const fine = new Date(booking.dataOraFine);
-
-  return `${inizio.toLocaleString('it-IT', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  })} → ${fine.toLocaleString('it-IT', {
-    timeStyle: 'short'
-  })}`;
+function durataOre(inizio, fine) {
+  return Math.round((new Date(fine) - new Date(inizio)) / 3600000)
 }
 
+function driverName(u) {
+  if (!u || typeof u === 'string') return 'Utente non disponibile'
+  return [u.nome, u.cognome].filter(Boolean).join(' ') || u.nomeUtente || 'Utente non disponibile'
+}
+
+/* ── Componente ───────────────────────────────────────────────────── */
 export default function MyReceivedBookings({ onBack }) {
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState('')
 
   useEffect(() => {
-    // Carichiamo le prenotazioni ricevute sui posti pubblicati dall'host loggato
     api.listReceivedBookings()
       .then(setBookings)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const attive   = bookings.filter(b => b.stato !== 'ANNULLATA')
+  const annullate = bookings.filter(b => b.stato === 'ANNULLATA')
 
   return (
-    <section className="content-card dashboard-card">
-      <div className="section-heading">
-        <div>
-          <h2 style={{ margin: 0 }}>Prenotazioni ricevute</h2>
+    <div style={S.page}>
 
-          <p style={{ margin: '0.5rem 0 0', color: '#6b7280', fontSize: 15 }}>
-            Qui trovi le prenotazioni effettuate dagli utenti sui posti che hai pubblicato.
-          </p>
+      {/* ── Navbar ─────────────────────────────────────────────────── */}
+      <nav style={S.nav}>
+        <span style={S.navLogo}>
+          <span style={{ color: '#fff' }}>Trento</span>
+          <span style={{ color: '#2a9d8f' }}>Parking</span>
+        </span>
+        <button onClick={onBack} style={S.navBack}>← Dashboard</button>
+      </nav>
+
+      {/* ── Contenuto ──────────────────────────────────────────────── */}
+      <div style={S.content}>
+
+        <div style={S.pageHeader}>
+          <h1 style={S.pageTitle}>Prenotazioni ricevute</h1>
+          {!loading && !error && (
+            <span style={S.countBadge}>
+              {attive.length} {attive.length === 1 ? 'attiva' : 'attive'}
+            </span>
+          )}
         </div>
 
-        <button
-          className="secondary-button"
-          type="button"
-          onClick={onBack}
-        >
-          Torna alla mappa
-        </button>
+        {loading && (
+          <div style={S.centeredMsg}>
+            <span style={S.spinner} />
+            <p style={{ margin: 0, color: '#4a5568' }}>Caricamento prenotazioni…</p>
+          </div>
+        )}
+
+        {!loading && error && (
+          <div style={S.errorBox}>
+            <p style={{ margin: 0 }}>⚠️ {error}</p>
+          </div>
+        )}
+
+        {!loading && !error && bookings.length === 0 && (
+          <div style={S.emptyBox}>
+            <p style={{ fontSize: 40, margin: '0 0 12px' }}>🅿️</p>
+            <p style={{ margin: '0 0 4px', fontWeight: 700, color: '#003049', fontSize: 16 }}>
+              Nessuna prenotazione ricevuta
+            </p>
+            <p style={{ margin: 0, color: '#4a5568', fontSize: 14 }}>
+              Le prenotazioni sui tuoi posti appariranno qui.
+            </p>
+          </div>
+        )}
+
+        {attive.length > 0 && (
+          <section style={S.section}>
+            <p style={S.sectionLabel}>Attive</p>
+            <div style={S.list}>
+              {attive.map(b => <ReceivedCard key={b._id} booking={b} />)}
+            </div>
+          </section>
+        )}
+
+        {annullate.length > 0 && (
+          <section style={S.section}>
+            <p style={S.sectionLabel}>Annullate</p>
+            <div style={S.list}>
+              {annullate.map(b => <ReceivedCard key={b._id} booking={b} />)}
+            </div>
+          </section>
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+/* ── ReceivedCard ─────────────────────────────────────────────────── */
+function ReceivedCard({ booking: b }) {
+  const spot   = b.postoPrivatoId
+  const driver = b.utenteId
+  const stato  = STATO[b.stato] ?? { label: b.stato, bg: '#f3f4f6', color: '#374151', dot: '#9ca3af' }
+  const ore    = durataOre(b.dataOraInizio, b.dataOraFine)
+
+  const giorno  = fmt(b.dataOraInizio, { weekday: 'long', day: 'numeric', month: 'long' })
+  const orarioI = fmt(b.dataOraInizio, { hour: '2-digit', minute: '2-digit' })
+  const orarioF = fmt(b.dataOraFine,   { hour: '2-digit', minute: '2-digit' })
+
+  return (
+    <div style={S.card}>
+
+      {/* Riga superiore: nome posto + stato */}
+      <div style={S.cardTop}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={S.cardSpotName}>{spot?.nome ?? '—'}</p>
+          {spot?.posizione?.indirizzoTestuale && (
+            <p style={S.cardAddress}>{spot.posizione.indirizzoTestuale}</p>
+          )}
+        </div>
+        <span style={{ ...S.statoBadge, background: stato.bg, color: stato.color }}>
+          <span style={{ ...S.statoDot, background: stato.dot }} />
+          {stato.label}
+        </span>
       </div>
 
-      {loading && (
-        <p style={{ color: '#6b7280', fontSize: 15 }}>
-          Caricamento delle prenotazioni ricevute...
-        </p>
-      )}
-
-      {error && (
-        <p className="error-message">
-          {error}
-        </p>
-      )}
-
-      {!loading && !error && bookings.length === 0 && (
-        <div
-          style={{
-            marginTop: '1rem',
-            padding: '1rem',
-            borderRadius: 12,
-            background: '#f8fafc',
-            border: '1px solid #e5e7eb'
-          }}
-        >
-          <p style={{ margin: 0, color: '#6b7280', fontSize: 15 }}>
-            Non hai ancora ricevuto prenotazioni sui tuoi posti.
-          </p>
+      {/* Dettagli prenotazione */}
+      <div style={S.cardDetails}>
+        <div style={S.detailItem}>
+          <span style={S.detailIcon}>📅</span>
+          <span style={S.detailText}>
+            {giorno} · {orarioI} → {orarioF}
+            <span style={S.detailMeta}> · {ore}h</span>
+          </span>
         </div>
-      )}
-
-      {!loading && !error && bookings.length > 0 && (
-        <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
-          {bookings.map((booking) => {
-            const spot = booking.postoPrivatoId;
-            const driver = booking.utenteId;
-            const stato = STATO_LABEL[booking.stato] ?? {
-              label: booking.stato,
-              color: '#374151'
-            };
-
-            const driverName = getUserName(driver);
-            const driverContact = getUserContact(driver);
-
-            return (
-              <article
-                key={booking._id}
-                className="content-card"
-                style={{ padding: '1rem' }}
-              >
-                <div className="section-heading">
-                  <div>
-                    <h3 style={{ margin: 0 }}>
-                      {spot?.nome || 'Posto non disponibile'}
-                    </h3>
-
-                    <p style={{ margin: '0.35rem 0', color: '#6b7280', fontSize: 14 }}>
-                      {spot?.posizione?.indirizzoTestuale || 'Indirizzo non disponibile'}
-                    </p>
-
-                    <p style={{ margin: '0.35rem 0', color: '#374151', fontSize: 14 }}>
-                      <strong>Periodo:</strong> {formatDateTimeRange(booking)}
-                    </p>
-
-                    <div
-                      style={{
-                        marginTop: '0.8rem',
-                        padding: '0.8rem',
-                        borderRadius: 10,
-                        background: '#f8fafc',
-                        border: '1px solid #e5e7eb'
-                      }}
-                    >
-                      <p style={{ margin: '0 0 0.35rem', fontWeight: 700, fontSize: 14 }}>
-                        Utente che ha prenotato
-                      </p>
-
-                      <p style={{ margin: '0 0 0.35rem', color: '#374151', fontSize: 14 }}>
-                        {driverName}
-                      </p>
-
-                      <p style={{ margin: '0 0 0.35rem', color: '#6b7280', fontSize: 14 }}>
-                        {driverContact || 'Contatto non disponibile'}
-                      </p>
-
-                      <p style={{ margin: 0, color: '#6b7280', fontSize: 14 }}>
-                        <strong>Targa:</strong> {booking.targa || driver?.targa || 'Non disponibile'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: '0 0 0.4rem', fontWeight: 700, fontSize: 17, color: '#2563eb' }}>
-                      €{Number(booking.prezzoTotale || 0).toFixed(2)}
-                    </p>
-
-                    <span style={{ fontSize: 13, fontWeight: 700, color: stato.color }}>
-                      {stato.label}
-                    </span>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+        <div style={S.detailItem}>
+          <span style={S.detailIcon}>👤</span>
+          <span style={S.detailText}>{driverName(driver)}</span>
         </div>
-      )}
-    </section>
-  );
+        {driver?.email && (
+          <div style={S.detailItem}>
+            <span style={S.detailIcon}>✉️</span>
+            <span style={S.detailText}>{driver.email}</span>
+          </div>
+        )}
+        <div style={S.detailItem}>
+          <span style={S.detailIcon}>🚗</span>
+          <span style={S.detailText}>{b.targa}</span>
+        </div>
+      </div>
+
+      {/* Footer: prezzo */}
+      <div style={S.cardFooter}>
+        <span style={S.cardPrice}>€{Number(b.prezzoTotale ?? 0).toFixed(2)}</span>
+      </div>
+
+    </div>
+  )
+}
+
+/* ── Stili ────────────────────────────────────────────────────────── */
+const S = {
+  page: {
+    minHeight: '100vh',
+    background: '#f5f6f7',
+    fontFamily: "'Inter', system-ui, sans-serif",
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  nav: {
+    height: 64,
+    background: '#003049',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 1.75rem',
+    flexShrink: 0,
+  },
+  navBack: {
+    background: 'rgba(255,255,255,0.1)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    color: 'rgba(255,255,255,0.88)',
+    padding: '0.45rem 1rem',
+    borderRadius: 999,
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+  },
+  navLogo: {
+    fontFamily: "'Sora', sans-serif",
+    fontWeight: 800,
+    fontSize: '1.2rem',
+    letterSpacing: '-0.04em',
+  },
+  content: {
+    flex: 1,
+    maxWidth: 680,
+    width: '100%',
+    margin: '0 auto',
+    padding: '2rem 1.25rem',
+  },
+  pageHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    marginBottom: '1.75rem',
+    flexWrap: 'wrap',
+  },
+  pageTitle: {
+    margin: 0,
+    fontFamily: "'Sora', sans-serif",
+    fontSize: '1.6rem',
+    fontWeight: 800,
+    color: '#003049',
+    letterSpacing: '-0.03em',
+  },
+  countBadge: {
+    background: 'rgba(42,157,143,0.12)',
+    color: '#1f7a6e',
+    border: '1px solid rgba(42,157,143,0.25)',
+    borderRadius: 999,
+    padding: '2px 12px',
+    fontSize: '0.82rem',
+    fontWeight: 700,
+  },
+  centeredMsg: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 14,
+    padding: '3rem 0',
+  },
+  spinner: {
+    display: 'block',
+    width: 32,
+    height: 32,
+    border: '3px solid #e2e8f0',
+    borderTopColor: '#2a9d8f',
+    borderRadius: '50%',
+    animation: 'mb-spin 0.8s linear infinite',
+  },
+  errorBox: {
+    background: '#fee2e2',
+    color: '#7f1d1d',
+    border: '1px solid #fca5a5',
+    borderRadius: 12,
+    padding: '14px 18px',
+    fontSize: 14,
+  },
+  emptyBox: {
+    background: 'white',
+    border: '1px solid #e2e8f0',
+    borderRadius: 16,
+    padding: '3rem 2rem',
+    textAlign: 'center',
+  },
+  section: {
+    marginBottom: '1.5rem',
+  },
+  sectionLabel: {
+    margin: '0 0 0.75rem',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: '#8a95a3',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+  },
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  card: {
+    background: 'white',
+    border: '1px solid #e2e8f0',
+    borderRadius: 16,
+    padding: '16px 18px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  cardTop: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  cardSpotName: {
+    margin: '0 0 2px',
+    fontWeight: 700,
+    fontSize: 15,
+    color: '#003049',
+    fontFamily: "'Sora', sans-serif",
+    letterSpacing: '-0.02em',
+  },
+  cardAddress: {
+    margin: 0,
+    fontSize: 13,
+    color: '#4a5568',
+  },
+  statoBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 999,
+    padding: '3px 10px',
+    fontSize: 12,
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  statoDot: {
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+  cardDetails: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    borderTop: '1px solid #f1f5f9',
+    paddingTop: 10,
+  },
+  detailItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailIcon: {
+    fontSize: 14,
+    flexShrink: 0,
+  },
+  detailText: {
+    fontSize: 13,
+    color: '#374151',
+  },
+  detailMeta: {
+    color: '#8a95a3',
+  },
+  cardFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    borderTop: '1px solid #f1f5f9',
+    paddingTop: 10,
+  },
+  cardPrice: {
+    fontWeight: 800,
+    fontSize: 18,
+    color: '#2a9d8f',
+  },
 }

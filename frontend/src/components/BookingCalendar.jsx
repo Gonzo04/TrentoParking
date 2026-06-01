@@ -72,7 +72,20 @@ function padHour(h) {
 }
 
 /* ── Componente ──────────────────────────────────────────────────── */
-export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwner = false }) {
+function StarsMini({ n, total }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+      {[1,2,3,4,5].map(i => (
+        <span key={i} style={{ fontSize: 13, color: i <= Math.round(n) ? '#f59e0b' : '#e2e8f0', lineHeight: 1 }}>★</span>
+      ))}
+      <span style={{ fontSize: 12, color: '#4a5568', marginLeft: 2 }}>
+        {n} ({total} {total === 1 ? 'rec.' : 'rec.'})
+      </span>
+    </span>
+  )
+}
+
+export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwner = false, onViewSpotReviews }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
 
   const [year,         setYear]         = useState(today.getFullYear())
@@ -187,6 +200,26 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
 
         {posto.descrizione && (
           <p style={S.description}>{posto.descrizione}</p>
+        )}
+
+        {onViewSpotReviews && (
+          <div style={{ marginTop: 6, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {posto.mediaStelle != null && (
+              <StarsMini n={posto.mediaStelle} total={posto.totaleRecensioni ?? 0} />
+            )}
+            <button style={S.hostLink} onClick={() => onViewSpotReviews(posto)}>
+              {posto.mediaStelle != null ? 'vedi tutte →' : '⭐ Vedi recensioni'}
+            </button>
+          </div>
+        )}
+
+        {posto.hostId && (
+          <div style={S.hostRow}>
+            <span style={S.hostLabel}>Host:</span>
+            <span style={S.hostName}>
+              {posto.hostId.nome} {posto.hostId.cognome}
+            </span>
+          </div>
         )}
 
         {tags.length > 0 && (
@@ -584,6 +617,26 @@ const S = {
     alignItems: 'flex-start',
     gap: 12,
     marginBottom: 14,
+  },
+  hostRow: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    marginTop: 8,
+  },
+  hostLabel: {
+    fontSize: 12, fontWeight: 700, color: '#8a95a3',
+    textTransform: 'uppercase', letterSpacing: '0.05em',
+  },
+  hostLink: {
+    background: 'none', border: 'none', padding: 0,
+    cursor: 'pointer', color: '#2a9d8f',
+    fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+  },
+  hostLinkHint: {
+    fontSize: 11, color: '#8a95a3', fontWeight: 400,
+  },
+  hostName: {
+    fontSize: 13, color: '#374151',
   },
   confirmBtn: {
     width: '100%',

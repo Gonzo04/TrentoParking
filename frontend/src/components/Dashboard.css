@@ -322,6 +322,21 @@
   text-overflow: ellipsis;
 }
 
+.db-spot-rating {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 0.55rem;
+  letter-spacing: 0.5px;
+}
+
+.db-spot-rating-text {
+  font-size: 0.75rem;
+  color: var(--db-text-sec);
+  margin-left: 4px;
+  font-weight: 600;
+}
+
 .db-spot-card-footer {
   display: flex;
   align-items: center;
@@ -383,7 +398,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   USERNAME BUTTON (navbar)
+   BOTTONE USERNAME (navbar)
 ══════════════════════════════════════════════════════════════════ */
 .db-nav-username {
   background: rgba(42, 157, 143, 0.18);
@@ -406,13 +421,13 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   CREATE SPOT PANEL
+   FINESTRA CREA POSTO
 ══════════════════════════════════════════════════════════════════ */
 .db-create-panel {
   padding: 1.125rem;
   display: flex;
   flex-direction: column;
-  gap: 0;            /* gap gestito dalle sezioni interne */
+  gap: 0;
 }
 
 .db-create-header {
@@ -633,7 +648,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   MAP AREA
+   MAPPA
 ══════════════════════════════════════════════════════════════════ */
 .db-map-area {
   flex: 1;
@@ -642,7 +657,6 @@
   min-width: 0;
 }
 
-/* Override SpotMap's inline height: 500px — fill the container */
 .db-map-area .leaflet-container {
   height: 100% !important;
   width: 100% !important;
@@ -650,7 +664,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   BOOKING MODAL
+   MODULO PRENOTAZIONE
 ══════════════════════════════════════════════════════════════════ */
 .db-modal-overlay {
   position: fixed;
@@ -737,7 +751,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   SPOT CARD — TAGS
+   CARD POSTO AUTO — TAGS
 ══════════════════════════════════════════════════════════════════ */
 .db-spot-tags {
   display: flex;
@@ -761,7 +775,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   TAGS EDITOR (create spot)
+   TAGS EDITOR
 ══════════════════════════════════════════════════════════════════ */
 .db-tags-grid {
   display: grid;
@@ -804,7 +818,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   AVAILABILITY EDITOR
+   EDITOR DISPONIBILITA'
 ══════════════════════════════════════════════════════════════════ */
 .db-avail-editor {
   display: flex;

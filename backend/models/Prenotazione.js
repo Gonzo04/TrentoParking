@@ -41,7 +41,13 @@ const prenotazioneSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 0
-  }
+  },
+
+  recensioneId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Recensione',
+    default: null,
+  },
 }, {
   collection: 'prenotazioni',
   timestamps: true
