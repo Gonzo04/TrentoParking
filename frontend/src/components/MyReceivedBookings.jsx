@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../services/api'
+import ChatModal from './ChatModal'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const STATO = {
@@ -22,10 +23,11 @@ function driverName(u) {
 }
 
 /* ── Componente ───────────────────────────────────────────────────── */
-export default function MyReceivedBookings({ onBack }) {
+export default function MyReceivedBookings({ onBack, currentUserId }) {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState('')
+  const [chatBookingId, setChatBookingId] = useState(null)
 
   useEffect(() => {
     api.listReceivedBookings()
@@ -39,6 +41,14 @@ export default function MyReceivedBookings({ onBack }) {
 
   return (
     <div style={S.page}>
+
+      {chatBookingId && (
+        <ChatModal
+          bookingId={chatBookingId}
+          currentUserId={currentUserId}
+          onClose={() => setChatBookingId(null)}
+        />
+      )}
 
       {/* ── Navbar ─────────────────────────────────────────────────── */}
       <nav style={S.nav}>
@@ -90,7 +100,7 @@ export default function MyReceivedBookings({ onBack }) {
           <section style={S.section}>
             <p style={S.sectionLabel}>Attive</p>
             <div style={S.list}>
-              {attive.map(b => <ReceivedCard key={b._id} booking={b} />)}
+              {attive.map(b => <ReceivedCard key={b._id} booking={b} onChat={id => setChatBookingId(id)} />)}
             </div>
           </section>
         )}
@@ -99,7 +109,7 @@ export default function MyReceivedBookings({ onBack }) {
           <section style={S.section}>
             <p style={S.sectionLabel}>Annullate</p>
             <div style={S.list}>
-              {annullate.map(b => <ReceivedCard key={b._id} booking={b} />)}
+              {annullate.map(b => <ReceivedCard key={b._id} booking={b} onChat={id => setChatBookingId(id)} />)}
             </div>
           </section>
         )}
@@ -110,7 +120,7 @@ export default function MyReceivedBookings({ onBack }) {
 }
 
 /* ── ReceivedCard ─────────────────────────────────────────────────── */
-function ReceivedCard({ booking: b }) {
+function ReceivedCard({ booking: b, onChat }) {
   const spot   = b.postoPrivatoId
   const driver = b.utenteId
   const stato  = STATO[b.stato] ?? { label: b.stato, bg: '#f3f4f6', color: '#374151', dot: '#9ca3af' }
@@ -162,9 +172,14 @@ function ReceivedCard({ booking: b }) {
         </div>
       </div>
 
-      {/* Footer: prezzo */}
+      {/* Footer: prezzo + azioni */}
       <div style={S.cardFooter}>
         <span style={S.cardPrice}>€{Number(b.prezzoTotale ?? 0).toFixed(2)}</span>
+        {b.stato !== 'ANNULLATA' && (
+          <button onClick={() => onChat(b._id)} style={S.btnChat}>
+            💬 Chat
+          </button>
+        )}
       </div>
 
     </div>
@@ -363,5 +378,16 @@ const S = {
     fontWeight: 800,
     fontSize: 18,
     color: '#2a9d8f',
+  },
+  btnChat: {
+    padding: '7px 14px',
+    background: 'white',
+    color: '#2563eb',
+    border: '1px solid #bfdbfe',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 600,
+    fontFamily: 'inherit',
   },
 }
