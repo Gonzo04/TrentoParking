@@ -150,6 +150,12 @@ const FEATURES = [
 export default function LandingPage({ onLogin, onRegister }) {
   const [activeStep, setActiveStep] = useState(0);
 
+  function scrollTo(e) {
+    e.preventDefault();
+    const id = e.currentTarget.getAttribute('href').slice(1);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
     <div className="lp-root">
       {/* NAVBAR */}
@@ -159,9 +165,9 @@ export default function LandingPage({ onLogin, onRegister }) {
         </div>
 
         <ul className="lp-nav-links">
-          <li><a href="#come-funziona">Come funziona</a></li>
-          <li><a href="#funzionalita">Funzionalità</a></li>
-          <li><a href="#guadagna">Guadagna</a></li>
+          <li><a href="#come-funziona" onClick={scrollTo}>Come funziona</a></li>
+          <li><a href="#funzionalita"  onClick={scrollTo}>Funzionalità</a></li>
+          <li><a href="#guadagna"      onClick={scrollTo}>Guadagna</a></li>
         </ul>
 
         <div className="lp-nav-cta">
