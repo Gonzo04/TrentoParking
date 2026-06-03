@@ -1,8 +1,8 @@
 # TrentoParking
 
-TrentoParking è un marketplace per l'**affitto di posti auto privati** a Trento. Gli host possono pubblicare i propri posti auto, mentre gli utenti autenticati possono cercarli sulla mappa, prenotarli e gestire le proprie prenotazioni.
+TrentoParking è un marketplace per l'**affitto di posti auto privati** a Trento. Gli host possono pubblicare i propri posti auto con foto e disponibilità oraria, mentre gli utenti autenticati possono cercarli sulla mappa, prenotarli, pagarli e comunicare con l'host tramite chat.
 
-Il progetto nasce nel contesto del corso di **Ingegneria del Software**. Il nome definitivo potrebbe essere modificato in futuro, ad esempio in **ParkingShare Trento**, per riflettere meglio il nuovo focus sullo sharing di parcheggi privati.
+Il progetto nasce nel contesto del corso di **Ingegneria del Software**.
 
 ---
 
@@ -16,92 +16,94 @@ Il progetto nasce nel contesto del corso di **Ingegneria del Software**. Il nome
 - [Credenziali di test](#credenziali-di-test)
 - [Struttura del progetto](#struttura-del-progetto)
 - [API](#api)
-- [Branching](#branching)
 - [Autori](#autori)
 
 ---
 
 ## Funzionalità
 
-### Autenticazione e ruoli
+### Autenticazione e account
 
-- Registrazione e login degli utenti
-- Autenticazione tramite JWT
-- Ruoli previsti:
-  - `UTENTE`
-  - `HOST`
-  - `AMMINISTRATORE`
+- Registrazione con verifica email tramite link
+- Login e logout con JWT
+- Reset password via email
+- Modifica profilo (nome, cognome, targa)
+- Ruoli: `UTENTE`, `HOST`, `AMMINISTRATORE`
+- Sistema di gamification con livelli e punti
 
-### Gestione posti privati
+### Gestione posti privati (Host)
 
-Gli host possono pubblicare e gestire posti auto privati, specificando informazioni come:
+Gli host possono pubblicare e gestire i propri posti auto privati:
 
-- nome del posto
-- descrizione
-- posizione geografica
-- tariffa oraria
-- disponibilità
-- stato attivo/non attivo
+- nome, descrizione, tariffa oraria
+- posizione geografica selezionabile sulla mappa
+- disponibilità settimanale per fasce orarie
+- caratteristiche/tag (coperto, sorvegliato, ecc.)
+- caricamento di fino a 10 foto per posto
+- attivazione/disattivazione e cancellazione logica
 
 ### Ricerca su mappa
 
-Gli utenti possono visualizzare sulla mappa:
-
-- posti auto privati disponibili
-- parcheggi pubblici principali come marker informativi
-
-I parcheggi pubblici non sono più il centro del sistema, ma servono come riferimento geografico e informativo.
+- Visualizzazione di tutti i posti disponibili su mappa Leaflet
+- Ricerca per indirizzo con selezione raggio (200 m – 2 km)
+- Sidebar laterale con lista posti filtrati per distanza
+- Anteprima foto nel popup del marker
 
 ### Prenotazioni
 
-Gli utenti autenticati possono:
+Gli utenti possono:
 
-- prenotare un posto privato
-- indicare data e ora di inizio/fine
-- inserire la targa del veicolo
-- visualizzare le proprie prenotazioni
+- aprire il calendario di prenotazione cliccando un posto sulla mappa
+- selezionare giorno e fascia oraria (rispettando disponibilità e prenotazioni esistenti)
+- visualizzare il riepilogo con prezzo calcolato automaticamente
+- pagare la prenotazione (flusso mockato)
+- annullare una prenotazione
+- visualizzare tutte le proprie prenotazioni con stato aggiornato
 
-Stati previsti per una prenotazione:
+Stati di una prenotazione: `IN_ATTESA_PAGAMENTO` · `PAGATA` · `ANNULLATA`
 
-- `IN_ATTESA_PAGAMENTO`
-- `PAGATA`
-- `ANNULLATA`
+### Recensioni
 
-Il pagamento è previsto inizialmente come funzionalità mockata.
+- Gli utenti possono lasciare una recensione (1–5 stelle + testo) per ogni posto prenotato e pagato
+- Le recensioni sono visibili nel calendario di prenotazione e nella pagina dell'host
+- Un utente può recensire un posto una sola volta
+- Gli host possono visualizzare la media voti dei propri posti
 
-### Amministrazione
+### Chat
 
-Il ruolo amministratore può essere usato per:
+- Chat diretta tra l'utente che ha prenotato e l'host del posto
+- Accessibile dalla pagina "Le mie prenotazioni" (lato utente) e "Prenotazioni ricevute" (lato host)
+- Aggiornamento in tempo reale tramite polling ogni 4 secondi
 
-- visualizzare e gestire utenti
-- supervisionare posti privati
-- supervisionare prenotazioni
+### Lato Host — Dashboard ricevute
+
+Gli host possono:
+
+- visualizzare tutte le prenotazioni ricevute sui propri posti
+- vedere nome, targa e contatti dell'utente prenotante
+- aprire la chat con il prenotante
 
 ---
 
 ## Stack tecnologico
 
-| Layer    | Tecnologia                                           |
-|----------|------------------------------------------------------|
-| Frontend | React, Vite, Leaflet / React Leaflet                 |
-| Backend  | Node.js, Express, Mongoose                           |
-| Database | MongoDB Atlas condiviso + MongoDB locale via Docker  |
-| Auth     | JWT (`jsonwebtoken`) + bcryptjs                      |
-| Infra    | Docker Compose per fallback MongoDB locale           |
-| API      | REST JSON                                            |
+| Layer    | Tecnologia                                          |
+|----------|-----------------------------------------------------|
+| Frontend | React 18, Vite, Leaflet / React Leaflet             |
+| Backend  | Node.js, Express, Mongoose                          |
+| Database | MongoDB Atlas (condiviso) + MongoDB locale (Docker) |
+| Auth     | JWT (`jsonwebtoken`) + bcryptjs                     |
+| Upload   | Multer (file locali in `backend/uploads/`)          |
+| Email    | Nodemailer                                          |
+| Infra    | Docker Compose per MongoDB locale                   |
 
 ---
 
 ## Prerequisiti
 
-Per avviare il progetto in locale servono:
-
 - **Node.js 20+**
 - **npm**
-- **Docker**
-- **Docker Compose**
-
-Verifica le versioni installate con:
+- **Docker** e **Docker Compose** (solo per MongoDB locale)
 
 ```bash
 node -v
@@ -123,92 +125,20 @@ cd TrentoParking
 
 ### 2. Configurare le variabili d'ambiente
 
-Copiare il file di esempio:
-
 ```bash
 cp .env.example .env
 ```
 
-Il file `.env` contiene le variabili locali del progetto e **non deve mai essere committato**.
-
-Per usare il database condiviso del gruppo, impostare `MONGODB_URI` con la connection string di MongoDB Atlas:
+Variabili principali in `.env`:
 
 ```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trentoparking?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://...          # Atlas (se vuota usa MongoDB locale)
+JWT_SECRET=una_stringa_lunga_e_sicura
+EMAIL_USER=...                         # Account SMTP per email di verifica
+EMAIL_PASS=...
 ```
 
-Se `MONGODB_URI` viene lasciata vuota, il backend usa automaticamente il fallback locale:
-
-```text
-mongodb://localhost:27017/trentoparking
-```
-
-Impostare anche un valore sicuro per `JWT_SECRET`:
-
-```env
-JWT_SECRET=change_this_to_a_long_random_string
-```
-
----
-
-## Database
-
-### Database condiviso del gruppo
-
-Il database ufficiale condiviso del gruppo è **MongoDB Atlas**.
-
-Questo permette a tutti i membri del gruppo di lavorare sugli stessi dati, senza dipendere da database locali separati.
-
-La connessione al database condiviso avviene tramite la variabile:
-
-```env
-MONGODB_URI
-```
-
-La vera connection string di Atlas non deve essere inserita nel codice sorgente e non deve essere committata.
-
----
-
-### MongoDB locale tramite Docker
-
-MongoDB locale serve solo come fallback per lo sviluppo personale.
-
-Per avviare MongoDB locale:
-
-```bash
-docker compose up -d
-```
-
-Il container espone MongoDB su:
-
-```text
-localhost:27017
-```
-
-Il backend, se non trova `MONGODB_URI`, si collega automaticamente a:
-
-```text
-mongodb://localhost:27017/trentoparking
-```
-
-Per fermare MongoDB locale:
-
-```bash
-docker compose down
-```
-
-Per eliminare anche il volume dati e ricreare il database da zero:
-
-```bash
-docker compose down -v
-docker compose up -d
-```
-
----
-
-## Backend
-
-Per avviare il backend:
+### 3. Avviare il backend
 
 ```bash
 cd backend
@@ -216,29 +146,9 @@ npm install
 npm run dev
 ```
 
-Il server si avvia su:
+Il server si avvia su `http://localhost:8080`.
 
-```text
-http://localhost:8080
-```
-
-Endpoint di health check:
-
-```bash
-curl http://localhost:8080/api/health
-```
-
-Risposta attesa:
-
-```json
-{"status":"ok"}
-```
-
----
-
-## Frontend
-
-Per avviare il frontend:
+### 4. Avviare il frontend
 
 ```bash
 cd frontend
@@ -246,25 +156,41 @@ npm install
 npm run dev
 ```
 
-Il frontend si avvia su:
+Il frontend si avvia su `http://localhost:5173`.
 
-```text
-http://localhost:5173
+---
+
+## Database
+
+### MongoDB Atlas (consigliato)
+
+Inserire la connection string in `.env`:
+
+```env
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trentoparking
+```
+
+### MongoDB locale tramite Docker
+
+Se `MONGODB_URI` è vuota, il backend usa automaticamente `mongodb://localhost:27017/trentoparking`.
+
+```bash
+docker compose up -d    # avvia
+docker compose down     # ferma
+docker compose down -v  # ferma e cancella i dati
 ```
 
 ---
 
 ## Credenziali di test
 
-Le seguenti credenziali sono da considerare come utenti di test previsti per lo sviluppo.
+Valide solo se inserite manualmente nel database o tramite seed.
 
-Attenzione: dopo la semplificazione di Docker Compose, questi utenti **non vengono creati automaticamente** dal container MongoDB locale. Sono validi solo se vengono inseriti manualmente nel database o tramite uno script di seed dedicato.
-
-| Email                         | Password      | Ruolo            |
-|-------------------------------|---------------|------------------|
-| `admin@trentoparking.it`      | `admin123`    | AMMINISTRATORE   |
-| `host@trentoparking.it`       | `host123`     | HOST             |
-| `mario.rossi@example.com`     | `password123` | UTENTE           |
+| Email                     | Password      | Ruolo          |
+|---------------------------|---------------|----------------|
+| `admin@trentoparking.it`  | `admin123`    | AMMINISTRATORE |
+| `host@trentoparking.it`   | `host123`     | HOST           |
+| `mario.rossi@example.com` | `password123` | UTENTE         |
 
 ---
 
@@ -273,33 +199,72 @@ Attenzione: dopo la semplificazione di Docker Compose, questi utenti **non vengo
 ```text
 TrentoParking/
 ├── backend/
-│   ├── server.js              # Entry point Express
+│   ├── server.js
 │   ├── config/
-│   │   └── db.js              # Connessione Mongoose tramite MONGODB_URI o fallback locale
-│   ├── models/                # Schema Mongoose
-│   ├── routes/                # Definizione endpoint REST
-│   ├── controllers/           # Logica applicativa
-│   ├── middleware/            # Middleware auth / ruoli
-│   ├── utils/                 # Utility, ad esempio JWT
-│   ├── package.json
-│   └── package-lock.json
+│   │   └── db.js
+│   ├── models/
+│   │   ├── Utente.js
+│   │   ├── PostoPrivato.js
+│   │   ├── Prenotazione.js
+│   │   ├── Recensione.js
+│   │   ├── Messaggio.js
+│   │   ├── TokenVerifica.js
+│   │   └── TokenResetPassword.js
+│   ├── routes/
+│   │   ├── auth.js
+│   │   ├── postiPrivati.js
+│   │   ├── booking.js
+│   │   ├── recensioni.js
+│   │   └── chat.js
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── postoPrivatoController.js
+│   │   ├── bookingController.js
+│   │   ├── recensioneController.js
+│   │   └── chatController.js
+│   ├── middleware/
+│   │   └── auth.js
+│   ├── utils/
+│   │   ├── jwt.js
+│   │   ├── upload.js
+│   │   └── pulisciUserNonVerificati.js
+│   └── uploads/              # Foto caricate dagli host
 │
 ├── frontend/
 │   └── src/
-│       ├── components/        # Componenti React
-│       └── App.jsx            # Componente principale
-│
-├── scripts/
-│   ├── mongo-init.sh          # Script legacy/opzionale per inizializzazione MongoDB
-│   └── mongo-init.js          # Script legacy/opzionale per seed dati
+│       ├── App.jsx
+│       ├── services/
+│       │   └── api.js
+│       ├── utils/
+│       │   └── SpotOptions.js
+│       └── components/
+│           ├── LandingPage.jsx
+│           ├── AuthPage.jsx
+│           ├── AuthPanel.jsx
+│           ├── Dashboard.jsx
+│           ├── SpotMap.jsx
+│           ├── SpotSidebar.jsx
+│           ├── SearchBar.jsx
+│           ├── BookingCalendar.jsx
+│           ├── PaymentPage.jsx
+│           ├── MyBookings.jsx
+│           ├── MyReceivedBookings.jsx
+│           ├── MySpots.jsx
+│           ├── ProfilePage.jsx
+│           ├── ReviewModal.jsx
+│           ├── HostReviewsPage.jsx
+│           ├── ChatModal.jsx
+│           ├── SpotFormControls.jsx
+│           ├── MapPicker.jsx
+│           ├── ResetPassword.jsx
+│           └── VerificaMail.jsx
 │
 ├── docs/
-│   ├── BRANCHING.md           # Strategia di branching
-│   ├── D1/                    # Requisiti, casi d'uso, BPMN
-│   └── D2/                    # Architettura, componenti, classi
+│   ├── D1/                   # Requisiti, casi d'uso, BPMN
+│   └── D2/                   # Architettura, componenti, classi
 │
-├── docker-compose.yml         # MongoDB locale di fallback
-├── .env.example               # Template per variabili d'ambiente
+├── docker-compose.yml
+├── .env.example
 └── README.md
 ```
 
@@ -307,168 +272,66 @@ TrentoParking/
 
 ## API
 
-Le API sono REST JSON.
+Tutti gli endpoint richiedono `Authorization: Bearer <token>` salvo dove indicato.
 
-Gli endpoint protetti richiederanno l'header:
+### Health
 
-```http
-Authorization: Bearer <token>
-```
-
-### Health check
-
-| Metodo | Path                | Descrizione                    |
-|--------|---------------------|--------------------------------|
-| GET    | `/api/health`       | Verifica che il backend risponda |
-
----
+| Metodo | Path          | Auth | Descrizione              |
+|--------|---------------|------|--------------------------|
+| GET    | `/api/health` | No   | Verifica che il backend risponda |
 
 ### Auth
 
-Endpoint previsti per autenticazione e gestione sessione.
+| Metodo | Path                              | Auth | Descrizione                        |
+|--------|-----------------------------------|------|------------------------------------|
+| POST   | `/api/auth/register`              | No   | Registra un nuovo utente           |
+| POST   | `/api/auth/login`                 | No   | Login, restituisce JWT             |
+| GET    | `/api/auth/me`                    | Sì   | Profilo utente corrente            |
+| PATCH  | `/api/auth/me`                    | Sì   | Aggiorna nome, cognome, targa      |
+| POST   | `/api/auth/logout`                | Sì   | Logout                             |
+| GET    | `/api/auth/conferma/:token`       | No   | Conferma email via link            |
+| POST   | `/api/auth/resend-verification`   | No   | Reinvia email di verifica          |
+| POST   | `/api/auth/forgot-password`       | No   | Richiede reset password            |
+| POST   | `/api/auth/reset-password/:token` | No   | Imposta nuova password             |
 
-| Metodo | Path                  | Descrizione                              |
-|--------|-----------------------|------------------------------------------|
-| POST   | `/api/auth/register`  | Registra un nuovo utente                 |
-| POST   | `/api/auth/login`     | Effettua il login e restituisce un token |
-| POST   | `/api/auth/logout`    | Logout lato client/server                |
+### Posti privati
 
----
+| Metodo | Path                            | Descrizione                                      |
+|--------|---------------------------------|--------------------------------------------------|
+| GET    | `/api/posti-privati`            | Lista tutti i posti disponibili                  |
+| POST   | `/api/posti-privati`            | Crea un nuovo posto (host)                       |
+| GET    | `/api/posti-privati/miei`       | Posti pubblicati dall'host autenticato           |
+| GET    | `/api/posti-privati/:id`        | Dettaglio di un posto                            |
+| PATCH  | `/api/posti-privati/:id`        | Modifica un posto (solo proprietario)            |
+| DELETE | `/api/posti-privati/:id`        | Elimina logicamente un posto (solo proprietario) |
+| GET    | `/api/posti-privati/:id/prenotazioni` | Posto con prenotazioni attive            |
+| POST   | `/api/posti-privati/:id/foto`   | Carica foto per un posto (multipart, max 10)     |
 
-### Host
+### Prenotazioni
 
-Endpoint previsti per la gestione dei posti privati da parte degli host.
+| Metodo | Path                      | Descrizione                                    |
+|--------|---------------------------|------------------------------------------------|
+| GET    | `/api/bookings`           | Le proprie prenotazioni (utente)               |
+| GET    | `/api/bookings/ricevute`  | Prenotazioni ricevute sui propri posti (host)  |
+| POST   | `/api/bookings`           | Crea una nuova prenotazione                    |
+| POST   | `/api/bookings/:id/pay`   | Conferma pagamento (mockato)                   |
+| DELETE | `/api/bookings/:id`       | Annulla una prenotazione                       |
 
-| Metodo | Path                    | Descrizione                     |
-|--------|-------------------------|---------------------------------|
-| GET    | `/api/host/posti`       | Lista i posti del proprio host  |
-| POST   | `/api/host/posti`       | Crea un nuovo posto privato     |
-| PUT    | `/api/host/posti/:id`   | Modifica un proprio posto       |
-| DELETE | `/api/host/posti/:id`   | Elimina un proprio posto        |
+### Recensioni
 
----
+| Metodo | Path                              | Descrizione                              |
+|--------|-----------------------------------|------------------------------------------|
+| POST   | `/api/recensioni`                 | Crea una recensione (prenotazione pagata)|
+| GET    | `/api/recensioni/posto/:postoId`  | Recensioni di un posto                   |
+| GET    | `/api/recensioni/host/:hostId`    | Recensioni di tutte le prenotazioni di un host |
+| GET    | `/api/recensioni/medie-posti`     | Media voti per posto dell'host loggato   |
 
-### Private parkings
+### Chat
 
-Endpoint previsti per la ricerca e visualizzazione dei posti privati.
-
-| Metodo | Path                            | Descrizione                              |
-|--------|---------------------------------|------------------------------------------|
-| GET    | `/api/private-parkings`         | Lista i posti privati disponibili        |
-| POST   | `/api/private-parkings`         | Crea un nuovo posto privato              |
-| GET    | `/api/private-parkings/nearby`  | Cerca posti vicini a una posizione       |
-
-Esempio query per ricerca vicina:
-
-```text
-/api/private-parkings/nearby?lat=46.0667&lng=11.1211&radiusMeters=1000
-```
-
----
-
-### Public parkings
-
-Endpoint previsto per mostrare sulla mappa i principali parcheggi pubblici di Trento come marker informativi.
-
-| Metodo | Path                    | Descrizione                                  |
-|--------|-------------------------|----------------------------------------------|
-| GET    | `/api/public-parkings`  | Lista parcheggi pubblici principali          |
-
-Esempi di parcheggi pubblici informativi:
-
-- Parcheggio Sanseverino
-- Parcheggio Monte Baldo
-- Piazza Fiera
-- Stazione
-- Ex Italcementi
-
----
-
-### Bookings
-
-Endpoint previsti per la gestione delle prenotazioni.
-
-| Metodo | Path                       | Descrizione                                |
-|--------|----------------------------|--------------------------------------------|
-| GET    | `/api/bookings`            | Lista le proprie prenotazioni              |
-| POST   | `/api/bookings`            | Crea una nuova prenotazione                |
-| POST   | `/api/bookings/:id/pay`    | Conferma pagamento mockato                 |
-| DELETE | `/api/bookings/:id`        | Annulla una prenotazione                   |
-
----
-
-### Admin
-
-Endpoint previsti per funzionalità amministrative.
-
-| Metodo | Path                          | Descrizione                          |
-|--------|-------------------------------|--------------------------------------|
-| GET    | `/api/admin/utenti`           | Lista tutti gli utenti               |
-| PUT    | `/api/admin/utenti/:id`       | Modifica ruolo o stato utente        |
-| GET    | `/api/admin/posti`            | Lista tutti i posti privati          |
-| GET    | `/api/admin/prenotazioni`     | Lista tutte le prenotazioni          |
-
----
-
-## Branching
-
-Il lavoro è organizzato tramite branch dedicate.
-
-Branch principali:
-
-```text
-main
-└── feature/base-setup           # Modelli, middleware, utility condivise
-    ├── feature/auth             # Registrazione, login, logout
-    ├── feature/host             # CRUD posti privati
-    ├── feature/booking          # Prenotazioni e pagamento mockato
-    └── feature/admin            # Gestione utenti, posti e prenotazioni
-└── feature/frontend             # Frontend React + Leaflet
-```
-
-Le modifiche devono essere sviluppate su branch dedicate e poi integrate in `main` tramite Pull Request.
-
-Per dettagli sulla strategia di branching, vedere:
-
-```text
-docs/BRANCHING.md
-```
-
----
-
-## Note di configurazione
-
-### Uso di MongoDB Atlas
-
-Per lavorare sul database condiviso del gruppo:
-
-1. creare o ricevere una connection string MongoDB Atlas;
-2. inserirla nel file `.env` locale;
-3. assicurarsi che `.env` non venga committato.
-
-Esempio:
-
-```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trentoparking?retryWrites=true&w=majority
-```
-
-### Uso di MongoDB locale
-
-Per lavorare senza Atlas:
-
-1. lasciare vuota `MONGODB_URI`;
-2. avviare MongoDB locale:
-
-```bash
-docker compose up -d
-```
-
-3. avviare il backend:
-
-```bash
-cd backend
-npm run dev
-```
+| Metodo | Path              | Descrizione                                         |
+|--------|-------------------|-----------------------------------------------------|
+| GET    | `/api/chat/:id`   | Messaggi di una prenotazione (utente o host)        |
+| POST   | `/api/chat/:id`   | Invia un messaggio in una prenotazione              |
 
 ---
 
