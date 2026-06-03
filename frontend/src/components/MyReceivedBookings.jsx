@@ -52,7 +52,7 @@ export default function MyReceivedBookings({ onBack, currentUserId }) {
 
       {/* ── Navbar ─────────────────────────────────────────────────── */}
       <nav style={S.nav}>
-        <span style={S.navLogo}>
+        <span style={S.navLogo} onClick={onBack}>
           <span style={{ color: '#fff' }}>Trento</span>
           <span style={{ color: '#2a9d8f' }}>Parking</span>
         </span>
@@ -221,6 +221,7 @@ const S = {
     fontWeight: 800,
     fontSize: '1.2rem',
     letterSpacing: '-0.04em',
+    cursor: 'pointer',
   },
   content: {
     flex: 1,

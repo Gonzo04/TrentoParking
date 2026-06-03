@@ -46,7 +46,7 @@ function SingleSpotReviews({ posto, onBack }) {
   return (
     <div style={S.page}>
       <nav style={S.nav}>
-        <span style={S.navLogo}>
+        <span style={S.navLogo} onClick={onBack}>
           <span style={{ color: '#fff' }}>Trento</span>
           <span style={{ color: '#2a9d8f' }}>Parking</span>
         </span>
@@ -145,7 +145,7 @@ function AllHostReviews({ hostId, onBack }) {
   return (
     <div style={S.page}>
       <nav style={S.nav}>
-        <span style={S.navLogo}>
+        <span style={S.navLogo} onClick={onBack}>
           <span style={{ color: '#fff' }}>Trento</span>
           <span style={{ color: '#2a9d8f' }}>Parking</span>
         </span>
@@ -297,7 +297,7 @@ const S = {
   },
   navLogo: {
     fontFamily: "'Sora', sans-serif",
-    fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.04em',
+    fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.04em', cursor: 'pointer',
   },
   navBack: {
     background: 'rgba(255,255,255,0.1)',
