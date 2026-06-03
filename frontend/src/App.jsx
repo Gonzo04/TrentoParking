@@ -12,6 +12,7 @@ import MyBookings from './components/MyBookings';
 import MyReceivedBookings from './components/MyReceivedBookings';
 import ProfilePage from './components/ProfilePage';
 import HostReviewsPage from './components/HostReviewsPage';
+import AdminDashboard from './components/AdminDashboard';
 
 function distanceM(lat1, lon1, lat2, lon2) {
   // Calcola la distanza approssimata tra due coordinate geografiche
@@ -616,6 +617,10 @@ function App() {
     return <MyReceivedBookings onBack={() => setView('dashboard')} currentUserId={authenticatedUser?.id} />;
   }
 
+  if (view === 'admin' && authenticatedUser?.ruolo === 'AMMINISTRATORE') {
+    return <AdminDashboard onBack={() => setView('dashboard')} />;
+  }
+
   return (
     <Dashboard
       authenticatedUser={authenticatedUser}
@@ -637,6 +642,7 @@ function App() {
       onMyBookings={() => setView('myBookings')}
       onReceivedBookings={() => setView('receivedBookings')}
       onProfileClick={() => setView('profile')}
+      onAdminClick={() => setView('admin')}
       onSearchSelect={handleSearchSelect}
       onRadiusChange={handleRadiusChange}
       onClearSearch={() => setSearchCircle(null)}
