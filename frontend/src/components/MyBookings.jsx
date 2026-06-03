@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import ReviewModal from './ReviewModal'
+import ChatModal from './ChatModal'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const STATO = {
@@ -18,11 +19,12 @@ function durataOre(inizio, fine) {
 }
 
 /* ── Componente ───────────────────────────────────────────────────── */
-export default function MyBookings({ onBack, onPay, onViewHostReviews }) {
+export default function MyBookings({ onBack, onPay, onViewHostReviews, currentUserId }) {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [reviewBooking, setReviewBooking] = useState(null)
+  const [chatBookingId, setChatBookingId] = useState(null)
 
   useEffect(() => {
     api.listMyBookings()
@@ -71,9 +73,17 @@ export default function MyBookings({ onBack, onPay, onViewHostReviews }) {
         />
       )}
 
+      {chatBookingId && (
+        <ChatModal
+          bookingId={chatBookingId}
+          currentUserId={currentUserId}
+          onClose={() => setChatBookingId(null)}
+        />
+      )}
+
       {/* ── Navbar ─────────────────────────────────────────────────── */}
       <nav style={S.nav}>
-        <span style={S.navLogo}>
+        <span style={S.navLogo} onClick={onBack}>
           <span style={{ color: '#fff' }}>Trento</span>
           <span style={{ color: '#2a9d8f' }}>Parking</span>
         </span>
@@ -135,6 +145,7 @@ export default function MyBookings({ onBack, onPay, onViewHostReviews }) {
                   onCancel={handleCancel}
                   onReview={setReviewBooking}
                   onViewHostReviews={onViewHostReviews}
+                  onChat={id => setChatBookingId(id)}
                 />
               ))}
             </div>
@@ -155,6 +166,7 @@ export default function MyBookings({ onBack, onPay, onViewHostReviews }) {
                   onCancel={handleCancel}
                   onReview={setReviewBooking}
                   onViewHostReviews={onViewHostReviews}
+                  onChat={id => setChatBookingId(id)}
                 />
               ))}
             </div>
@@ -166,7 +178,7 @@ export default function MyBookings({ onBack, onPay, onViewHostReviews }) {
 }
 
 /* ── BookingCard ──────────────────────────────────────────────────── */
-function BookingCard({ booking: b, now, onPay, onCancel, onReview, onViewHostReviews }) {
+function BookingCard({ booking: b, now, onPay, onCancel, onReview, onViewHostReviews, onChat }) {
   const spot  = b.postoPrivatoId
   const stato = STATO[b.stato] ?? { label: b.stato, bg: '#f3f4f6', color: '#374151', dot: '#9ca3af' }
   const ore   = durataOre(b.dataOraInizio, b.dataOraFine)
@@ -233,6 +245,11 @@ function BookingCard({ booking: b, now, onPay, onCancel, onReview, onViewHostRev
               </button>
             )
           )}
+          {b.stato !== 'ANNULLATA' && (
+            <button onClick={() => onChat(b._id)} style={S.btnChat}>
+              💬 Chat
+            </button>
+          )}
           {b.stato !== 'ANNULLATA' && !isExpired && (
             <>
               {b.stato === 'IN_ATTESA_PAGAMENTO' && (
@@ -288,6 +305,7 @@ const S = {
     fontWeight: 800,
     fontSize: '1.2rem',
     letterSpacing: '-0.04em',
+    cursor: 'pointer',
   },
 
   /* Contenuto */
@@ -506,6 +524,17 @@ const S = {
     background: 'white',
     color: '#dc2626',
     border: '1px solid #fca5a5',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 600,
+    fontFamily: 'inherit',
+  },
+  btnChat: {
+    padding: '7px 14px',
+    background: 'white',
+    color: '#2563eb',
+    border: '1px solid #bfdbfe',
     borderRadius: 8,
     cursor: 'pointer',
     fontSize: 13,

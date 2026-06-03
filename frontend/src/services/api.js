@@ -134,6 +134,13 @@ export const api = {
     method: 'DELETE',
   }),
 
+  // Chat
+  getMessages: (bookingId) => request(`/chat/${bookingId}`),
+  sendMessage: (bookingId, testo) => request(`/chat/${bookingId}`, {
+    method: 'POST',
+    body: JSON.stringify({ testo }),
+  }),
+
   // Recensioni
   createRecensione: (body) => request('/recensioni', {
     method: 'POST',
