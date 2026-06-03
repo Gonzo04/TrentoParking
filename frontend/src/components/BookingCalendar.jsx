@@ -122,9 +122,13 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
     if (date < today) return false
     const disp = getDisponibilitaForDate(date, posto.disponibilita ?? [])
     if (!disp) return false
-    const booked = getBookedHours(date, prenotazioni)
+    const booked  = getBookedHours(date, prenotazioni)
+    const now     = new Date()
+    // Per il giorno corrente consideriamo disponibili solo le ore future
+    const isToday = date.toDateString() === now.toDateString()
+    const nowHour = now.getHours()
     for (let h = disp.oraInizio; h < disp.oraFine; h++) {
-      if (!booked.has(h)) return true
+      if (!booked.has(h) && (!isToday || h > nowHour)) return true
     }
     return false
   }
@@ -151,6 +155,12 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
 
   const disp        = selectedDate ? getDisponibilitaForDate(selectedDate, posto.disponibilita ?? []) : null
   const bookedHours = selectedDate ? getBookedHours(selectedDate, prenotazioni) : new Set()
+
+  // Per il giorno selezionato calcola l'ora corrente una sola volta per render.
+  // Serve per disabilitare visivamente gli slot già passati nella griglia oraria.
+  const nowForSlots        = new Date()
+  const isSelectedToday    = selectedDate ? selectedDate.toDateString() === nowForSlots.toDateString() : false
+  const currentHour        = nowForSlots.getHours()
 
   const ore             = (startHour !== null && endHour !== null) ? endHour - startHour : 0
   const prezzoTotale    = Math.round(ore * posto.tariffaOraria * 100) / 100
@@ -309,15 +319,18 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
                   (_, i) => disp.oraInizio + i
                 ).map(h => {
                   const isBooked   = bookedHours.has(h)
+                  // Un'ora è nel passato se stiamo guardando oggi e quell'ora è già trascorsa
+                  const isPast     = isSelectedToday && h <= currentHour
                   const isSelected = startHour !== null && endHour !== null && h >= startHour && h < endHour
                   const isStart    = h === startHour
 
                   let btnStyle = { ...S.hourBtn }
                   if (isBooked)                   btnStyle = { ...btnStyle, ...S.hourBtnBooked }
+                  else if (isPast)                btnStyle = { ...btnStyle, ...S.hourBtnPast }
                   else if (isStart || isSelected) btnStyle = { ...btnStyle, ...S.hourBtnActive }
 
                   return (
-                    <button key={h} style={btnStyle} disabled={isBooked} onClick={() => handleHourClick(h)}>
+                    <button key={h} style={btnStyle} disabled={isBooked || isPast} onClick={() => handleHourClick(h)}>
                       {padHour(h)}
                     </button>
                   )
@@ -556,6 +569,15 @@ const S = {
     borderColor: '#f3f4f6',
     textDecoration: 'line-through',
     cursor: 'not-allowed',
+  },
+  // Stile per ore passate del giorno corrente: grigio senza barrato
+  // (differente da "prenotato" per chiarire all'utente che è solo ora non più disponibile)
+  hourBtnPast: {
+    background: '#f9fafb',
+    color: '#c0c7d0',
+    borderColor: '#edf0f3',
+    cursor: 'not-allowed',
+    opacity: 0.6,
   },
   hourBtnActive: {
     background: '#2a9d8f',
