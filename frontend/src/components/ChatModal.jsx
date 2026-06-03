@@ -8,6 +8,14 @@ function senderName(mittente) {
   return [mittente.nome, mittente.cognome].filter(Boolean).join(' ') || mittente.nomeUtente || 'Utente'
 }
 
+const NAME_COLORS = ['#7c3aed', '#0369a1', '#b45309', '#15803d', '#be185d']
+function nameColor(id) {
+  if (!id) return '#4a5568'
+  let h = 0
+  for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) & 0xffff
+  return NAME_COLORS[h % NAME_COLORS.length]
+}
+
 export default function ChatModal({ bookingId, currentUserId, onClose }) {
   const [messages, setMessages] = useState([])
   const [testo,    setTesto]    = useState('')
@@ -66,12 +74,13 @@ export default function ChatModal({ bookingId, currentUserId, onClose }) {
           )}
           {messages.map(msg => {
             const isMe = msg.mittente?._id === currentUserId || msg.mittente === currentUserId
+            const senderId = msg.mittente?._id ?? msg.mittente
             return (
-              <div key={msg._id} style={{ ...S.msgRow, justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+              <div key={msg._id} style={{ ...S.msgRow, justifyContent: isMe ? 'flex-start' : 'flex-end' }}>
                 <div style={{ ...S.bubble, ...(isMe ? S.bubbleMe : S.bubbleOther) }}>
-                  {!isMe && (
-                    <span style={S.senderName}>{senderName(msg.mittente)}</span>
-                  )}
+                  <span style={{ ...S.senderName, color: isMe ? 'rgba(255,255,255,0.75)' : nameColor(senderId) }}>
+                    {senderName(msg.mittente)}
+                  </span>
                   <p style={S.msgText}>{msg.testo}</p>
                   <span style={S.msgTime}>
                     {new Date(msg.createdAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
@@ -140,13 +149,13 @@ const S = {
   },
   bubbleMe: {
     background: '#2563eb', color: '#fff',
-    borderBottomRightRadius: 4,
+    borderBottomLeftRadius: 4,
   },
   bubbleOther: {
     background: '#f1f5f9', color: '#1e293b',
-    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
   },
-  senderName: { fontSize: 11, fontWeight: 700, color: '#4a5568', marginBottom: 2 },
+  senderName: { fontSize: 11, fontWeight: 700, marginBottom: 2 },
   msgText: { margin: 0, fontSize: 14, lineHeight: 1.4, wordBreak: 'break-word' },
   msgTime: { fontSize: 10, opacity: 0.7, alignSelf: 'flex-end', marginTop: 2 },
   inputArea: {

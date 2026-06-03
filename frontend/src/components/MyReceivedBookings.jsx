@@ -372,6 +372,7 @@ const S = {
   cardFooter: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'space-between',
     borderTop: '1px solid #f1f5f9',
     paddingTop: 10,
   },
