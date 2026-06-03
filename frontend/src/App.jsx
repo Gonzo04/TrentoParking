@@ -607,13 +607,13 @@ function App() {
         onBack={() => setView('dashboard')}
         onPay={handlePayFromBookings}
         onViewHostReviews={handleViewHostReviews}
-        currentUserId={authenticatedUser?._id}
+        currentUserId={authenticatedUser?.id}
       />
     );
   }
 
   if (view === 'receivedBookings' && authenticatedUser?.ruolo === 'HOST') {
-    return <MyReceivedBookings onBack={() => setView('dashboard')} currentUserId={authenticatedUser?._id} />;
+    return <MyReceivedBookings onBack={() => setView('dashboard')} currentUserId={authenticatedUser?.id} />;
   }
 
   return (
