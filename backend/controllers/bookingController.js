@@ -12,6 +12,23 @@ const GIORNI_PRENOTAZIONE = [
   'SABATO'
 ];
 
+// Marca come scadute le prenotazioni non pagate entro il tempo limite
+// È una scadenza "lazy": viene applicata quando il backend riceve richieste rilevanti
+async function expirePrenotazioniScadute(extraFilter = {}) {
+  const now = new Date();
+
+  await Prenotazione.updateMany(
+      {
+        ...extraFilter,
+        stato: 'IN_ATTESA_PAGAMENTO',
+        scadenzaPagamento: { $lte: now }
+      },
+      {
+        $set: { stato: 'SCADUTA' }
+      }
+  );
+}
+
 function isBookingInsideDisponibilita(posto, inizio, fine) {
   // Per ora gestiamo prenotazioni nello stesso giorno
   // Se in futuro serviranno prenotazioni su più giorni, questa funzione sarà il punto da estendere
@@ -65,6 +82,10 @@ async function listPosti(req, res, next) {
 // Restituisce il dettaglio del posto e le prenotazioni future per il calendario
 async function getPostoConPrenotazioni(req, res, next) {
   try {
+    await expirePrenotazioniScadute({
+      postoPrivatoId: req.params.id
+    });
+
     const posto = await PostoPrivato.findOne({
       _id: req.params.id,
       attivo: true,
@@ -107,6 +128,10 @@ async function getPostoConPrenotazioni(req, res, next) {
 // Restituisce le prenotazioni create dall'utente autenticato
 async function listMyBookings(req, res, next) {
   try {
+    await expirePrenotazioniScadute({
+      utenteId: req.user.userId
+    });
+
     const prenotazioni = await Prenotazione.find({ utenteId: req.user.userId })
         .populate({
           path: 'postoPrivatoId',
@@ -138,6 +163,10 @@ async function listReceivedBookings(req, res, next) {
         .lean();
 
     const mieiPostiIds = mieiPosti.map((posto) => posto._id);
+
+    await expirePrenotazioniScadute({
+      postoPrivatoId: { $in: mieiPostiIds }
+    });
 
     const prenotazioni = await Prenotazione.find({
       postoPrivatoId: { $in: mieiPostiIds }
@@ -223,6 +252,10 @@ async function createBooking(req, res, next) {
     // Controlla sovrapposizioni con prenotazioni esistenti
     const now = new Date();
 
+    await expirePrenotazioniScadute({
+      postoPrivatoId
+    });
+
     const overlap = await Prenotazione.findOne({
       postoPrivatoId,
       stato: { $nin: ['ANNULLATA', 'SCADUTA'] },
@@ -236,7 +269,6 @@ async function createBooking(req, res, next) {
         }
       ]
     });
-
     if (overlap) {
       return res.status(409).json({ error: 'Il posto è già prenotato in questo intervallo' });
     }

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Mail } from 'lucide-react'; // Icona mail
-import { resendVerificationEmail } from '../services/authService';
-
+import { resendVerificationEmail } from '../../services/authService'
 const EmailVerificationPage = ({email}) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');

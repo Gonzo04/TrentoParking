@@ -1,21 +1,23 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../services/api'
 import { TAGS } from '../utils/SpotOptions'
-import { AvailabilityEditor, TagsEditor } from './SpotFormControls'
+import { AvailabilityEditor, TagsEditor } from '../features/spots/SpotFormControls'
+
 // Il backend salva {giorno:'LUNEDI', oraInizio:8, oraFine:20}
 // L'editor usa {giorno:'lunedi', oraInizio:'08:00', oraFine:'20:00'}
 function dispToEditor(disp) {
   return (disp ?? []).map(d => ({
     giorno: d.giorno.toLowerCase(),
     oraInizio: String(d.oraInizio).padStart(2, '0') + ':00',
-    oraFine:   String(d.oraFine).padStart(2, '0')   + ':00',
+    oraFine: String(d.oraFine).padStart(2, '0') + ':00'
   }))
 }
+
 function dispToBackend(disp) {
   return disp.map(d => ({
     giorno: d.giorno,
     oraInizio: parseInt(d.oraInizio.split(':')[0], 10),
-    oraFine:   parseInt(d.oraFine.split(':')[0],   10),
+    oraFine: parseInt(d.oraFine.split(':')[0], 10)
   }))
 }
 
@@ -23,7 +25,6 @@ function dispToBackend(disp) {
 export default function ProfilePage({ authenticatedUser, onBack, onUpdateUser, onViewPostoReviews }) {
   return (
     <div style={S.page}>
-
       {/* ── Navbar ───────────────────────────────────────────────── */}
       <nav style={S.nav}>
         <span style={S.navLogo} onClick={onBack}>
@@ -35,7 +36,9 @@ export default function ProfilePage({ authenticatedUser, onBack, onUpdateUser, o
 
       <div style={S.content}>
         <UserSection user={authenticatedUser} onUpdateUser={onUpdateUser} />
-        {authenticatedUser?.ruolo === 'HOST' && <MieiPosti onViewPostoReviews={onViewPostoReviews} />}
+        {authenticatedUser?.ruolo === 'HOST' && (
+          <MieiPosti onViewPostoReviews={onViewPostoReviews} />
+        )}
       </div>
     </div>
   )
@@ -43,11 +46,11 @@ export default function ProfilePage({ authenticatedUser, onBack, onUpdateUser, o
 
 /* ── Sezione informazioni utente ─────────────────────────────────── */
 function UserSection({ user, onUpdateUser }) {
-  const [editing, setEditing]   = useState(false)
-  const [form,    setForm]      = useState({ nome: '', cognome: '', targa: '' })
-  const [saving,  setSaving]    = useState(false)
-  const [error,   setError]     = useState('')
-  const [success, setSuccess]   = useState('')
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({ nome: '', cognome: '', targa: '' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   function startEdit() {
     setForm({ nome: user.nome, cognome: user.cognome, targa: user.targa ?? '' })
@@ -60,6 +63,7 @@ function UserSection({ user, onUpdateUser }) {
     e.preventDefault()
     setSaving(true)
     setError('')
+
     try {
       const data = await api.updateMe(form)
       onUpdateUser(data.user)
@@ -94,13 +98,26 @@ function UserSection({ user, onUpdateUser }) {
           <div style={S.infoGrid}>
             <InfoRow icon="📧" label="Email">
               {user.email}
-              <span style={{ ...S.verifyBadge, background: user.emailVerificata ? '#dcfce7' : '#fee2e2', color: user.emailVerificata ? '#14532d' : '#7f1d1d' }}>
+              <span
+                style={{
+                  ...S.verifyBadge,
+                  background: user.emailVerificata ? '#dcfce7' : '#fee2e2',
+                  color: user.emailVerificata ? '#14532d' : '#7f1d1d'
+                }}
+              >
                 {user.emailVerificata ? '✓ Verificata' : '✗ Non verificata'}
               </span>
             </InfoRow>
-            <InfoRow icon="🚗" label="Targa">{user.targa ?? '—'}</InfoRow>
-            <InfoRow icon="🏆" label="Livello">Livello {user.livello} · {user.punti} punti</InfoRow>
+
+            <InfoRow icon="🚗" label="Targa">
+              {user.targa ?? '—'}
+            </InfoRow>
+
+            <InfoRow icon="🏆" label="Livello">
+              Livello {user.livello} · {user.punti} punti
+            </InfoRow>
           </div>
+
           <button onClick={startEdit} style={S.editBtn}>Modifica profilo</button>
         </>
       )}
@@ -108,17 +125,28 @@ function UserSection({ user, onUpdateUser }) {
       {/* Form modifica */}
       {editing && (
         <form onSubmit={handleSave} style={S.editForm}>
-          {error   && <p style={S.formError}>{error}</p>}
+          {error && <p style={S.formError}>{error}</p>}
           {success && <p style={S.formSuccess}>{success}</p>}
 
           <div style={S.formRow}>
             <label style={S.label}>
               Nome
-              <input style={S.input} value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} required />
+              <input
+                style={S.input}
+                value={form.nome}
+                onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
+                required
+              />
             </label>
+
             <label style={S.label}>
               Cognome
-              <input style={S.input} value={form.cognome} onChange={e => setForm(f => ({ ...f, cognome: e.target.value }))} required />
+              <input
+                style={S.input}
+                value={form.cognome}
+                onChange={e => setForm(f => ({ ...f, cognome: e.target.value }))}
+                required
+              />
             </label>
           </div>
 
@@ -137,6 +165,7 @@ function UserSection({ user, onUpdateUser }) {
             <button type="submit" disabled={saving} style={S.btnSave}>
               {saving ? 'Salvataggio…' : 'Salva modifiche'}
             </button>
+
             <button type="button" onClick={() => setEditing(false)} style={S.btnCancel}>
               Annulla
             </button>
@@ -159,19 +188,21 @@ function InfoRow({ icon, label, children }) {
 
 /* ── Sezione posti dell'host ──────────────────────────────────────── */
 function MieiPosti({ onViewPostoReviews }) {
-  const [posti,   setPosti]   = useState([])
+  const [posti, setPosti] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState('')
+  const [error, setError] = useState('')
   const [medieMap, setMedieMap] = useState({})
 
   useEffect(() => {
     Promise.all([
       api.getMieiPosti(),
-      api.getMediaPosti().catch(() => []),
-    ]).then(([p, medie]) => {
-      setPosti(p)
-      setMedieMap(Object.fromEntries(medie.map(m => [String(m._id), m])))
-    }).catch(e => setError(e.message))
+      api.getMediaPosti().catch(() => [])
+    ])
+      .then(([p, medie]) => {
+        setPosti(p)
+        setMedieMap(Object.fromEntries(medie.map(m => [String(m._id), m])))
+      })
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
@@ -184,10 +215,10 @@ function MieiPosti({ onViewPostoReviews }) {
   }
 
   function handleDisattivato(updated) {
-    setPosti(ps => ps.map(p => p._id === updated._id ? updated : p))
+    setPosti(ps => ps.map(p => (p._id === updated._id ? updated : p)))
   }
 
-  const attivi   = posti.filter(p => p.attivo)
+  const attivi = posti.filter(p => p.attivo)
   const inattivi = posti.filter(p => !p.attivo)
 
   return (
@@ -195,12 +226,14 @@ function MieiPosti({ onViewPostoReviews }) {
       <div style={S.sectionHeader}>
         <h2 style={S.sectionTitle}>I miei posti</h2>
         {!loading && !error && (
-          <span style={S.countBadge}>{attivi.length} {attivi.length === 1 ? 'attivo' : 'attivi'}</span>
+          <span style={S.countBadge}>
+            {attivi.length} {attivi.length === 1 ? 'attivo' : 'attivi'}
+          </span>
         )}
       </div>
 
       {loading && <p style={{ color: '#8a95a3', fontSize: 14 }}>Caricamento…</p>}
-      {error   && <p style={S.formError}>{error}</p>}
+      {error && <p style={S.formError}>{error}</p>}
 
       {!loading && !error && posti.length === 0 && (
         <p style={{ color: '#8a95a3', fontSize: 14 }}>
@@ -213,7 +246,15 @@ function MieiPosti({ onViewPostoReviews }) {
           <p style={S.subLabel}>Attivi</p>
           <div style={S.postoList}>
             {attivi.map(p => (
-              <PostoRow key={p._id} posto={p} stat={medieMap[String(p._id)]} onUpdated={handleUpdated} onDeleted={handleDeleted} onDisattivato={handleDisattivato} onViewReviews={onViewPostoReviews} />
+              <PostoRow
+                key={p._id}
+                posto={p}
+                stat={medieMap[String(p._id)]}
+                onUpdated={handleUpdated}
+                onDeleted={handleDeleted}
+                onDisattivato={handleDisattivato}
+                onViewReviews={onViewPostoReviews}
+              />
             ))}
           </div>
         </div>
@@ -224,7 +265,15 @@ function MieiPosti({ onViewPostoReviews }) {
           <p style={S.subLabel}>Non attivi</p>
           <div style={S.postoList}>
             {inattivi.map(p => (
-              <PostoRow key={p._id} posto={p} stat={medieMap[String(p._id)]} onUpdated={handleUpdated} onDeleted={handleDeleted} onDisattivato={handleDisattivato} onViewReviews={onViewPostoReviews} />
+              <PostoRow
+                key={p._id}
+                posto={p}
+                stat={medieMap[String(p._id)]}
+                onUpdated={handleUpdated}
+                onDeleted={handleDeleted}
+                onDisattivato={handleDisattivato}
+                onViewReviews={onViewPostoReviews}
+              />
             ))}
           </div>
         </div>
@@ -237,8 +286,17 @@ function MieiPosti({ onViewPostoReviews }) {
 function StarsMini({ n, total }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-      {[1,2,3,4,5].map(i => (
-        <span key={i} style={{ fontSize: 13, color: i <= Math.round(n) ? '#f59e0b' : '#e2e8f0', lineHeight: 1 }}>★</span>
+      {[1, 2, 3, 4, 5].map(i => (
+        <span
+          key={i}
+          style={{
+            fontSize: 13,
+            color: i <= Math.round(n) ? '#f59e0b' : '#e2e8f0',
+            lineHeight: 1
+          }}
+        >
+          ★
+        </span>
       ))}
       <span style={{ fontSize: 12, color: '#8a95a3', marginLeft: 3, fontWeight: 600 }}>
         {n} ({total} {total === 1 ? 'rec.' : 'rec.'})
@@ -250,24 +308,24 @@ function StarsMini({ n, total }) {
 /* ── Singolo posto con form di modifica inline ────────────────────── */
 function PostoRow({ posto, stat, onUpdated, onDeleted, onDisattivato, onViewReviews }) {
   const [expanded, setExpanded] = useState(false)
-  const [saving,   setSaving]   = useState(false)
-  const [error,    setError]    = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const [form, setForm] = useState({
-    nome:          posto.nome,
-    descrizione:   posto.descrizione ?? '',
+    nome: posto.nome,
+    descrizione: posto.descrizione ?? '',
     tariffaOraria: posto.tariffaOraria,
     caratteristiche: posto.caratteristiche ?? [],
-    disponibilita:   dispToEditor(posto.disponibilita),
+    disponibilita: dispToEditor(posto.disponibilita)
   })
 
   function openEdit() {
     setForm({
-      nome:            posto.nome,
-      descrizione:     posto.descrizione ?? '',
-      tariffaOraria:   posto.tariffaOraria,
+      nome: posto.nome,
+      descrizione: posto.descrizione ?? '',
+      tariffaOraria: posto.tariffaOraria,
       caratteristiche: posto.caratteristiche ?? [],
-      disponibilita:   dispToEditor(posto.disponibilita),
+      disponibilita: dispToEditor(posto.disponibilita)
     })
     setError('')
     setExpanded(true)
@@ -277,14 +335,16 @@ function PostoRow({ posto, stat, onUpdated, onDeleted, onDisattivato, onViewRevi
     e.preventDefault()
     setSaving(true)
     setError('')
+
     try {
       const updated = await api.updatePosto(posto._id, {
-        nome:            form.nome,
-        descrizione:     form.descrizione,
-        tariffaOraria:   Number(form.tariffaOraria),
+        nome: form.nome,
+        descrizione: form.descrizione,
+        tariffaOraria: Number(form.tariffaOraria),
         caratteristiche: form.caratteristiche,
-        disponibilita:   dispToBackend(form.disponibilita),
+        disponibilita: dispToBackend(form.disponibilita)
       })
+
       onUpdated(updated)
       setExpanded(false)
     } catch (err) {
@@ -295,7 +355,14 @@ function PostoRow({ posto, stat, onUpdated, onDeleted, onDisattivato, onViewRevi
   }
 
   async function handleDisattiva() {
-    if (!confirm(`Vuoi disattivare "${posto.nome}"? Non sarà più visibile sulla mappa.`)) return
+    const conferma = confirm(
+      `Vuoi disattivare "${posto.nome}"?\n\n` +
+      'Il posto non sarà più visibile sulla mappa e non accetterà nuove prenotazioni.\n' +
+      'Le eventuali prenotazioni già confermate resteranno valide.'
+    )
+
+    if (!conferma) return
+
     try {
       const updated = await api.updatePosto(posto._id, { attivo: false })
       onDisattivato(updated)
@@ -314,21 +381,21 @@ function PostoRow({ posto, stat, onUpdated, onDeleted, onDisattivato, onViewRevi
   }
 
   async function handleDelete() {
-  // Chiediamo conferma prima di eliminare il posto dalla vista dell'host
-  // L'eliminazione è logica: il posto sparisce dall'interfaccia ma resta nel database
-  const conferma = confirm(
-    `Vuoi eliminare "${posto.nome}"? Il posto non sarà più visibile, ma resterà nello storico.`
-  )
+    const conferma = confirm(
+      `Vuoi eliminare "${posto.nome}"?\n\n` +
+      'Se esistono prenotazioni future attive, l’eliminazione verrà bloccata.\n' +
+      'Per impedire nuove prenotazioni senza cancellare il posto, usa Disattiva.'
+    )
 
-  if (!conferma) return
+    if (!conferma) return
 
-  try {
-    await api.deletePosto(posto._id)
-    onDeleted(posto._id)
-  } catch (err) {
-    alert(err.message || 'Errore durante eliminazione')
+    try {
+      await api.deletePosto(posto._id)
+      onDeleted(posto._id)
+    } catch (err) {
+      alert(err.message || 'Errore durante eliminazione')
+    }
   }
-}
 
   const visibleTags = (posto.caratteristiche ?? [])
     .map(k => TAGS.find(t => t.key === k))
@@ -340,9 +407,11 @@ function PostoRow({ posto, stat, onUpdated, onDeleted, onDisattivato, onViewRevi
       <div style={S.postoTop}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={S.postoName}>{posto.nome}</p>
+
           {posto.posizione?.indirizzoTestuale && (
             <p style={S.postoAddress}>{posto.posizione.indirizzoTestuale}</p>
           )}
+
           {onViewReviews && (
             <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
               {stat && <StarsMini n={stat.media} total={stat.totale} />}
@@ -351,6 +420,7 @@ function PostoRow({ posto, stat, onUpdated, onDeleted, onDisattivato, onViewRevi
               </button>
             </div>
           )}
+
           {visibleTags.length > 0 && (
             <div style={S.tagsRow}>
               {visibleTags.map(t => (
@@ -359,9 +429,16 @@ function PostoRow({ posto, stat, onUpdated, onDeleted, onDisattivato, onViewRevi
             </div>
           )}
         </div>
+
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <p style={S.postoPrice}>€{Number(posto.tariffaOraria).toFixed(2)}/h</p>
-          <span style={{ ...S.activeBadge, background: posto.attivo ? '#dcfce7' : '#f3f4f6', color: posto.attivo ? '#14532d' : '#6b7280' }}>
+          <span
+            style={{
+              ...S.activeBadge,
+              background: posto.attivo ? '#dcfce7' : '#f3f4f6',
+              color: posto.attivo ? '#14532d' : '#6b7280'
+            }}
+          >
             {posto.attivo ? '🟢 Attivo' : '⚫ Non attivo'}
           </span>
         </div>
@@ -371,13 +448,15 @@ function PostoRow({ posto, stat, onUpdated, onDeleted, onDisattivato, onViewRevi
       {!expanded && (
         <div style={S.postoActions}>
           <button onClick={openEdit} style={S.btnEdit}>✏️ Modifica</button>
-          {posto.attivo
-            ? <button onClick={handleDisattiva} style={S.btnDeactivate}>⏸ Disattiva</button>
-            : <>
-                <button onClick={handleRiattiva} style={S.btnReactivate}>▶ Riattiva</button>
-                <button onClick={handleDelete} style={S.btnDelete}>🗑 Elimina</button>
-              </>
-          }
+
+          {posto.attivo ? (
+            <button onClick={handleDisattiva} style={S.btnDeactivate}>⏸ Disattiva</button>
+          ) : (
+            <>
+              <button onClick={handleRiattiva} style={S.btnReactivate}>▶ Riattiva</button>
+              <button onClick={handleDelete} style={S.btnDelete}>🗑 Elimina</button>
+            </>
+          )}
         </div>
       )}
 
@@ -456,7 +535,7 @@ const S = {
     background: '#f5f6f7',
     fontFamily: "'Inter', system-ui, sans-serif",
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'column'
   },
 
   /* Navbar */
@@ -467,14 +546,14 @@ const S = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '0 1.75rem',
-    flexShrink: 0,
+    flexShrink: 0
   },
   navLogo: {
     fontFamily: "'Sora', sans-serif",
     fontWeight: 800,
     fontSize: '1.2rem',
     letterSpacing: '-0.04em',
-    cursor: 'pointer',
+    cursor: 'pointer'
   },
   navBack: {
     background: 'rgba(255,255,255,0.1)',
@@ -485,7 +564,7 @@ const S = {
     fontSize: '0.85rem',
     fontWeight: 600,
     cursor: 'pointer',
-    fontFamily: 'inherit',
+    fontFamily: 'inherit'
   },
 
   /* Layout */
@@ -493,13 +572,13 @@ const S = {
     maxWidth: 720,
     width: '100%',
     margin: '0 auto',
-    padding: '2rem 1.25rem 3rem',
+    padding: '2rem 1.25rem 3rem'
   },
   card: {
     background: '#fff',
     border: '1px solid #e2e8f0',
     borderRadius: 20,
-    padding: '1.5rem',
+    padding: '1.5rem'
   },
 
   /* Avatar e intestazione utente */
@@ -508,7 +587,7 @@ const S = {
     alignItems: 'center',
     gap: '1.25rem',
     marginBottom: '1.25rem',
-    flexWrap: 'wrap',
+    flexWrap: 'wrap'
   },
   avatar: {
     width: 64,
@@ -522,7 +601,7 @@ const S = {
     fontFamily: "'Sora', sans-serif",
     fontSize: '1.4rem',
     fontWeight: 800,
-    flexShrink: 0,
+    flexShrink: 0
   },
   userName: {
     margin: '0 0 2px',
@@ -530,12 +609,12 @@ const S = {
     fontWeight: 700,
     color: '#003049',
     fontFamily: "'Sora', sans-serif",
-    letterSpacing: '-0.02em',
+    letterSpacing: '-0.02em'
   },
   userHandle: {
     margin: '0 0 6px',
     fontSize: 13,
-    color: '#8a95a3',
+    color: '#8a95a3'
   },
   roleBadge: {
     display: 'inline-block',
@@ -544,11 +623,11 @@ const S = {
     borderRadius: 999,
     padding: '2px 10px',
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: 700
   },
   roleBadgeHost: {
     background: 'rgba(42,157,143,0.12)',
-    color: '#1f7a6e',
+    color: '#1f7a6e'
   },
 
   /* Griglia info */
@@ -556,22 +635,35 @@ const S = {
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
-    marginBottom: '1.25rem',
+    marginBottom: '1.25rem'
   },
   infoRow: {
     display: 'flex',
     alignItems: 'center',
     gap: 10,
-    fontSize: 14,
+    fontSize: 14
   },
-  infoIcon: { fontSize: 16, flexShrink: 0 },
-  infoLabel: { color: '#8a95a3', fontWeight: 600, minWidth: 56 },
-  infoValue: { color: '#374151', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  infoIcon: {
+    fontSize: 16,
+    flexShrink: 0
+  },
+  infoLabel: {
+    color: '#8a95a3',
+    fontWeight: 600,
+    minWidth: 56
+  },
+  infoValue: {
+    color: '#374151',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap'
+  },
   verifyBadge: {
     borderRadius: 999,
     padding: '1px 8px',
     fontSize: 11,
-    fontWeight: 700,
+    fontWeight: 700
   },
 
   /* Sezione posti */
@@ -580,7 +672,7 @@ const S = {
     alignItems: 'center',
     gap: '0.75rem',
     marginBottom: '1.25rem',
-    flexWrap: 'wrap',
+    flexWrap: 'wrap'
   },
   sectionTitle: {
     margin: 0,
@@ -588,7 +680,7 @@ const S = {
     fontSize: '1.2rem',
     fontWeight: 800,
     color: '#003049',
-    letterSpacing: '-0.02em',
+    letterSpacing: '-0.02em'
   },
   countBadge: {
     background: 'rgba(42,157,143,0.12)',
@@ -597,7 +689,7 @@ const S = {
     borderRadius: 999,
     padding: '2px 12px',
     fontSize: '0.82rem',
-    fontWeight: 700,
+    fontWeight: 700
   },
   subLabel: {
     margin: '0 0 0.5rem',
@@ -605,12 +697,12 @@ const S = {
     fontWeight: 700,
     color: '#8a95a3',
     textTransform: 'uppercase',
-    letterSpacing: '0.06em',
+    letterSpacing: '0.06em'
   },
   postoList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.75rem',
+    gap: '0.75rem'
   },
 
   /* Card posto */
@@ -621,49 +713,54 @@ const S = {
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
-    background: '#fafbfc',
+    background: '#fafbfc'
   },
   postoTop: {
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 12
   },
   postoName: {
     margin: '0 0 2px',
     fontWeight: 700,
     fontSize: 14,
     color: '#003049',
-    fontFamily: "'Sora', sans-serif",
+    fontFamily: "'Sora', sans-serif"
   },
   postoAddress: {
     margin: '0 0 6px',
     fontSize: 12,
-    color: '#8a95a3',
+    color: '#8a95a3'
   },
   reviewLink: {
-    background: 'none', border: 'none', padding: 0,
-    cursor: 'pointer', color: '#2a9d8f',
-    fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
-    marginLeft: 6,
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    color: '#2a9d8f',
+    fontSize: 12,
+    fontWeight: 600,
+    fontFamily: 'inherit',
+    marginLeft: 6
   },
   postoPrice: {
     margin: '0 0 4px',
     fontWeight: 800,
     fontSize: 15,
-    color: '#2a9d8f',
+    color: '#2a9d8f'
   },
   activeBadge: {
     display: 'inline-block',
     borderRadius: 999,
     padding: '2px 9px',
     fontSize: 11,
-    fontWeight: 700,
+    fontWeight: 700
   },
   tagsRow: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: 5,
+    gap: 5
   },
   tagPill: {
     background: '#e6f4f2',
@@ -672,7 +769,7 @@ const S = {
     borderRadius: 999,
     padding: '2px 8px',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 600
   },
 
   /* Azioni posto */
@@ -680,7 +777,7 @@ const S = {
     display: 'flex',
     gap: 8,
     borderTop: '1px solid #f1f5f9',
-    paddingTop: 10,
+    paddingTop: 10
   },
 
   /* Form comune */
@@ -690,7 +787,7 @@ const S = {
     gap: '0.9rem',
     borderTop: '1px solid #e2e8f0',
     paddingTop: '1rem',
-    marginTop: 4,
+    marginTop: 4
   },
   editForm: {
     display: 'flex',
@@ -698,12 +795,12 @@ const S = {
     gap: '0.9rem',
     borderTop: '1px solid #e2e8f0',
     paddingTop: '1rem',
-    marginTop: 4,
+    marginTop: 4
   },
   formRow: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: '0.75rem',
+    gap: '0.75rem'
   },
   label: {
     display: 'flex',
@@ -711,7 +808,7 @@ const S = {
     gap: 5,
     fontSize: 13,
     fontWeight: 600,
-    color: '#374151',
+    color: '#374151'
   },
   input: {
     border: '1.5px solid #e2e8f0',
@@ -722,15 +819,29 @@ const S = {
     color: '#0d1b2a',
     outline: 'none',
     background: '#fff',
-    marginTop: 2,
+    marginTop: 2
   },
   formActions: {
     display: 'flex',
     gap: 8,
-    flexWrap: 'wrap',
+    flexWrap: 'wrap'
   },
-  formError:   { margin: 0, fontSize: 13, color: '#dc2626', background: '#fee2e2', borderRadius: 8, padding: '8px 12px' },
-  formSuccess: { margin: 0, fontSize: 13, color: '#14532d', background: '#dcfce7', borderRadius: 8, padding: '8px 12px' },
+  formError: {
+    margin: 0,
+    fontSize: 13,
+    color: '#dc2626',
+    background: '#fee2e2',
+    borderRadius: 8,
+    padding: '8px 12px'
+  },
+  formSuccess: {
+    margin: 0,
+    fontSize: 13,
+    color: '#14532d',
+    background: '#dcfce7',
+    borderRadius: 8,
+    padding: '8px 12px'
+  },
 
   /* Bottoni */
   editBtn: {
@@ -742,7 +853,7 @@ const S = {
     cursor: 'pointer',
     fontSize: 13,
     fontWeight: 700,
-    fontFamily: 'inherit',
+    fontFamily: 'inherit'
   },
   btnSave: {
     padding: '8px 20px',
@@ -753,7 +864,7 @@ const S = {
     cursor: 'pointer',
     fontSize: 13,
     fontWeight: 700,
-    fontFamily: 'inherit',
+    fontFamily: 'inherit'
   },
   btnCancel: {
     padding: '8px 16px',
@@ -764,7 +875,7 @@ const S = {
     cursor: 'pointer',
     fontSize: 13,
     fontWeight: 600,
-    fontFamily: 'inherit',
+    fontFamily: 'inherit'
   },
   btnEdit: {
     padding: '6px 14px',
@@ -775,7 +886,7 @@ const S = {
     cursor: 'pointer',
     fontSize: 12,
     fontWeight: 700,
-    fontFamily: 'inherit',
+    fontFamily: 'inherit'
   },
   btnReactivate: {
     padding: '6px 14px',
@@ -786,7 +897,7 @@ const S = {
     cursor: 'pointer',
     fontSize: 12,
     fontWeight: 700,
-    fontFamily: 'inherit',
+    fontFamily: 'inherit'
   },
   btnDeactivate: {
     padding: '6px 14px',
@@ -797,7 +908,7 @@ const S = {
     cursor: 'pointer',
     fontSize: 12,
     fontWeight: 600,
-    fontFamily: 'inherit',
+    fontFamily: 'inherit'
   },
   btnDelete: {
     padding: '6px 14px',
@@ -808,6 +919,6 @@ const S = {
     cursor: 'pointer',
     fontSize: 12,
     fontWeight: 600,
-    fontFamily: 'inherit',
-  },
+    fontFamily: 'inherit'
+  }
 }

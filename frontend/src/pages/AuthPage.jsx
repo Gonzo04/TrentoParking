@@ -1,7 +1,7 @@
-import './AuthPage.css';
-import AuthPanel from './AuthPanel';
-import ResetPasswordPage from './ResetPassword';
-import EmailVerificationPage from './VerificaMail';
+import './AuthPage.css'
+import AuthPanel from '../features/auth/AuthPanel'
+import ResetPasswordPage from '../features/auth/ResetPassword'
+import EmailVerificationPage from '../features/auth/VerificaMail'
 
 function AuthPage({
   authInitialTab,

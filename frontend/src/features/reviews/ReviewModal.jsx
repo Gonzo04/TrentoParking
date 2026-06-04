@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api } from '../services/api'
+import { api } from '../../services/api'
 
 export default function ReviewModal({ booking, onClose, onSubmitted }) {
   const [stelle, setStelle] = useState(0)

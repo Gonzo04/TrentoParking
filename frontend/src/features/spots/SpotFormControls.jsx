@@ -1,5 +1,4 @@
-import './Dashboard.css'
-import { GIORNI, TAGS } from '../utils/SpotOptions'
+import { GIORNI, TAGS } from '../../utils/SpotOptions'
 
 // Opzioni ora inizio: 00:00 -> 23:00
 const ORA_INIZIO_OPTS = Array.from(
