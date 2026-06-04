@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const MESI = [
@@ -85,6 +85,53 @@ function StarsMini({ n, total }) {
   )
 }
 
+/* ── Lightbox ────────────────────────────────────────────────────── */
+function Lightbox({ foto, index, onClose, onPrev, onNext }) {
+  // Chiusura con Esc, navigazione con frecce sinistra/destra
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === 'Escape')     onClose()
+      if (e.key === 'ArrowLeft')  onPrev()
+      if (e.key === 'ArrowRight') onNext()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose, onPrev, onNext])
+
+  const src   = `http://localhost:8080${foto[index]}`
+  const total = foto.length
+
+  return (
+    <div style={SL.backdrop} onClick={onClose} role="dialog" aria-modal="true">
+      <div style={SL.content} onClick={e => e.stopPropagation()}>
+
+        <button style={SL.closeBtn} onClick={onClose} aria-label="Chiudi">✕</button>
+
+        {total > 1 && (
+          <div style={SL.counter}>{index + 1} / {total}</div>
+        )}
+
+        <img src={src} alt="" style={SL.img} />
+
+        {total > 1 && (
+          <>
+            <button
+              style={{ ...SL.arrow, left: 10 }}
+              onClick={e => { e.stopPropagation(); onPrev() }}
+              aria-label="Foto precedente"
+            >‹</button>
+            <button
+              style={{ ...SL.arrow, right: 10 }}
+              onClick={e => { e.stopPropagation(); onNext() }}
+              aria-label="Foto successiva"
+            >›</button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwner = false, onViewSpotReviews }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
 
@@ -94,6 +141,14 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
   const [startHour,    setStartHour]    = useState(null)
   const [endHour,      setEndHour]      = useState(null)
   const [loading,      setLoading]      = useState(false)
+
+  // Lightbox: null = chiuso, numero = indice foto aperta
+  const [lightboxIndex, setLightboxIndex] = useState(null)
+  const foto = posto.foto ?? []
+  const openLightbox  = useCallback(i => setLightboxIndex(i), [])
+  const closeLightbox = useCallback(() => setLightboxIndex(null), [])
+  const prevPhoto     = useCallback(() => setLightboxIndex(i => (i - 1 + foto.length) % foto.length), [foto.length])
+  const nextPhoto     = useCallback(() => setLightboxIndex(i => (i + 1) % foto.length), [foto.length])
 
   const grid = useMemo(() => buildMonthGrid(year, month), [year, month])
 
@@ -198,14 +253,20 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
 
       {/* ── Intestazione posto ────────────────────────────────────── */}
       <div style={S.header}>
-        {posto.foto && posto.foto.length > 0 && (
+        {foto.length > 0 && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto' }}>
-            {posto.foto.map((url, i) => (
+            {foto.map((url, i) => (
               <img
                 key={i}
                 src={`http://localhost:8080${url}`}
-                alt=""
-                style={{ height: 120, minWidth: 160, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                alt={`Foto ${i + 1}`}
+                onClick={() => openLightbox(i)}
+                style={{
+                  height: 120, minWidth: 160, objectFit: 'cover', borderRadius: 8,
+                  flexShrink: 0, cursor: 'pointer', transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
               />
             ))}
           </div>
@@ -411,8 +472,98 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
           )}
         </>
       )}
+
+      {/* ── Lightbox ─────────────────────────────────────────────── */}
+      {lightboxIndex !== null && (
+        <Lightbox
+          foto={foto}
+          index={lightboxIndex}
+          onClose={closeLightbox}
+          onPrev={prevPhoto}
+          onNext={nextPhoto}
+        />
+      )}
     </div>
   )
+}
+
+/* ── Stili lightbox ──────────────────────────────────────────────── */
+const SL = {
+  backdrop: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.88)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+    cursor: 'default',
+  },
+  content: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    maxWidth: '92vw',
+    maxHeight: '92vh',
+    cursor: 'default',
+  },
+  img: {
+    maxWidth: '92vw',
+    maxHeight: '92vh',
+    objectFit: 'contain',
+    borderRadius: 8,
+    boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+    display: 'block',
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: -40,
+    right: 0,
+    background: 'rgba(255,255,255,0.15)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 20,
+    width: 36,
+    height: 36,
+    borderRadius: '50%',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 1,
+    backdropFilter: 'blur(4px)',
+  },
+  counter: {
+    position: 'absolute',
+    bottom: -32,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontWeight: 600,
+    pointerEvents: 'none',
+    whiteSpace: 'nowrap',
+  },
+  arrow: {
+    position: 'absolute',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'rgba(255,255,255,0.15)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 32,
+    width: 44,
+    height: 44,
+    borderRadius: '50%',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backdropFilter: 'blur(4px)',
+    lineHeight: 1,
+    userSelect: 'none',
+  },
 }
 
 /* ── Stili ───────────────────────────────────────────────────────── */
