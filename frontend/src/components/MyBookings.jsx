@@ -5,10 +5,33 @@ import ChatModal from './ChatModal'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const STATO = {
-  IN_ATTESA_PAGAMENTO: { label: 'In attesa di pagamento', bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' },
-  PAGATA:              { label: 'Confermata',              bg: '#dcfce7', color: '#14532d', dot: '#16a34a' },
-  ANNULLATA:           { label: 'Annullata',               bg: '#fee2e2', color: '#7f1d1d', dot: '#dc2626' },
+  IN_ATTESA_PAGAMENTO: {
+    label: 'In attesa di pagamento',
+    bg: '#fef3c7',
+    color: '#92400e',
+    dot: '#f59e0b'
+  },
+  PAGATA: {
+    label: 'Confermata',
+    bg: '#dcfce7',
+    color: '#14532d',
+    dot: '#16a34a'
+  },
+  ANNULLATA: {
+    label: 'Annullata',
+    bg: '#fee2e2',
+    color: '#7f1d1d',
+    dot: '#dc2626'
+  },
+  SCADUTA: {
+    label: 'Pagamento scaduto',
+    bg: '#f3f4f6',
+    color: '#374151',
+    dot: '#9ca3af'
+  },
 }
+
+const STATI_NON_ATTIVI = ['ANNULLATA', 'SCADUTA']
 
 function fmt(iso, opts) {
   return new Date(iso).toLocaleString('it-IT', opts)
@@ -59,8 +82,8 @@ export default function MyBookings({ onBack, onPay, onViewHostReviews, currentUs
   }
 
   const now = new Date()
-  const attive   = bookings.filter(b => b.stato !== 'ANNULLATA')
-  const passate  = bookings.filter(b => b.stato === 'ANNULLATA')
+  const attive = bookings.filter(b => !STATI_NON_ATTIVI.includes(b.stato))
+  const passate = bookings.filter(b => STATI_NON_ATTIVI.includes(b.stato))
 
   return (
     <div style={S.page}>
@@ -152,10 +175,10 @@ export default function MyBookings({ onBack, onPay, onViewHostReviews, currentUs
           </section>
         )}
 
-        {/* Lista prenotazioni annullate */}
+        {/* Lista prenotazioni annullate o scadute */}
         {passate.length > 0 && (
           <section style={S.section}>
-            <p style={S.sectionLabel}>Annullate</p>
+            <p style={S.sectionLabel}>Annullate / scadute</p>
             <div style={S.list}>
               {passate.map(b => (
                 <BookingCard
@@ -179,17 +202,24 @@ export default function MyBookings({ onBack, onPay, onViewHostReviews, currentUs
 
 /* ── BookingCard ──────────────────────────────────────────────────── */
 function BookingCard({ booking: b, now, onPay, onCancel, onReview, onViewHostReviews, onChat }) {
-  const spot  = b.postoPrivatoId
-  const stato = STATO[b.stato] ?? { label: b.stato, bg: '#f3f4f6', color: '#374151', dot: '#9ca3af' }
-  const ore   = durataOre(b.dataOraInizio, b.dataOraFine)
+  const spot = b.postoPrivatoId
+  const stato = STATO[b.stato] ?? {
+    label: b.stato,
+    bg: '#f3f4f6',
+    color: '#374151',
+    dot: '#9ca3af'
+  }
+
+  const ore = durataOre(b.dataOraInizio, b.dataOraFine)
 
   const giorno = fmt(b.dataOraInizio, { weekday: 'long', day: 'numeric', month: 'long' })
   const orariO = fmt(b.dataOraInizio, { hour: '2-digit', minute: '2-digit' })
-  const orarioF = fmt(b.dataOraFine,  { hour: '2-digit', minute: '2-digit' })
+  const orarioF = fmt(b.dataOraFine, { hour: '2-digit', minute: '2-digit' })
 
-  const isExpired  = new Date(b.dataOraFine) < now
-  const canReview  = b.stato === 'PAGATA' && isExpired && !b.recensioneId
-  const hostId     = spot?.hostId?._id ?? spot?.hostId
+  const isExpired = new Date(b.dataOraFine) < now
+  const isClosed = STATI_NON_ATTIVI.includes(b.stato)
+  const canReview = b.stato === 'PAGATA' && isExpired && !b.recensioneId
+  const hostId = spot?.hostId?._id ?? spot?.hostId
 
   return (
     <div style={S.card}>
@@ -236,21 +266,23 @@ function BookingCard({ booking: b, now, onPay, onCancel, onReview, onViewHostRev
         <span style={S.cardPrice}>€{b.prezzoTotale?.toFixed(2)}</span>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {b.stato === 'PAGATA' && isExpired && (
-            b.recensioneId ? (
-              <span style={S.reviewedBadge}>✓ Recensito</span>
-            ) : (
-              <button onClick={() => onReview(b)} style={S.btnReview}>
-                ⭐ Lascia recensione
-              </button>
-            )
+          {b.stato === 'PAGATA' && isExpired && b.recensioneId && (
+            <span style={S.reviewedBadge}>✓ Recensito</span>
           )}
-          {b.stato !== 'ANNULLATA' && (
+
+          {canReview && (
+            <button onClick={() => onReview(b)} style={S.btnReview}>
+              ⭐ Lascia recensione
+            </button>
+          )}
+
+          {!isClosed && (
             <button onClick={() => onChat(b._id)} style={S.btnChat}>
               💬 Chat
             </button>
           )}
-          {b.stato !== 'ANNULLATA' && !isExpired && (
+
+          {!isClosed && !isExpired && (
             <>
               {b.stato === 'IN_ATTESA_PAGAMENTO' && (
                 <button onClick={() => onPay(b)} style={S.btnPay}>
@@ -483,28 +515,41 @@ const S = {
 
   /* Host link */
   hostLink: {
-    background: 'none', border: 'none', padding: 0,
-    cursor: 'pointer', color: '#2a9d8f',
-    fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    color: '#2a9d8f',
+    fontSize: 12,
+    fontWeight: 600,
+    fontFamily: 'inherit',
     marginTop: 3,
   },
 
   /* Reviewed badge */
   reviewedBadge: {
-    display: 'inline-flex', alignItems: 'center',
+    display: 'inline-flex',
+    alignItems: 'center',
     padding: '7px 12px',
-    background: '#f0fdf4', color: '#16a34a',
+    background: '#f0fdf4',
+    color: '#16a34a',
     border: '1px solid #bbf7d0',
-    borderRadius: 8, fontSize: 12, fontWeight: 600,
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: 600,
   },
 
   /* Review button */
   btnReview: {
     padding: '7px 14px',
-    background: '#fef9ec', color: '#92400e',
+    background: '#fef9ec',
+    color: '#92400e',
     border: '1px solid rgba(234,179,8,0.4)',
-    borderRadius: 8, cursor: 'pointer',
-    fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 600,
+    fontFamily: 'inherit',
   },
 
   /* Bottoni */

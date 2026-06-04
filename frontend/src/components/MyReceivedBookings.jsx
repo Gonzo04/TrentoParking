@@ -4,10 +4,33 @@ import ChatModal from './ChatModal'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const STATO = {
-  IN_ATTESA_PAGAMENTO: { label: 'In attesa di pagamento', bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' },
-  PAGATA:              { label: 'Confermata',              bg: '#dcfce7', color: '#14532d', dot: '#16a34a' },
-  ANNULLATA:           { label: 'Annullata',               bg: '#fee2e2', color: '#7f1d1d', dot: '#dc2626' },
+  IN_ATTESA_PAGAMENTO: {
+    label: 'In attesa di pagamento',
+    bg: '#fef3c7',
+    color: '#92400e',
+    dot: '#f59e0b'
+  },
+  PAGATA: {
+    label: 'Confermata',
+    bg: '#dcfce7',
+    color: '#14532d',
+    dot: '#16a34a'
+  },
+  ANNULLATA: {
+    label: 'Annullata',
+    bg: '#fee2e2',
+    color: '#7f1d1d',
+    dot: '#dc2626'
+  },
+  SCADUTA: {
+    label: 'Pagamento scaduto',
+    bg: '#f3f4f6',
+    color: '#374151',
+    dot: '#9ca3af'
+  },
 }
+
+const STATI_NON_ATTIVI = ['ANNULLATA', 'SCADUTA']
 
 function fmt(iso, opts) {
   return new Date(iso).toLocaleString('it-IT', opts)
@@ -25,8 +48,8 @@ function driverName(u) {
 /* ── Componente ───────────────────────────────────────────────────── */
 export default function MyReceivedBookings({ onBack, currentUserId }) {
   const [bookings, setBookings] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [chatBookingId, setChatBookingId] = useState(null)
 
   useEffect(() => {
@@ -36,8 +59,8 @@ export default function MyReceivedBookings({ onBack, currentUserId }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const attive   = bookings.filter(b => b.stato !== 'ANNULLATA')
-  const annullate = bookings.filter(b => b.stato === 'ANNULLATA')
+  const attive = bookings.filter(b => !STATI_NON_ATTIVI.includes(b.stato))
+  const nonAttive = bookings.filter(b => STATI_NON_ATTIVI.includes(b.stato))
 
   return (
     <div style={S.page}>
@@ -100,16 +123,28 @@ export default function MyReceivedBookings({ onBack, currentUserId }) {
           <section style={S.section}>
             <p style={S.sectionLabel}>Attive</p>
             <div style={S.list}>
-              {attive.map(b => <ReceivedCard key={b._id} booking={b} onChat={id => setChatBookingId(id)} />)}
+              {attive.map(b => (
+                <ReceivedCard
+                  key={b._id}
+                  booking={b}
+                  onChat={id => setChatBookingId(id)}
+                />
+              ))}
             </div>
           </section>
         )}
 
-        {annullate.length > 0 && (
+        {nonAttive.length > 0 && (
           <section style={S.section}>
-            <p style={S.sectionLabel}>Annullate</p>
+            <p style={S.sectionLabel}>Annullate / scadute</p>
             <div style={S.list}>
-              {annullate.map(b => <ReceivedCard key={b._id} booking={b} onChat={id => setChatBookingId(id)} />)}
+              {nonAttive.map(b => (
+                <ReceivedCard
+                  key={b._id}
+                  booking={b}
+                  onChat={id => setChatBookingId(id)}
+                />
+              ))}
             </div>
           </section>
         )}
@@ -121,14 +156,21 @@ export default function MyReceivedBookings({ onBack, currentUserId }) {
 
 /* ── ReceivedCard ─────────────────────────────────────────────────── */
 function ReceivedCard({ booking: b, onChat }) {
-  const spot   = b.postoPrivatoId
+  const spot = b.postoPrivatoId
   const driver = b.utenteId
-  const stato  = STATO[b.stato] ?? { label: b.stato, bg: '#f3f4f6', color: '#374151', dot: '#9ca3af' }
-  const ore    = durataOre(b.dataOraInizio, b.dataOraFine)
+  const stato = STATO[b.stato] ?? {
+    label: b.stato,
+    bg: '#f3f4f6',
+    color: '#374151',
+    dot: '#9ca3af'
+  }
 
-  const giorno  = fmt(b.dataOraInizio, { weekday: 'long', day: 'numeric', month: 'long' })
+  const ore = durataOre(b.dataOraInizio, b.dataOraFine)
+
+  const giorno = fmt(b.dataOraInizio, { weekday: 'long', day: 'numeric', month: 'long' })
   const orarioI = fmt(b.dataOraInizio, { hour: '2-digit', minute: '2-digit' })
-  const orarioF = fmt(b.dataOraFine,   { hour: '2-digit', minute: '2-digit' })
+  const orarioF = fmt(b.dataOraFine, { hour: '2-digit', minute: '2-digit' })
+  const isClosed = STATI_NON_ATTIVI.includes(b.stato)
 
   return (
     <div style={S.card}>
@@ -175,7 +217,7 @@ function ReceivedCard({ booking: b, onChat }) {
       {/* Footer: prezzo + azioni */}
       <div style={S.cardFooter}>
         <span style={S.cardPrice}>€{Number(b.prezzoTotale ?? 0).toFixed(2)}</span>
-        {b.stato !== 'ANNULLATA' && (
+        {!isClosed && (
           <button onClick={() => onChat(b._id)} style={S.btnChat}>
             💬 Chat
           </button>

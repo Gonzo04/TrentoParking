@@ -1,22 +1,42 @@
-const multer = require('multer');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require('fs')
+const path = require('path')
+const crypto = require('crypto')
+const multer = require('multer')
+
+const uploadDir = path.join(__dirname, '..', 'uploads')
+
+// Creiamo la cartella uploads se non esiste
+// Serve per evitare errori al primo caricamento foto su una macchina nuova
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true })
+}
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, '..', 'uploads')),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, crypto.randomBytes(16).toString('hex') + ext);
+  destination: (req, file, cb) => {
+    cb(null, uploadDir)
   },
-});
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase()
+    const name = crypto.randomBytes(16).toString('hex')
+    cb(null, `${name}${ext}`)
+  },
+})
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+function fileFilter(req, file, cb) {
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp']
+
+  if (!allowedMimeTypes.includes(file.mimetype)) {
+    cb(new Error('Formato immagine non supportato'))
+    return
+  }
+
+  cb(null, true)
+}
 
 module.exports = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (ALLOWED_TYPES.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Solo immagini JPEG, PNG e WebP sono accettate'));
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
   },
-});
+})

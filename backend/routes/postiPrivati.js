@@ -6,6 +6,7 @@ const {
   getPostoPrivatoById,
   getPostoConPrenotazioni,
   createPostoPrivato,
+  checkUploadFotoPermission,
   uploadFoto,
   getMieiPosti,
   updatePostoPrivato,
@@ -33,8 +34,12 @@ router.get('/:id/prenotazioni', getPostoConPrenotazioni);
 
 // POST /api/posti-privati/:id/foto
 // Caricamento foto per un posto privato (solo l'host proprietario).
-router.post('/:id/foto', upload.array('foto', 10), uploadFoto);
-
+router.post(
+    '/:id/foto',
+    checkUploadFotoPermission,
+    upload.array('foto', 10),
+    uploadFoto
+);
 // GET /api/posti-privati/:id
 router.get('/:id', getPostoPrivatoById);
 
