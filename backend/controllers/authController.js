@@ -177,21 +177,33 @@ async function register(req, res) {
       targa: normalizedTarga,
       ruolo: 'UTENTE'
     });
-    // Generiamo il token per la verifica dell'e-mail
-    const tokenMail = await TokenVerificaMail.create({
-      userId: user._id,
-      token: crypto.randomBytes(16).toString('hex')
-    });
-    console.log(tokenMail);
+    // Generiamo il token e tentiamo l’invio dell’email di verifica.
+    // Se l’invio fallisce eseguiamo il rollback (eliminiamo utente e token)
+    // così l’utente non si ritrova in uno stato inconsistente:
+    // account creato in DB ma impossibile da verificare → "email già registrata" al prossimo tentativo.
+    let tokenMail;
+    try {
+      tokenMail = await TokenVerificaMail.create({
+        userId: user._id,
+        token: crypto.randomBytes(16).toString('hex')
+      });
 
-    // Invio email
-    const link = `http://localhost:8080/api/auth/conferma/${tokenMail.token}`;
-    await verificaEmail(user.email, link);
+      const link = `http://localhost:8080/api/auth/conferma/${tokenMail.token}`;
+      await verificaEmail(user.email, link);
+    } catch (emailError) {
+      // Rollback: rimuoviamo utente e token per permettere un nuovo tentativo pulito
+      await Utente.findByIdAndDelete(user._id);
+      await TokenVerificaMail.deleteMany({ userId: user._id });
+      console.error('Errore invio email di verifica — rollback eseguito:', emailError);
+      return res.status(500).json({
+        message: "Impossibile inviare l’email di verifica. Controlla la connessione e riprova."
+      });
+    }
 
     // Generiamo il token JWT con le informazioni minime utili.
     // Non inseriamo dati sensibili nel token.
-    if(user.emailVerificata === true){
-        const token = signToken({
+    if (user.emailVerificata === true) {
+      const token = signToken({
         userId: user._id,
         email: user.email,
         nomeUtente: user.nomeUtente,
@@ -204,11 +216,12 @@ async function register(req, res) {
         user: buildUserResponse(user)
       });
     }
-  // Utente registrato ma email non ancora verificata
-  return res.status(201).json({
-    message: 'Registrazione completata. Controlla la tua email per confermare l’account.',
-    emailVerificata: false
-  })
+
+    // Utente registrato ma email non ancora verificata
+    return res.status(201).json({
+      message: "Registrazione completata. Controlla la tua email per confermare l’account.",
+      emailVerificata: false
+    })
 } catch (error) {
     console.error('Errore register:', error);
 
