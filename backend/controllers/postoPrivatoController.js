@@ -1,3 +1,4 @@
+const fs = require('fs');
 const PostoPrivato = require('../models/PostoPrivato');
 const Prenotazione = require('../models/Prenotazione');
 const Utente = require('../models/Utente');
@@ -9,6 +10,14 @@ function isValidNumber(value) {
 function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
+
+function removeUploadedFiles(files = []) {
+  for (const file of files) {
+    if (file?.path) {
+      fs.unlink(file.path, () => {});
+    }
+  }
+}     
 
 function validateDisponibilita(disponibilita) {
   if (disponibilita === undefined) {
@@ -254,27 +263,72 @@ async function createPostoPrivato(req, res, next) {
   }
 }
 
-// POST /api/posti-privati/:id/foto
-// Aggiunge foto a un posto esistente. Solo l'host proprietario può farlo.
-async function uploadFoto(req, res, next) {
+// Controlla che l'utente possa caricare foto prima che multer salvi i file
+// In questo modo evitiamo upload non autorizzati e file inutili sul server
+async function checkUploadFotoPermission(req, res, next) {
   try {
     const posto = await PostoPrivato.findOne({
       _id: req.params.id,
       hostId: req.user.userId,
+      eliminato: { $ne: true },
     });
 
-    if (!posto) return res.status(404).json({ error: 'Posto non trovato' });
+    if (!posto) {
+      return res.status(404).json({ error: 'Posto non trovato' });
+    }
 
-    if (!req.files || req.files.length === 0)
+    if ((posto.foto ?? []).length >= 10) {
+      return res.status(400).json({
+        error: 'Il posto ha già raggiunto il numero massimo di foto',
+      });
+    }
+
+    req.postoPrivato = posto;
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+}
+
+
+
+
+// POST /api/posti-privati/:id/foto
+// Aggiunge foto a un posto esistente. Solo l'host proprietario può farlo.
+async function uploadFoto(req, res, next) {
+  try {
+    const posto = req.postoPrivato;
+
+    if (!posto) {
+      removeUploadedFiles(req.files ?? []);
+      return res.status(404).json({ error: 'Posto non trovato' });
+    }
+
+    const files = req.files ?? [];
+
+    if (files.length === 0) {
       return res.status(400).json({ error: 'Nessuna immagine caricata' });
+    }
 
-    const nuoveFoto = req.files.map(f => `/uploads/${f.filename}`);
-    posto.foto = [...posto.foto, ...nuoveFoto].slice(0, 10);
+    const fotoAttuali = posto.foto ?? [];
+    const spazioDisponibile = 10 - fotoAttuali.length;
+
+    if (files.length > spazioDisponibile) {
+      removeUploadedFiles(files);
+      return res.status(400).json({
+        error: `Puoi caricare al massimo ${spazioDisponibile} altre foto`,
+      });
+    }
+
+    const nuoveFoto = files.map(file => `/uploads/${file.filename}`);
+
+    posto.foto = [...fotoAttuali, ...nuoveFoto];
     await posto.save();
 
-    res.json({ foto: posto.foto });
+    return res.json({ foto: posto.foto });
   } catch (err) {
-    next(err);
+    removeUploadedFiles(req.files ?? []);
+    return next(err);
   }
 }
 
@@ -388,6 +442,7 @@ module.exports = {
   getPostoPrivatoById,
   getPostoConPrenotazioni,
   createPostoPrivato,
+  checkUploadFotoPermission,
   uploadFoto,
   getMieiPosti,
   updatePostoPrivato,

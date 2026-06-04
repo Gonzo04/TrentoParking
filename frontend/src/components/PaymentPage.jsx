@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../services/api'
 
 export default function PaymentPage({ booking, onBack, onPaid }) {
@@ -7,6 +7,34 @@ export default function PaymentPage({ booking, onBack, onPaid }) {
   const [cvv, setCvv] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [now, setNow] = useState(Date.now())
+
+  // Aggiorniamo il tempo ogni secondo per mostrare il countdown del pagamento
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now())
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const scadenzaMs = useMemo(() => {
+    if (!booking?.scadenzaPagamento) return null
+
+    const value = new Date(booking.scadenzaPagamento).getTime()
+    return Number.isNaN(value) ? null : value
+  }, [booking?.scadenzaPagamento])
+
+  const remainingMs = scadenzaMs ? Math.max(scadenzaMs - now, 0) : null
+  const pagamentoScaduto = remainingMs === 0 && scadenzaMs !== null
+
+  function formatRemainingTime(ms) {
+    const totalSeconds = Math.ceil(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
 
   // Se la pagina viene aperta senza una prenotazione valida
   // mostriamo un messaggio chiaro invece di rompere il componente
@@ -36,6 +64,11 @@ export default function PaymentPage({ booking, onBack, onPaid }) {
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
+
+    if (pagamentoScaduto) {
+      setError('Tempo per il pagamento scaduto. Torna alle prenotazioni e riprova.')
+      return
+    }
 
     // Controllo semplice lato frontend
     // Serve solo per evitare submit vuoti
@@ -125,6 +158,34 @@ export default function PaymentPage({ booking, onBack, onPaid }) {
                 <span style={S.total}>€{Number(booking.prezzoTotale || 0).toFixed(2)}</span>
               </div>
             </div>
+
+            {remainingMs !== null && (
+              <div style={pagamentoScaduto ? S.expiredBox : S.timerBox}>
+                {pagamentoScaduto ? (
+                  <>
+                    <div>
+                      <strong>Tempo scaduto</strong>
+                      <p style={S.timerText}>
+                        Questa prenotazione non può più essere pagata.
+                      </p>
+                    </div>
+                    <span style={S.expiredText}>00:00</span>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <strong>Tempo rimasto per pagare</strong>
+                      <p style={S.timerText}>
+                        Dopo la scadenza lo slot tornerà disponibile.
+                      </p>
+                    </div>
+                    <span style={S.timerValue}>
+                      {formatRemainingTime(remainingMs)}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} style={S.form}>
@@ -136,6 +197,7 @@ export default function PaymentPage({ booking, onBack, onPaid }) {
                 onChange={(event) => setCardNumber(event.target.value)}
                 placeholder="1234 5678 9012 3456"
                 style={S.input}
+                disabled={pagamentoScaduto}
               />
             </div>
 
@@ -148,6 +210,7 @@ export default function PaymentPage({ booking, onBack, onPaid }) {
                   onChange={(event) => setExpiry(event.target.value)}
                   placeholder="MM/AA"
                   style={S.input}
+                  disabled={pagamentoScaduto}
                 />
               </div>
 
@@ -159,6 +222,7 @@ export default function PaymentPage({ booking, onBack, onPaid }) {
                   onChange={(event) => setCvv(event.target.value)}
                   placeholder="123"
                   style={S.input}
+                  disabled={pagamentoScaduto}
                 />
               </div>
             </div>
@@ -171,16 +235,18 @@ export default function PaymentPage({ booking, onBack, onPaid }) {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || pagamentoScaduto}
               style={{
                 ...S.primaryButton,
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer'
+                opacity: loading || pagamentoScaduto ? 0.7 : 1,
+                cursor: loading || pagamentoScaduto ? 'not-allowed' : 'pointer'
               }}
             >
               {loading
                 ? 'Pagamento in corso...'
-                : `Paga €${Number(booking.prezzoTotale || 0).toFixed(2)}`}
+                : pagamentoScaduto
+                  ? 'Pagamento scaduto'
+                  : `Paga €${Number(booking.prezzoTotale || 0).toFixed(2)}`}
             </button>
           </form>
         </div>
@@ -309,6 +375,53 @@ const S = {
     fontSize: '28px',
     fontWeight: '800',
     color: '#2563eb'
+  },
+
+  timerBox: {
+    marginTop: '18px',
+    padding: '14px 16px',
+    borderRadius: '14px',
+    background: '#ecfdf5',
+    border: '1px solid #a7f3d0',
+    color: '#065f46',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '16px'
+  },
+
+  expiredBox: {
+    marginTop: '18px',
+    padding: '14px 16px',
+    borderRadius: '14px',
+    background: '#fef2f2',
+    border: '1px solid #fecaca',
+    color: '#991b1b',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '16px'
+  },
+
+  timerText: {
+    margin: '4px 0 0',
+    fontSize: '13px',
+    fontWeight: '500',
+    lineHeight: 1.35
+  },
+
+  timerValue: {
+    fontSize: '28px',
+    fontWeight: '900',
+    fontFamily: 'monospace',
+    whiteSpace: 'nowrap'
+  },
+
+  expiredText: {
+    fontSize: '28px',
+    fontWeight: '900',
+    fontFamily: 'monospace',
+    whiteSpace: 'nowrap'
   },
 
   form: {

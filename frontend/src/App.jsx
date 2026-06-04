@@ -373,7 +373,7 @@ function App() {
     }
   }
 
-  async function handlePaymentDone(updatedBooking) {
+  async function handlePaymentDone() {
     const fromMyBookings = pendingBooking?._fromMyBookings;
     setPendingBooking(null);
     setView(fromMyBookings ? 'myBookings' : 'dashboard');

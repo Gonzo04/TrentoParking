@@ -331,7 +331,6 @@ function Dashboard({
   onCaratteristicheChange,
   onCloseDetail,
   onBookingConfirm,
-  onViewHostReviews,
   onViewPostoReviews,
 }) {
   const [activeFilter, setActiveFilter] = useState('all');

@@ -83,9 +83,16 @@ async function getPostoConPrenotazioni(req, res, next) {
 
     const prenotazioni = await Prenotazione.find({
       postoPrivatoId: req.params.id,
-      stato: { $ne: 'ANNULLATA' },
+      stato: { $nin: ['ANNULLATA', 'SCADUTA'] },
       dataOraFine: { $gte: now },
-      dataOraInizio: { $lte: limit }
+      dataOraInizio: { $lte: limit },
+      $or: [
+        { stato: 'PAGATA' },
+        {
+          stato: 'IN_ATTESA_PAGAMENTO',
+          scadenzaPagamento: { $gt: now }
+        }
+      ]
     })
         .select('dataOraInizio dataOraFine')
         .lean();
@@ -214,11 +221,20 @@ async function createBooking(req, res, next) {
       return res.status(403).json({ error: 'Non puoi prenotare il tuo stesso posto auto' });
 
     // Controlla sovrapposizioni con prenotazioni esistenti
+    const now = new Date();
+
     const overlap = await Prenotazione.findOne({
       postoPrivatoId,
-      stato: { $ne: 'ANNULLATA' },
+      stato: { $nin: ['ANNULLATA', 'SCADUTA'] },
       dataOraInizio: { $lt: fine },
-      dataOraFine: { $gt: inizio }
+      dataOraFine: { $gt: inizio },
+      $or: [
+        { stato: 'PAGATA' },
+        {
+          stato: 'IN_ATTESA_PAGAMENTO',
+          scadenzaPagamento: { $gt: now }
+        }
+      ]
     });
 
     if (overlap) {
@@ -228,6 +244,10 @@ async function createBooking(req, res, next) {
     const ore = (fine - inizio) / 3600000;
     const prezzoTotale = Math.round(ore * posto.tariffaOraria * 100) / 100;
 
+    // Dopo la creazione l'utente ha 5 minuti per completare il pagamento mock
+    // Se non paga entro questo tempo, la prenotazione non deve più bloccare lo slot
+    const scadenzaPagamento = new Date(Date.now() + 5 * 60 * 1000);
+
     const prenotazione = await Prenotazione.create({
       utenteId: req.user.userId,
       postoPrivatoId,
@@ -235,6 +255,7 @@ async function createBooking(req, res, next) {
       dataOraInizio: inizio,
       dataOraFine: fine,
       stato: 'IN_ATTESA_PAGAMENTO',
+      scadenzaPagamento,
       prezzoTotale
     });
 
@@ -262,6 +283,27 @@ async function payBooking(req, res, next) {
       return res.status(400).json({ error: 'Prenotazione non in attesa di pagamento' });
     }
 
+    // Se il tempo per pagare è scaduto, marchiamo la prenotazione come SCADUTA
+    // In questo modo lo slot torna disponibile e non resta bloccato inutilmente
+    if (prenotazione.scadenzaPagamento && prenotazione.scadenzaPagamento <= new Date()) {
+      prenotazione.stato = 'SCADUTA';
+      await prenotazione.save();
+
+      return res.status(400).json({
+        error: 'Tempo per il pagamento scaduto. La prenotazione è stata annullata automaticamente'
+      });
+    }
+
+    // Evitiamo comunque pagamenti tardivi su prenotazioni già iniziate
+    if (prenotazione.dataOraInizio <= new Date()) {
+      prenotazione.stato = 'SCADUTA';
+      await prenotazione.save();
+
+      return res.status(400).json({
+        error: 'Non puoi pagare una prenotazione già iniziata'
+      });
+    }
+
     prenotazione.stato = 'PAGATA';
     await prenotazione.save();
 
@@ -287,6 +329,15 @@ async function cancelBooking(req, res, next) {
 
     if (prenotazione.stato === 'ANNULLATA') {
       return res.status(400).json({ error: 'Prenotazione già annullata' });
+    }
+
+    if (prenotazione.stato === 'SCADUTA') {
+      return res.status(400).json({ error: 'Prenotazione già scaduta' });
+    }
+
+  // Una prenotazione già iniziata non può più essere annullata dall'utente
+    if (prenotazione.dataOraInizio <= new Date()) {
+      return res.status(400).json({ error: 'Non puoi annullare una prenotazione già iniziata' });
     }
 
     prenotazione.stato = 'ANNULLATA';
