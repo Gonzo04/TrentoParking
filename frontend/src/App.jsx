@@ -486,8 +486,16 @@ function App() {
         dichiarazioneProprietaAccettata: true,
       });
 
+      // L'upload foto è un passo separato e non bloccante:
+      // se fallisce il posto è già stato creato correttamente,
+      // quindi mostriamo un avviso invece di un errore che blocca tutto.
+      let fotoWarning = null;
       if (photoFiles.length > 0) {
-        await api.uploadFoto(posto._id, photoFiles);
+        try {
+          await api.uploadFoto(posto._id, photoFiles);
+        } catch (fotoErr) {
+          fotoWarning = fotoErr.message;
+        }
       }
 
       await loadPostiPrivati();
@@ -496,7 +504,11 @@ function App() {
       setAuthenticatedUser(data.user);
 
       resetCreateSpotState();
-      setCreateSpotMessage('Posto auto privato pubblicato correttamente');
+      setCreateSpotMessage(
+        fotoWarning
+          ? `Posto pubblicato! ⚠️ Le foto non sono state caricate: ${fotoWarning}. Puoi aggiungerle in seguito dal tuo profilo.`
+          : 'Posto auto privato pubblicato correttamente.'
+      );
     } catch (error) {
       setCreateSpotError(error.message);
     } finally {
