@@ -141,6 +141,17 @@ export const api = {
     body: JSON.stringify({ testo }),
   }),
 
+  // Admin
+  adminGetUsers: () => request('/admin/users'),
+  adminUpdateUser: (id, body) => request(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  adminDeleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
+
+  adminGetSpots: () => request('/admin/spots'),
+  adminDeleteSpot: (id) => request(`/admin/spots/${id}`, { method: 'DELETE' }),
+
+  adminGetBookings: () => request('/admin/bookings'),
+  adminCancelBooking: (id) => request(`/admin/bookings/${id}/cancel`, { method: 'PATCH' }),
+
   // Recensioni
   createRecensione: (body) => request('/recensioni', {
     method: 'POST',

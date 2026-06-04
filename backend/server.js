@@ -24,6 +24,7 @@ app.use('/api/posti-privati', postiPrivatiRoutes);
 app.use('/api/bookings', require('./routes/booking'));
 app.use('/api/recensioni', require('./routes/recensioni'));
 app.use('/api/chat', require('./routes/chat'));
+app.use('/api/admin', require('./routes/admin'));
 
 app.use((err, req, res, next) => {
   console.error(err);

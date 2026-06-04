@@ -317,6 +317,7 @@ function Dashboard({
   onMyBookings,
   onReceivedBookings,
   onProfileClick,
+  onAdminClick,
   onSearchSelect,
   onRadiusChange,
   onClearSearch,
@@ -376,6 +377,12 @@ function Dashboard({
           {authenticatedUser?.ruolo === 'HOST' && (
             <button className="db-nav-btn" onClick={onReceivedBookings}>
               Prenotazioni ricevute
+            </button>
+          )}
+
+          {authenticatedUser?.ruolo === 'AMMINISTRATORE' && (
+            <button className="db-nav-btn db-nav-btn--admin" onClick={onAdminClick}>
+              Pannello Admin
             </button>
           )}
 
