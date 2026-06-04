@@ -17,7 +17,46 @@ function removeUploadedFiles(files = []) {
       fs.unlink(file.path, () => {});
     }
   }
-}     
+}
+
+// Aggiorniamo a SCADUTA le prenotazioni in attesa il cui pagamento è ormai scaduto
+// Serve prima di controllare se un posto ha ancora prenotazioni future attive
+async function expirePrenotazioniScaduteDelPosto(postoPrivatoId) {
+  const now = new Date();
+
+  await Prenotazione.updateMany(
+      {
+        postoPrivatoId,
+        stato: 'IN_ATTESA_PAGAMENTO',
+        scadenzaPagamento: { $lte: now }
+      },
+      {
+        $set: { stato: 'SCADUTA' }
+      }
+  );
+}
+
+// Verifica se il posto ha prenotazioni future ancora valide
+// Le prenotazioni annullate, scadute o passate non bloccano l'eliminazione
+async function hasPrenotazioniFutureAttive(postoPrivatoId) {
+  const now = new Date();
+
+  await expirePrenotazioniScaduteDelPosto(postoPrivatoId);
+
+  const prenotazione = await Prenotazione.exists({
+    postoPrivatoId,
+    dataOraFine: { $gt: now },
+    $or: [
+      { stato: 'PAGATA' },
+      {
+        stato: 'IN_ATTESA_PAGAMENTO',
+        scadenzaPagamento: { $gt: now }
+      }
+    ]
+  });
+
+  return Boolean(prenotazione);
+}
 
 function validateDisponibilita(disponibilita) {
   if (disponibilita === undefined) {
@@ -57,10 +96,6 @@ function validateDisponibilita(disponibilita) {
     oraInizio: fascia.oraInizio,
     oraFine: fascia.oraFine
   }));
-}
-
-function userOwnsPosto(posto, userId) {
-  return posto.hostId && posto.hostId.toString() === userId;
 }
 
 // GET /api/posti-privati
@@ -141,15 +176,24 @@ async function getPostoConPrenotazioni(req, res, next) {
       return res.status(404).json({ error: 'Posto privato non trovato' });
     }
 
+    await expirePrenotazioniScaduteDelPosto(req.params.id);
+
     const now = new Date();
     const limit = new Date();
     limit.setMonth(limit.getMonth() + 2);
 
     const prenotazioni = await Prenotazione.find({
       postoPrivatoId: req.params.id,
-      stato: { $ne: 'ANNULLATA' },
+      stato: { $nin: ['ANNULLATA', 'SCADUTA'] },
       dataOraFine: { $gte: now },
-      dataOraInizio: { $lte: limit }
+      dataOraInizio: { $lte: limit },
+      $or: [
+        { stato: 'PAGATA' },
+        {
+          stato: 'IN_ATTESA_PAGAMENTO',
+          scadenzaPagamento: { $gt: now }
+        }
+      ]
     })
         .select('dataOraInizio dataOraFine')
         .lean();
@@ -211,7 +255,7 @@ async function createPostoPrivato(req, res, next) {
 
     if (dichiarazioneProprietaAccettata !== true) {
       return res.status(400).json({
-        error: 'Devi dichiarare di essere proprietario del posto o di avere l’autorizzazione a pubblicarlo'
+        error: "Devi dichiarare di essere proprietario del posto o di avere l'autorizzazione a pubblicarlo"
       });
     }
 
@@ -221,10 +265,11 @@ async function createPostoPrivato(req, res, next) {
       return res.status(400).json({ error: 'Disponibilità non valida' });
     }
 
-    // Accettiamo solo stringhe non vuote; valori non conformi vengono ignorati silenziosamente
+    // Accettiamo solo stringhe non vuote
+    // I valori non conformi vengono ignorati silenziosamente
     const caratteristicheValidate = Array.isArray(caratteristiche)
-      ? caratteristiche.filter(c => typeof c === 'string' && c.trim().length > 0)
-      : [];
+        ? caratteristiche.filter(c => typeof c === 'string' && c.trim().length > 0)
+        : [];
 
     const posto = await PostoPrivato.create({
       hostId: req.user.userId,
@@ -270,7 +315,7 @@ async function checkUploadFotoPermission(req, res, next) {
     const posto = await PostoPrivato.findOne({
       _id: req.params.id,
       hostId: req.user.userId,
-      eliminato: { $ne: true },
+      eliminato: { $ne: true }
     });
 
     if (!posto) {
@@ -279,7 +324,7 @@ async function checkUploadFotoPermission(req, res, next) {
 
     if ((posto.foto ?? []).length >= 10) {
       return res.status(400).json({
-        error: 'Il posto ha già raggiunto il numero massimo di foto',
+        error: 'Il posto ha già raggiunto il numero massimo di foto'
       });
     }
 
@@ -290,11 +335,9 @@ async function checkUploadFotoPermission(req, res, next) {
   }
 }
 
-
-
-
 // POST /api/posti-privati/:id/foto
-// Aggiunge foto a un posto esistente. Solo l'host proprietario può farlo.
+// Aggiunge foto a un posto esistente
+// Solo l'host proprietario può farlo
 async function uploadFoto(req, res, next) {
   try {
     const posto = req.postoPrivato;
@@ -316,7 +359,7 @@ async function uploadFoto(req, res, next) {
     if (files.length > spazioDisponibile) {
       removeUploadedFiles(files);
       return res.status(400).json({
-        error: `Puoi caricare al massimo ${spazioDisponibile} altre foto`,
+        error: `Puoi caricare al massimo ${spazioDisponibile} altre foto`
       });
     }
 
@@ -351,23 +394,25 @@ async function getMieiPosti(req, res, next) {
 
 // Aggiorna nome, descrizione, tariffaOraria, disponibilita e/o caratteristiche
 // Solo l'host proprietario può modificare il proprio posto
-    async function updatePostoPrivato(req, res, next) {
-      try {
-        const posto = await PostoPrivato.findById(req.params.id);
+async function updatePostoPrivato(req, res, next) {
+  try {
+    const posto = await PostoPrivato.findById(req.params.id);
 
-        if (!posto || posto.eliminato) {
-          return res.status(404).json({ error: 'Posto non trovato' });
-        }
+    if (!posto || posto.eliminato) {
+      return res.status(404).json({ error: 'Posto non trovato' });
+    }
 
-        if (posto.hostId.toString() !== req.user.userId) {
-          return res.status(403).json({ error: 'Non autorizzato' });
-        }
+    if (posto.hostId.toString() !== req.user.userId) {
+      return res.status(403).json({ error: 'Non autorizzato' });
+    }
+
     const { nome, descrizione, tariffaOraria, disponibilita, caratteristiche, attivo } = req.body;
 
     if (nome !== undefined) {
       const nomePulito = normalizeString(nome);
-      if (!nomePulito)
+      if (!nomePulito) {
         return res.status(400).json({ error: 'Il nome del posto è obbligatorio' });
+      }
       posto.nome = nomePulito;
     }
 
@@ -377,22 +422,24 @@ async function getMieiPosti(req, res, next) {
 
     if (tariffaOraria !== undefined) {
       const tariffa = Number(tariffaOraria);
-      if (!Number.isFinite(tariffa) || tariffa < 0)
+      if (!Number.isFinite(tariffa) || tariffa < 0) {
         return res.status(400).json({ error: 'Tariffa oraria non valida' });
+      }
       posto.tariffaOraria = tariffa;
     }
 
     if (disponibilita !== undefined) {
       const dispValidata = validateDisponibilita(disponibilita);
-      if (dispValidata === null)
+      if (dispValidata === null) {
         return res.status(400).json({ error: 'Disponibilità non valida' });
+      }
       posto.disponibilita = dispValidata;
     }
 
     if (caratteristiche !== undefined) {
       posto.caratteristiche = Array.isArray(caratteristiche)
-        ? caratteristiche.filter(c => typeof c === 'string' && c.trim().length > 0)
-        : [];
+          ? caratteristiche.filter(c => typeof c === 'string' && c.trim().length > 0)
+          : [];
     }
 
     if (attivo !== undefined) {
@@ -400,6 +447,7 @@ async function getMieiPosti(req, res, next) {
     }
 
     await posto.save();
+
     const updated = await PostoPrivato.findById(posto._id).lean();
     return res.json(updated);
   } catch (err) {
@@ -408,7 +456,7 @@ async function getMieiPosti(req, res, next) {
 }
 
 // Elimina logicamente il posto dal punto di vista dell'utente
-// Non cancelliamo il documento dal database perché può servire per storico e controlli futuri
+// Se ci sono prenotazioni future attive, l'eliminazione viene bloccata
 async function deletePostoPrivato(req, res, next) {
   try {
     const posto = await PostoPrivato.findById(req.params.id);
@@ -419,6 +467,14 @@ async function deletePostoPrivato(req, res, next) {
 
     if (posto.hostId.toString() !== req.user.userId) {
       return res.status(403).json({ error: 'Non autorizzato' });
+    }
+
+    const haPrenotazioniFuture = await hasPrenotazioniFutureAttive(posto._id);
+
+    if (haPrenotazioniFuture) {
+      return res.status(409).json({
+        error: 'Non puoi eliminare questo posto perché ha prenotazioni future attive. Puoi disattivarlo per impedire nuove prenotazioni.'
+      });
     }
 
     posto.attivo = false;
@@ -446,5 +502,5 @@ module.exports = {
   uploadFoto,
   getMieiPosti,
   updatePostoPrivato,
-  deletePostoPrivato,
+  deletePostoPrivato
 };
