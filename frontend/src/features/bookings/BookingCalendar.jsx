@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const MESI = [
@@ -101,7 +102,11 @@ function Lightbox({ foto, index, onClose, onPrev, onNext }) {
   const src   = `http://localhost:8080${foto[index]}`
   const total = foto.length
 
-  return (
+  // Usiamo un Portal per rendere il lightbox direttamente in document.body.
+  // Senza Portal, Leaflet crea il proprio stacking context che può emergere
+  // sopra un position:fixed annidato in un componente figlio, lasciando
+  // visibili i controlli +/- della mappa anche con zIndex: 9999.
+  return createPortal(
     <div style={SL.backdrop} onClick={onClose} role="dialog" aria-modal="true">
       <div style={SL.content} onClick={e => e.stopPropagation()}>
 
@@ -128,7 +133,8 @@ function Lightbox({ foto, index, onClose, onPrev, onNext }) {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -144,7 +150,8 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
 
   // Lightbox: null = chiuso, numero = indice foto aperta
   const [lightboxIndex, setLightboxIndex] = useState(null)
-  const foto = posto.foto ?? []
+  // Filtriamo i valori non validi: path vuoti o non stringa causano l'icona di immagine rotta
+  const foto = (posto.foto ?? []).filter(url => typeof url === 'string' && url.trim().length > 0)
   const openLightbox  = useCallback(i => setLightboxIndex(i), [])
   const closeLightbox = useCallback(() => setLightboxIndex(null), [])
   const prevPhoto     = useCallback(() => setLightboxIndex(i => (i - 1 + foto.length) % foto.length), [foto.length])
@@ -267,6 +274,7 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
                 }}
                 onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                onError={e => { e.currentTarget.style.display = 'none' }}
               />
             ))}
           </div>
