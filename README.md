@@ -42,9 +42,6 @@ Il progetto è stato sviluppato per il corso di **Ingegneria del Software** dell
   * `HOST`
   * `AMMINISTRATORE`
 
-> Nota: il ruolo `AMMINISTRATORE` è predisposto nel modello dati, ma nella versione attuale non è presente un pannello amministratore completo.
-
----
 
 ### Gestione posti privati
 
