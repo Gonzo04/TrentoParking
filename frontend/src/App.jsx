@@ -1,17 +1,22 @@
-import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import 'leaflet/dist/leaflet.css';
-import './App.css';
-import { api } from './services/api';
-import { logoutUser } from './services/authService';
-import LandingPage from './components/LandingPage';
-import AuthPanel from './components/AuthPanel';
-import AuthPage from './components/AuthPage';
-import Dashboard from './components/Dashboard';
-import PaymentPage from './components/PaymentPage';
-import MyBookings from './components/MyBookings';
-import MyReceivedBookings from './components/MyReceivedBookings';
-import ProfilePage from './components/ProfilePage';
-import HostReviewsPage from './components/HostReviewsPage';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import './App.css'
+
+import LandingPage from './pages/LandingPage'
+import AuthPage from './pages/AuthPage'
+import Dashboard from './pages/Dashboard'
+import ProfilePage from './pages/ProfilePage'
+
+import ResetPassword from './features/auth/ResetPassword'
+import VerificaMail from './features/auth/VerificaMail'
+
+import MyBookings from './features/bookings/MyBookings'
+import MyReceivedBookings from './features/bookings/MyReceivedBookings'
+import PaymentPage from './features/bookings/PaymentPage'
+
+import HostReviewsPage from './features/reviews/HostReviewsPage'
+
+import { api } from './services/api'
+import { logoutUser } from './services/authService'
 
 function distanceM(lat1, lon1, lat2, lon2) {
   // Calcola la distanza approssimata tra due coordinate geografiche

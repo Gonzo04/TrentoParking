@@ -5,7 +5,7 @@ import {
   logoutUser,
   registerUser,
   richiediResetPassword
-} from '../services/authService';
+} from '../../services/authService';
 
 const USERNAME_REGEX = /^[a-zA-Z0-9._-]{3,30}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;

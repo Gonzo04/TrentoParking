@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
-import { api } from '../services/api'
+import { useEffect, useMemo, useState } from 'react'
+import { api } from '../../services/api'
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
 function Stars({ n, size = 16 }) {
