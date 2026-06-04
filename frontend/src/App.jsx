@@ -1,18 +1,23 @@
-import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import 'leaflet/dist/leaflet.css';
-import './App.css';
-import { api } from './services/api';
-import { logoutUser } from './services/authService';
-import LandingPage from './components/LandingPage';
-import AuthPanel from './components/AuthPanel';
-import AuthPage from './components/AuthPage';
-import Dashboard from './components/Dashboard';
-import PaymentPage from './components/PaymentPage';
-import MyBookings from './components/MyBookings';
-import MyReceivedBookings from './components/MyReceivedBookings';
-import ProfilePage from './components/ProfilePage';
-import HostReviewsPage from './components/HostReviewsPage';
-import AdminDashboard from './components/AdminDashboard';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import './App.css'
+
+import LandingPage from './pages/LandingPage'
+import AuthPage from './pages/AuthPage'
+import Dashboard from './pages/Dashboard'
+import ProfilePage from './pages/ProfilePage'
+import AdminDashboard from './pages/AdminDashboard'
+
+import ResetPassword from './features/auth/ResetPassword'
+import VerificaMail from './features/auth/VerificaMail'
+
+import MyBookings from './features/bookings/MyBookings'
+import MyReceivedBookings from './features/bookings/MyReceivedBookings'
+import PaymentPage from './features/bookings/PaymentPage'
+
+import HostReviewsPage from './features/reviews/HostReviewsPage'
+
+import { api } from './services/api'
+import { logoutUser } from './services/authService'
 
 function distanceM(lat1, lon1, lat2, lon2) {
   // Calcola la distanza approssimata tra due coordinate geografiche
@@ -374,7 +379,7 @@ function App() {
     }
   }
 
-  async function handlePaymentDone(updatedBooking) {
+  async function handlePaymentDone() {
     const fromMyBookings = pendingBooking?._fromMyBookings;
     setPendingBooking(null);
     setView(fromMyBookings ? 'myBookings' : 'dashboard');
@@ -487,8 +492,16 @@ function App() {
         dichiarazioneProprietaAccettata: true,
       });
 
+      // L'upload foto è un passo separato e non bloccante:
+      // se fallisce il posto è già stato creato correttamente,
+      // quindi mostriamo un avviso invece di un errore che blocca tutto.
+      let fotoWarning = null;
       if (photoFiles.length > 0) {
-        await api.uploadFoto(posto._id, photoFiles);
+        try {
+          await api.uploadFoto(posto._id, photoFiles);
+        } catch (fotoErr) {
+          fotoWarning = fotoErr.message;
+        }
       }
 
       await loadPostiPrivati();
@@ -497,7 +510,11 @@ function App() {
       setAuthenticatedUser(data.user);
 
       resetCreateSpotState();
-      setCreateSpotMessage('Posto auto privato pubblicato correttamente');
+      setCreateSpotMessage(
+        fotoWarning
+          ? `Posto pubblicato! ⚠️ Le foto non sono state caricate: ${fotoWarning}. Puoi aggiungerle in seguito dal tuo profilo.`
+          : 'Posto auto privato pubblicato correttamente.'
+      );
     } catch (error) {
       setCreateSpotError(error.message);
     } finally {

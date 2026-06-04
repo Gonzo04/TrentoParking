@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 
 /* ── Costanti ─────────────────────────────────────────────────────── */
 const MESI = [
@@ -85,6 +86,58 @@ function StarsMini({ n, total }) {
   )
 }
 
+/* ── Lightbox ────────────────────────────────────────────────────── */
+function Lightbox({ foto, index, onClose, onPrev, onNext }) {
+  // Chiusura con Esc, navigazione con frecce sinistra/destra
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === 'Escape')     onClose()
+      if (e.key === 'ArrowLeft')  onPrev()
+      if (e.key === 'ArrowRight') onNext()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose, onPrev, onNext])
+
+  const src   = `http://localhost:8080${foto[index]}`
+  const total = foto.length
+
+  // Usiamo un Portal per rendere il lightbox direttamente in document.body.
+  // Senza Portal, Leaflet crea il proprio stacking context che può emergere
+  // sopra un position:fixed annidato in un componente figlio, lasciando
+  // visibili i controlli +/- della mappa anche con zIndex: 9999.
+  return createPortal(
+    <div style={SL.backdrop} onClick={onClose} role="dialog" aria-modal="true">
+      <div style={SL.content} onClick={e => e.stopPropagation()}>
+
+        <button style={SL.closeBtn} onClick={onClose} aria-label="Chiudi">✕</button>
+
+        {total > 1 && (
+          <div style={SL.counter}>{index + 1} / {total}</div>
+        )}
+
+        <img src={src} alt="" style={SL.img} />
+
+        {total > 1 && (
+          <>
+            <button
+              style={{ ...SL.arrow, left: 10 }}
+              onClick={e => { e.stopPropagation(); onPrev() }}
+              aria-label="Foto precedente"
+            >‹</button>
+            <button
+              style={{ ...SL.arrow, right: 10 }}
+              onClick={e => { e.stopPropagation(); onNext() }}
+              aria-label="Foto successiva"
+            >›</button>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwner = false, onViewSpotReviews }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
 
@@ -94,6 +147,15 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
   const [startHour,    setStartHour]    = useState(null)
   const [endHour,      setEndHour]      = useState(null)
   const [loading,      setLoading]      = useState(false)
+
+  // Lightbox: null = chiuso, numero = indice foto aperta
+  const [lightboxIndex, setLightboxIndex] = useState(null)
+  // Filtriamo i valori non validi: path vuoti o non stringa causano l'icona di immagine rotta
+  const foto = (posto.foto ?? []).filter(url => typeof url === 'string' && url.trim().length > 0)
+  const openLightbox  = useCallback(i => setLightboxIndex(i), [])
+  const closeLightbox = useCallback(() => setLightboxIndex(null), [])
+  const prevPhoto     = useCallback(() => setLightboxIndex(i => (i - 1 + foto.length) % foto.length), [foto.length])
+  const nextPhoto     = useCallback(() => setLightboxIndex(i => (i + 1) % foto.length), [foto.length])
 
   const grid = useMemo(() => buildMonthGrid(year, month), [year, month])
 
@@ -135,9 +197,13 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
     if (date < today) return false
     const disp = getDisponibilitaForDate(date, posto.disponibilita ?? [])
     if (!disp) return false
-    const booked = getBookedHours(date, prenotazioni)
+    const booked  = getBookedHours(date, prenotazioni)
+    const now     = new Date()
+    // Per il giorno corrente consideriamo disponibili solo le ore future
+    const isToday = date.toDateString() === now.toDateString()
+    const nowHour = now.getHours()
     for (let h = disp.oraInizio; h < disp.oraFine; h++) {
-      if (!booked.has(h)) return true
+      if (!booked.has(h) && (!isToday || h > nowHour)) return true
     }
     return false
   }
@@ -165,6 +231,12 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
   const disp        = selectedDate ? getDisponibilitaForDate(selectedDate, posto.disponibilita ?? []) : null
   const bookedHours = selectedDate ? getBookedHours(selectedDate, prenotazioni) : new Set()
 
+  // Per il giorno selezionato calcola l'ora corrente una sola volta per render.
+  // Serve per disabilitare visivamente gli slot già passati nella griglia oraria.
+  const nowForSlots        = new Date()
+  const isSelectedToday    = selectedDate ? selectedDate.toDateString() === nowForSlots.toDateString() : false
+  const currentHour        = nowForSlots.getHours()
+
   const ore             = (startHour !== null && endHour !== null) ? endHour - startHour : 0
   const prezzoTotale    = Math.round(ore * posto.tariffaOraria * 100) / 100
   const selectionComplete = selectedDate && startHour !== null && endHour !== null
@@ -188,14 +260,21 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
 
       {/* ── Intestazione posto ────────────────────────────────────── */}
       <div style={S.header}>
-        {posto.foto && posto.foto.length > 0 && (
+        {foto.length > 0 && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto' }}>
-            {posto.foto.map((url, i) => (
+            {foto.map((url, i) => (
               <img
                 key={i}
                 src={`http://localhost:8080${url}`}
-                alt=""
-                style={{ height: 120, minWidth: 160, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                alt={`Foto ${i + 1}`}
+                onClick={() => openLightbox(i)}
+                style={{
+                  height: 120, minWidth: 160, objectFit: 'cover', borderRadius: 8,
+                  flexShrink: 0, cursor: 'pointer', transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                onError={e => { e.currentTarget.style.display = 'none' }}
               />
             ))}
           </div>
@@ -355,15 +434,18 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
                   (_, i) => disp.oraInizio + i
                 ).map(h => {
                   const isBooked   = bookedHours.has(h)
+                  // Un'ora è nel passato se stiamo guardando oggi e quell'ora è già trascorsa
+                  const isPast     = isSelectedToday && h <= currentHour
                   const isSelected = startHour !== null && endHour !== null && h >= startHour && h < endHour
                   const isStart    = h === startHour
 
                   let btnStyle = { ...S.hourBtn }
                   if (isBooked)                   btnStyle = { ...btnStyle, ...S.hourBtnBooked }
+                  else if (isPast)                btnStyle = { ...btnStyle, ...S.hourBtnPast }
                   else if (isStart || isSelected) btnStyle = { ...btnStyle, ...S.hourBtnActive }
 
                   return (
-                    <button key={h} style={btnStyle} disabled={isBooked} onClick={() => handleHourClick(h)}>
+                    <button key={h} style={btnStyle} disabled={isBooked || isPast} onClick={() => handleHourClick(h)}>
                       {padHour(h)}
                     </button>
                   )
@@ -398,8 +480,98 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
           )}
         </>
       )}
+
+      {/* ── Lightbox ─────────────────────────────────────────────── */}
+      {lightboxIndex !== null && (
+        <Lightbox
+          foto={foto}
+          index={lightboxIndex}
+          onClose={closeLightbox}
+          onPrev={prevPhoto}
+          onNext={nextPhoto}
+        />
+      )}
     </div>
   )
+}
+
+/* ── Stili lightbox ──────────────────────────────────────────────── */
+const SL = {
+  backdrop: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.88)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+    cursor: 'default',
+  },
+  content: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    maxWidth: '92vw',
+    maxHeight: '92vh',
+    cursor: 'default',
+  },
+  img: {
+    maxWidth: '92vw',
+    maxHeight: '92vh',
+    objectFit: 'contain',
+    borderRadius: 8,
+    boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+    display: 'block',
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: -40,
+    right: 0,
+    background: 'rgba(255,255,255,0.15)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 20,
+    width: 36,
+    height: 36,
+    borderRadius: '50%',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 1,
+    backdropFilter: 'blur(4px)',
+  },
+  counter: {
+    position: 'absolute',
+    bottom: -32,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontWeight: 600,
+    pointerEvents: 'none',
+    whiteSpace: 'nowrap',
+  },
+  arrow: {
+    position: 'absolute',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'rgba(255,255,255,0.15)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 32,
+    width: 44,
+    height: 44,
+    borderRadius: '50%',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backdropFilter: 'blur(4px)',
+    lineHeight: 1,
+    userSelect: 'none',
+  },
 }
 
 /* ── Stili ───────────────────────────────────────────────────────── */
@@ -602,6 +774,15 @@ const S = {
     borderColor: '#f3f4f6',
     textDecoration: 'line-through',
     cursor: 'not-allowed',
+  },
+  // Stile per ore passate del giorno corrente: grigio senza barrato
+  // (differente da "prenotato" per chiarire all'utente che è solo ora non più disponibile)
+  hourBtnPast: {
+    background: '#f9fafb',
+    color: '#c0c7d0',
+    borderColor: '#edf0f3',
+    cursor: 'not-allowed',
+    opacity: 0.6,
   },
   hourBtnActive: {
     background: '#2a9d8f',

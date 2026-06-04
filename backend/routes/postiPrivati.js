@@ -6,6 +6,7 @@ const {
   getPostoPrivatoById,
   getPostoConPrenotazioni,
   createPostoPrivato,
+  checkUploadFotoPermission,
   uploadFoto,
   getMieiPosti,
   updatePostoPrivato,
@@ -33,8 +34,27 @@ router.get('/:id/prenotazioni', getPostoConPrenotazioni);
 
 // POST /api/posti-privati/:id/foto
 // Caricamento foto per un posto privato (solo l'host proprietario).
-router.post('/:id/foto', upload.array('foto', 10), uploadFoto);
+// Usiamo la forma esplicita con callback invece di passare upload.array direttamente
+// come middleware: in multer v2 gli errori (tipo file size o MIME non valido)
+// non raggiungono il global error handler se non gestiti esplicitamente qui.
+router.post('/:id/foto', checkUploadFotoPermission, (req, res, next) => {
+  upload.array('foto', 10)(req, res, (err) => {
+    if (!err) return next();
 
+    // Puliamo eventuali file già scritti su disco prima di rispondere
+    (req.files ?? []).forEach(f => {
+      if (f?.path) require('fs').unlink(f.path, () => {});
+    });
+
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Un file supera la dimensione massima di 5 MB' });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ error: 'Puoi caricare al massimo 10 foto' });
+    }
+    return res.status(400).json({ error: err.message || 'Errore nel caricamento delle foto' });
+  });
+}, uploadFoto);
 // GET /api/posti-privati/:id
 router.get('/:id', getPostoPrivatoById);
 

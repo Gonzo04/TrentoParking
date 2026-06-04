@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import './Dashboard.css';
-import { TAGS } from '../utils/SpotOptions';
-import { AvailabilityEditor, TagsEditor } from './SpotFormControls';
-import SearchBar from './SearchBar';
-import SpotMap from './SpotMap';
-import BookingCalendar from './BookingCalendar';
+import { useState } from 'react'
+import './Dashboard.css'
+import SearchBar from '../components/common/SearchBar'
+import SpotMap from '../features/spots/SpotMap'
+import BookingCalendar from '../features/bookings/BookingCalendar'
+import { AvailabilityEditor, TagsEditor } from '../features/spots/SpotFormControls'
+import { TAGS } from '../utils/SpotOptions'
 
 const RADIUS_OPTIONS = [
   { value: 200, label: '200 m' },
@@ -332,7 +332,6 @@ function Dashboard({
   onCaratteristicheChange,
   onCloseDetail,
   onBookingConfirm,
-  onViewHostReviews,
   onViewPostoReviews,
 }) {
   const [activeFilter, setActiveFilter] = useState('all');

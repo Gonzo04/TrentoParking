@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { api } from '../services/api'
+import { api } from '../../services/api'
 
 const POLL_MS = 4000
 
@@ -73,10 +73,11 @@ export default function ChatModal({ bookingId, currentUserId, onClose }) {
             <p style={S.empty}>Nessun messaggio ancora. Scrivi il primo!</p>
           )}
           {messages.map(msg => {
-            const isMe = msg.mittente?._id === currentUserId || msg.mittente === currentUserId
-            const senderId = msg.mittente?._id ?? msg.mittente
+            const senderId = msg.mittente?._id ?? msg.mittente?.id ?? msg.mittente
+            const isMe = String(senderId) === String(currentUserId)
+           
             return (
-              <div key={msg._id} style={{ ...S.msgRow, justifyContent: isMe ? 'flex-start' : 'flex-end' }}>
+              <div key={msg._id} style={{ ...S.msgRow, justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
                 <div style={{ ...S.bubble, ...(isMe ? S.bubbleMe : S.bubbleOther) }}>
                   <span style={{ ...S.senderName, color: isMe ? 'rgba(255,255,255,0.75)' : nameColor(senderId) }}>
                     {senderName(msg.mittente)}
