@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
-import { TAGS } from '../utils/SpotOptions'
-import { AvailabilityEditor, TagsEditor } from './SpotFormControls'
+import { TAGS, GIORNI } from '../utils/SpotOptions'
+import { AvailabilityEditor, TagsEditor } from '../features/spots/SpotFormControls'
+
+
+
 // Il backend salva {giorno:'LUNEDI', oraInizio:8, oraFine:20}
 // L'editor usa {giorno:'lunedi', oraInizio:'08:00', oraFine:'20:00'}
 function dispToEditor(disp) {

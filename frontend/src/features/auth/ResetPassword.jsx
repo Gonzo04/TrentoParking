@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, CheckCircle } from 'lucide-react';
-import { resetPassword } from '../services/authService';
+import { resetPassword } from '../../services/authService'
 
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 
