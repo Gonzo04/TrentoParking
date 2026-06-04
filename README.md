@@ -1,22 +1,27 @@
 # TrentoParking
 
-TrentoParking è un marketplace per l'**affitto di posti auto privati** a Trento. Gli host possono pubblicare i propri posti auto con foto e disponibilità oraria, mentre gli utenti autenticati possono cercarli sulla mappa, prenotarli, pagarli e comunicare con l'host tramite chat.
+TrentoParking è una web app per l'**affitto e la prenotazione di posti auto privati a Trento**.
 
-Il progetto nasce nel contesto del corso di **Ingegneria del Software**.
+Gli utenti autenticati possono cercare posti disponibili sulla mappa, visualizzarne dettagli e foto, prenotarli, effettuare un pagamento simulato e comunicare con l'host tramite chat. Gli host possono pubblicare e gestire i propri posti auto privati, impostando posizione, tariffa, disponibilità oraria, caratteristiche e foto.
+
+Il progetto è stato sviluppato per il corso di **Ingegneria del Software** dell'Università di Trento.
 
 ---
 
 ## Indice
 
-- [Funzionalità](#funzionalità)
-- [Stack tecnologico](#stack-tecnologico)
-- [Prerequisiti](#prerequisiti)
-- [Avvio rapido](#avvio-rapido)
-- [Database](#database)
-- [Credenziali di test](#credenziali-di-test)
-- [Struttura del progetto](#struttura-del-progetto)
-- [API](#api)
-- [Autori](#autori)
+* [Funzionalità](#funzionalità)
+* [Stack tecnologico](#stack-tecnologico)
+* [Prerequisiti](#prerequisiti)
+* [Configurazione](#configurazione)
+* [Avvio rapido](#avvio-rapido)
+* [Database](#database)
+* [Upload foto](#upload-foto)
+* [Struttura del progetto](#struttura-del-progetto)
+* [API principali](#api-principali)
+* [Testing e controlli](#testing-e-controlli)
+* [Note progettuali](#note-progettuali)
+* [Autori](#autori)
 
 ---
 
@@ -24,86 +29,218 @@ Il progetto nasce nel contesto del corso di **Ingegneria del Software**.
 
 ### Autenticazione e account
 
-- Registrazione con verifica email tramite link
-- Login e logout con JWT
-- Reset password via email
-- Modifica profilo (nome, cognome, targa)
-- Ruoli: `UTENTE`, `HOST`, `AMMINISTRATORE`
-- Sistema di gamification con livelli e punti
+* Registrazione nuovo utente
+* Verifica email tramite link
+* Login con JWT
+* Logout
+* Recupero password via email
+* Modifica profilo personale
+* Gestione targa dell'utente
+* Ruoli utente:
 
-### Gestione posti privati (Host)
+  * `UTENTE`
+  * `HOST`
+  * `AMMINISTRATORE`
 
-Gli host possono pubblicare e gestire i propri posti auto privati:
+> Nota: il ruolo `AMMINISTRATORE` è predisposto nel modello dati, ma nella versione attuale non è presente un pannello amministratore completo.
 
-- nome, descrizione, tariffa oraria
-- posizione geografica selezionabile sulla mappa
-- disponibilità settimanale per fasce orarie
-- caratteristiche/tag (coperto, sorvegliato, ecc.)
-- caricamento di fino a 10 foto per posto
-- attivazione/disattivazione e cancellazione logica
+---
+
+### Gestione posti privati
+
+Un utente autenticato può pubblicare un posto auto privato. Alla pubblicazione del primo posto, l'utente diventa automaticamente `HOST`.
+
+Per ogni posto privato l'host può gestire:
+
+* nome del posto
+* descrizione
+* tariffa oraria
+* posizione geografica
+* indirizzo testuale
+* disponibilità settimanale per fasce orarie
+* caratteristiche/tag del posto
+* caricamento foto
+* attivazione e disattivazione
+* cancellazione logica
+
+La cancellazione del posto è una **soft delete**: il posto viene nascosto all'utente e non è più visibile sulla mappa, ma rimane salvato nel database per conservare lo storico.
+
+Regola importante:
+
+* la disattivazione è consentita anche se esistono prenotazioni future
+* la disattivazione impedisce nuove prenotazioni, ma mantiene valide quelle già esistenti
+* l'eliminazione viene bloccata se il posto ha prenotazioni future attive
+
+Sono considerate prenotazioni future attive:
+
+* prenotazioni `PAGATA` con data futura
+* prenotazioni `IN_ATTESA_PAGAMENTO` non ancora scadute
+
+Non bloccano l'eliminazione:
+
+* prenotazioni `ANNULLATA`
+* prenotazioni `SCADUTA`
+* prenotazioni passate
+* prenotazioni in attesa pagamento già scadute
+
+---
 
 ### Ricerca su mappa
 
-- Visualizzazione di tutti i posti disponibili su mappa Leaflet
-- Ricerca per indirizzo con selezione raggio (200 m – 2 km)
-- Sidebar laterale con lista posti filtrati per distanza
-- Anteprima foto nel popup del marker
+Gli utenti autenticati possono:
+
+* visualizzare i posti disponibili su mappa Leaflet
+* cercare per indirizzo
+* selezionare un raggio di ricerca
+* visualizzare una lista laterale dei posti filtrati
+* selezionare un posto dalla mappa o dalla lista
+* visualizzare dettagli, prezzo, disponibilità e foto del posto
+
+La mappa mostra solo posti:
+
+* attivi
+* non eliminati logicamente
+* disponibili alla visualizzazione
+
+---
 
 ### Prenotazioni
 
 Gli utenti possono:
 
-- aprire il calendario di prenotazione cliccando un posto sulla mappa
-- selezionare giorno e fascia oraria (rispettando disponibilità e prenotazioni esistenti)
-- visualizzare il riepilogo con prezzo calcolato automaticamente
-- pagare la prenotazione (flusso mockato)
-- annullare una prenotazione
-- visualizzare tutte le proprie prenotazioni con stato aggiornato
+* aprire il calendario di prenotazione da un posto sulla mappa
+* selezionare giorno e fascia oraria
+* prenotare solo negli orari disponibili
+* evitare sovrapposizioni con prenotazioni già presenti
+* visualizzare il prezzo calcolato automaticamente
+* accedere alla pagina di pagamento
+* completare un pagamento simulato
+* annullare una prenotazione
+* visualizzare le proprie prenotazioni
 
-Stati di una prenotazione: `IN_ATTESA_PAGAMENTO` · `PAGATA` · `ANNULLATA`
+Stati di una prenotazione:
+
+* `IN_ATTESA_PAGAMENTO`
+* `PAGATA`
+* `ANNULLATA`
+* `SCADUTA`
+
+Quando una prenotazione viene creata, rimane in stato `IN_ATTESA_PAGAMENTO` per un tempo limitato. Se il pagamento non viene completato entro la scadenza, la prenotazione viene marcata come `SCADUTA` e non blocca più lo slot.
+
+---
+
+### Pagamento simulato
+
+Il pagamento è mockato e serve a simulare il completamento del flusso di prenotazione.
+
+Flusso:
+
+1. l'utente crea una prenotazione
+2. la prenotazione entra in stato `IN_ATTESA_PAGAMENTO`
+3. parte un timer per completare il pagamento
+4. se l'utente paga in tempo, lo stato diventa `PAGATA`
+5. se il timer scade, lo stato diventa `SCADUTA`
+
+---
 
 ### Recensioni
 
-- Gli utenti possono lasciare una recensione (1–5 stelle + testo) per ogni posto prenotato e pagato
-- Le recensioni sono visibili nel calendario di prenotazione e nella pagina dell'host
-- Un utente può recensire un posto una sola volta
-- Gli host possono visualizzare la media voti dei propri posti
+Gli utenti possono lasciare una recensione per un posto solo quando:
+
+* la prenotazione è stata pagata
+* la prenotazione è conclusa
+* l'utente non ha già recensito quella prenotazione
+
+Ogni recensione contiene:
+
+* voto da 1 a 5 stelle
+* testo descrittivo
+* riferimento alla prenotazione
+* riferimento al posto
+* riferimento all'host
+
+Gli host possono visualizzare le recensioni ricevute e la media dei voti dei propri posti.
+
+---
 
 ### Chat
 
-- Chat diretta tra l'utente che ha prenotato e l'host del posto
-- Accessibile dalla pagina "Le mie prenotazioni" (lato utente) e "Prenotazioni ricevute" (lato host)
-- Aggiornamento in tempo reale tramite polling ogni 4 secondi
+La chat permette la comunicazione tra:
 
-### Lato Host — Dashboard ricevute
+* utente che ha effettuato la prenotazione
+* host proprietario del posto prenotato
 
-Gli host possono:
+La chat è associata alla prenotazione.
 
-- visualizzare tutte le prenotazioni ricevute sui propri posti
-- vedere nome, targa e contatti dell'utente prenotante
-- aprire la chat con il prenotante
+È accessibile:
+
+* lato utente, dalla sezione delle proprie prenotazioni
+* lato host, dalla sezione delle prenotazioni ricevute
+
+I messaggi vengono aggiornati tramite polling periodico.
+
+---
+
+### Foto dei posti
+
+Gli host possono caricare fino a 10 foto per ogni posto.
+
+Le immagini vengono gestite così:
+
+* il file immagine viene salvato nel filesystem del backend, nella cartella `backend/uploads/`
+* nel database MongoDB viene salvato solo il percorso della foto
+* il backend espone staticamente la cartella `/uploads`
+* il frontend usa il percorso salvato nel database per mostrare l'immagine
+
+Esempio:
+
+```js
+foto: [
+  "/uploads/nome-file.jpg"
+]
+```
+
+Il file reale si trova in:
+
+```text
+backend/uploads/nome-file.jpg
+```
+
+Il browser può visualizzarlo tramite:
+
+```text
+http://localhost:8080/uploads/nome-file.jpg
+```
+
+Se un posto non ha foto, il frontend evita di mostrare immagini rotte.
 
 ---
 
 ## Stack tecnologico
 
-| Layer    | Tecnologia                                          |
-|----------|-----------------------------------------------------|
-| Frontend | React 18, Vite, Leaflet / React Leaflet             |
-| Backend  | Node.js, Express, Mongoose                          |
-| Database | MongoDB Atlas (condiviso) + MongoDB locale (Docker) |
-| Auth     | JWT (`jsonwebtoken`) + bcryptjs                     |
-| Upload   | Multer (file locali in `backend/uploads/`)          |
-| Email    | Nodemailer                                          |
-| Infra    | Docker Compose per MongoDB locale                   |
+| Layer           | Tecnologia                          |
+| --------------- | ----------------------------------- |
+| Frontend        | React, Vite, Leaflet, React Leaflet |
+| Backend         | Node.js, Express                    |
+| Database        | MongoDB, Mongoose                   |
+| Autenticazione  | JWT, bcryptjs                       |
+| Email           | Nodemailer                          |
+| Upload file     | Multer                              |
+| Mappa           | Leaflet, OpenStreetMap              |
+| Ambiente locale | Docker Compose per MongoDB locale   |
 
 ---
 
 ## Prerequisiti
 
-- **Node.js 20+**
-- **npm**
-- **Docker** e **Docker Compose** (solo per MongoDB locale)
+Sono necessari:
+
+* Node.js 20+
+* npm
+* Docker
+* Docker Compose
+
+Verifica installazione:
 
 ```bash
 node -v
@@ -111,6 +248,54 @@ npm -v
 docker --version
 docker compose version
 ```
+
+---
+
+## Configurazione
+
+### File `.env`
+
+Copiare il file di esempio:
+
+```bash
+cp .env.example .env
+```
+
+Variabili principali:
+
+```env
+PORT=8080
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trentoparking
+JWT_SECRET=una_stringa_lunga_e_sicura
+EMAIL_USER=account_email
+EMAIL_PASS=password_o_app_password
+```
+
+Se si vuole usare MongoDB locale:
+
+```env
+MONGODB_URI=mongodb://localhost:27017/trentoparking
+```
+
+---
+
+### Configurazione frontend
+
+In sviluppo locale il frontend comunica normalmente con:
+
+```text
+http://localhost:8080
+```
+
+Per una demo su rete locale, ad esempio da altri dispositivi collegati alla stessa Wi-Fi, è necessario usare l'indirizzo IP del computer che esegue il backend.
+
+Esempio:
+
+```text
+http://192.168.1.50:8080
+```
+
+Nota: `localhost` funziona solo sul computer che esegue il servizio. Da un altro dispositivo bisogna usare l'IP del computer server.
 
 ---
 
@@ -123,74 +308,212 @@ git clone https://github.com/Gonzo04/TrentoParking.git
 cd TrentoParking
 ```
 
-### 2. Configurare le variabili d'ambiente
+---
 
-```bash
-cp .env.example .env
-```
-
-Variabili principali in `.env`:
-
-```env
-MONGODB_URI=mongodb+srv://...          # Atlas (se vuota usa MongoDB locale)
-JWT_SECRET=una_stringa_lunga_e_sicura
-EMAIL_USER=...                         # Account SMTP per email di verifica
-EMAIL_PASS=...
-```
-
-### 3. Avviare il backend
+### 2. Installare le dipendenze backend
 
 ```bash
 cd backend
 npm install
-npm run dev
 ```
 
-Il server si avvia su `http://localhost:8080`.
+---
 
-### 4. Avviare il frontend
+### 3. Installare le dipendenze frontend
 
 ```bash
-cd frontend
+cd ../frontend
 npm install
-npm run dev
 ```
 
-Il frontend si avvia su `http://localhost:5173`.
+---
+
+### 4. Avviare MongoDB locale
+
+Dalla root del progetto:
+
+```bash
+docker compose up -d
+```
+
+Per fermarlo:
+
+```bash
+docker compose down
+```
+
+Per fermarlo eliminando anche i dati locali:
+
+```bash
+docker compose down -v
+```
+
+---
+
+### 5. Avviare il backend
+
+Dalla root del progetto:
+
+```bash
+npm --prefix backend run dev
+```
+
+Backend disponibile su:
+
+```text
+http://localhost:8080
+```
+
+---
+
+### 6. Avviare il frontend
+
+Dalla root del progetto:
+
+```bash
+npm --prefix frontend run dev
+```
+
+Frontend disponibile su:
+
+```text
+http://localhost:5173
+```
+
+---
+
+## Avvio in rete locale
+
+Per permettere ad altri dispositivi nella stessa rete di aprire l'app dal browser, usare l'IP del computer che esegue frontend e backend.
+
+### 1. Trovare l'IP locale
+
+```bash
+hostname -I
+```
+
+Esempio:
+
+```text
+192.168.1.50
+```
+
+---
+
+### 2. Avviare il backend
+
+```bash
+npm --prefix backend run dev
+```
+
+Il backend deve essere raggiungibile da:
+
+```text
+http://192.168.1.50:8080
+```
+
+---
+
+### 3. Avviare il frontend esposto sulla rete
+
+```bash
+npm --prefix frontend run dev -- --host 0.0.0.0
+```
+
+Gli altri dispositivi potranno aprire:
+
+```text
+http://192.168.1.50:5173
+```
 
 ---
 
 ## Database
 
-### MongoDB Atlas (consigliato)
+Il progetto supporta sia MongoDB Atlas sia MongoDB locale.
 
-Inserire la connection string in `.env`:
+### MongoDB Atlas
+
+Configurare la connection string nel file `.env`:
 
 ```env
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trentoparking
 ```
 
-### MongoDB locale tramite Docker
+---
 
-Se `MONGODB_URI` è vuota, il backend usa automaticamente `mongodb://localhost:27017/trentoparking`.
+### MongoDB locale con Docker
+
+Il file `docker-compose.yml` permette di avviare MongoDB in locale:
 
 ```bash
-docker compose up -d    # avvia
-docker compose down     # ferma
-docker compose down -v  # ferma e cancella i dati
+docker compose up -d
 ```
+
+Connection string locale:
+
+```env
+MONGODB_URI=mongodb://localhost:27017/trentoparking
+```
+
+---
+
+## Upload foto
+
+Le foto non vengono salvate direttamente nel database come file binari.
+
+Il flusso è:
+
+```text
+Host seleziona una foto dal proprio PC
+↓
+Frontend invia il file al backend con FormData
+↓
+Multer salva il file in backend/uploads/
+↓
+Il backend salva nel database il percorso della foto
+↓
+Il frontend usa quel percorso per mostrare l'immagine
+```
+
+Esempio documento MongoDB:
+
+```js
+{
+  nome: "Posto coperto vicino al centro",
+  foto: [
+    "/uploads/1717420000-posto.jpg"
+  ]
+}
+```
+
+Il backend serve staticamente le immagini tramite:
+
+```text
+/uploads
+```
+
+Quindi l'immagine è visibile da browser come:
+
+```text
+http://localhost:8080/uploads/1717420000-posto.jpg
+```
+
+In produzione sarebbe consigliato usare uno storage esterno, ad esempio Cloudinary, Amazon S3 o Firebase Storage. Per la demo locale del progetto è sufficiente la cartella `backend/uploads/`.
 
 ---
 
 ## Credenziali di test
 
-Valide solo se inserite manualmente nel database o tramite seed.
+Le seguenti credenziali sono valide solo se inserite manualmente nel database o create tramite seed.
 
-| Email                     | Password      | Ruolo          |
-|---------------------------|---------------|----------------|
-| `admin@trentoparking.it`  | `admin123`    | AMMINISTRATORE |
-| `host@trentoparking.it`   | `host123`     | HOST           |
-| `mario.rossi@example.com` | `password123` | UTENTE         |
+| Email                     | Password      | Ruolo            |
+| ------------------------- | ------------- | ---------------- |
+| `admin@trentoparking.it`  | `admin123`    | `AMMINISTRATORE` |
+| `host@trentoparking.it`   | `host123`     | `HOST`           |
+| `mario.rossi@example.com` | `password123` | `UTENTE`         |
+
+> Nota: il ruolo amministratore è predisposto nel modello, ma nella versione attuale non è presente una dashboard amministratore completa.
 
 ---
 
@@ -202,141 +525,290 @@ TrentoParking/
 │   ├── server.js
 │   ├── config/
 │   │   └── db.js
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── bookingController.js
+│   │   ├── chatController.js
+│   │   ├── postoPrivatoController.js
+│   │   └── recensioneController.js
+│   ├── middleware/
+│   │   └── auth.js
 │   ├── models/
-│   │   ├── Utente.js
+│   │   ├── Messaggio.js
 │   │   ├── PostoPrivato.js
 │   │   ├── Prenotazione.js
 │   │   ├── Recensione.js
-│   │   ├── Messaggio.js
+│   │   ├── TokenResetPassword.js
 │   │   ├── TokenVerifica.js
-│   │   └── TokenResetPassword.js
+│   │   └── Utente.js
 │   ├── routes/
 │   │   ├── auth.js
-│   │   ├── postiPrivati.js
 │   │   ├── booking.js
-│   │   ├── recensioni.js
-│   │   └── chat.js
-│   ├── controllers/
-│   │   ├── authController.js
-│   │   ├── postoPrivatoController.js
-│   │   ├── bookingController.js
-│   │   ├── recensioneController.js
-│   │   └── chatController.js
-│   ├── middleware/
-│   │   └── auth.js
-│   ├── utils/
-│   │   ├── jwt.js
-│   │   ├── upload.js
-│   │   └── pulisciUserNonVerificati.js
-│   └── uploads/              # Foto caricate dagli host
+│   │   ├── chat.js
+│   │   ├── postiPrivati.js
+│   │   └── recensioni.js
+│   ├── uploads/
+│   │   └── immagini caricate dagli host
+│   └── utils/
+│       ├── jwt.js
+│       ├── pulisciUserNonVerificati.js
+│       └── upload.js
 │
 ├── frontend/
+│   ├── public/
 │   └── src/
 │       ├── App.jsx
+│       ├── main.jsx
+│       ├── assets/
+│       ├── components/
+│       │   └── common/
+│       │       └── SearchBar.jsx
+│       ├── features/
+│       │   ├── auth/
+│       │   │   ├── AuthPanel.jsx
+│       │   │   ├── ResetPassword.jsx
+│       │   │   └── VerificaMail.jsx
+│       │   ├── bookings/
+│       │   │   ├── BookingCalendar.jsx
+│       │   │   ├── MyBookings.jsx
+│       │   │   ├── MyReceivedBookings.jsx
+│       │   │   └── PaymentPage.jsx
+│       │   ├── chat/
+│       │   │   └── ChatModal.jsx
+│       │   ├── reviews/
+│       │   │   ├── HostReviewsPage.jsx
+│       │   │   └── ReviewModal.jsx
+│       │   └── spots/
+│       │       ├── SpotFormControls.jsx
+│       │       └── SpotMap.jsx
+│       ├── pages/
+│       │   ├── AuthPage.jsx
+│       │   ├── Dashboard.jsx
+│       │   ├── LandingPage.jsx
+│       │   └── ProfilePage.jsx
 │       ├── services/
-│       │   └── api.js
-│       ├── utils/
-│       │   └── SpotOptions.js
-│       └── components/
-│           ├── LandingPage.jsx
-│           ├── AuthPage.jsx
-│           ├── AuthPanel.jsx
-│           ├── Dashboard.jsx
-│           ├── SpotMap.jsx
-│           ├── SpotSidebar.jsx
-│           ├── SearchBar.jsx
-│           ├── BookingCalendar.jsx
-│           ├── PaymentPage.jsx
-│           ├── MyBookings.jsx
-│           ├── MyReceivedBookings.jsx
-│           ├── MySpots.jsx
-│           ├── ProfilePage.jsx
-│           ├── ReviewModal.jsx
-│           ├── HostReviewsPage.jsx
-│           ├── ChatModal.jsx
-│           ├── SpotFormControls.jsx
-│           ├── MapPicker.jsx
-│           ├── ResetPassword.jsx
-│           └── VerificaMail.jsx
+│       │   ├── api.js
+│       │   └── authService.js
+│       └── utils/
+│           └── SpotOptions.js
 │
 ├── docs/
-│   ├── D1/                   # Requisiti, casi d'uso, BPMN
-│   └── D2/                   # Architettura, componenti, classi
+│   ├── D1/
+│   ├── D2/
+│   └── D3/
 │
 ├── docker-compose.yml
 ├── .env.example
+├── .gitignore
 └── README.md
 ```
 
 ---
 
-## API
+## API principali
 
-Tutti gli endpoint richiedono `Authorization: Bearer <token>` salvo dove indicato.
+Tutti gli endpoint protetti richiedono:
+
+```http
+Authorization: Bearer <token>
+```
+
+---
 
 ### Health
 
-| Metodo | Path          | Auth | Descrizione              |
-|--------|---------------|------|--------------------------|
-| GET    | `/api/health` | No   | Verifica che il backend risponda |
+| Metodo | Path          | Auth | Descrizione                        |
+| ------ | ------------- | ---: | ---------------------------------- |
+| GET    | `/api/health` |   No | Verifica che il backend sia attivo |
+
+---
 
 ### Auth
 
-| Metodo | Path                              | Auth | Descrizione                        |
-|--------|-----------------------------------|------|------------------------------------|
-| POST   | `/api/auth/register`              | No   | Registra un nuovo utente           |
-| POST   | `/api/auth/login`                 | No   | Login, restituisce JWT             |
-| GET    | `/api/auth/me`                    | Sì   | Profilo utente corrente            |
-| PATCH  | `/api/auth/me`                    | Sì   | Aggiorna nome, cognome, targa      |
-| POST   | `/api/auth/logout`                | Sì   | Logout                             |
-| GET    | `/api/auth/conferma/:token`       | No   | Conferma email via link            |
-| POST   | `/api/auth/resend-verification`   | No   | Reinvia email di verifica          |
-| POST   | `/api/auth/forgot-password`       | No   | Richiede reset password            |
-| POST   | `/api/auth/reset-password/:token` | No   | Imposta nuova password             |
+| Metodo | Path                              | Auth | Descrizione                                    |
+| ------ | --------------------------------- | ---: | ---------------------------------------------- |
+| POST   | `/api/auth/register`              |   No | Registra un nuovo utente                       |
+| POST   | `/api/auth/login`                 |   No | Effettua il login e restituisce un JWT         |
+| POST   | `/api/auth/logout`                |   Sì | Effettua il logout lato client                 |
+| GET    | `/api/auth/me`                    |   Sì | Restituisce il profilo dell'utente autenticato |
+| PATCH  | `/api/auth/me`                    |   Sì | Aggiorna nome, cognome e targa                 |
+| GET    | `/api/auth/conferma/:token`       |   No | Conferma l'email tramite token                 |
+| POST   | `/api/auth/resend-verification`   |   No | Reinvia l'email di verifica                    |
+| POST   | `/api/auth/forgot-password`       |   No | Richiede il reset della password               |
+| POST   | `/api/auth/reset-password/:token` |   No | Imposta una nuova password                     |
+
+---
 
 ### Posti privati
 
-| Metodo | Path                            | Descrizione                                      |
-|--------|---------------------------------|--------------------------------------------------|
-| GET    | `/api/posti-privati`            | Lista tutti i posti disponibili                  |
-| POST   | `/api/posti-privati`            | Crea un nuovo posto (host)                       |
-| GET    | `/api/posti-privati/miei`       | Posti pubblicati dall'host autenticato           |
-| GET    | `/api/posti-privati/:id`        | Dettaglio di un posto                            |
-| PATCH  | `/api/posti-privati/:id`        | Modifica un posto (solo proprietario)            |
-| DELETE | `/api/posti-privati/:id`        | Elimina logicamente un posto (solo proprietario) |
-| GET    | `/api/posti-privati/:id/prenotazioni` | Posto con prenotazioni attive            |
-| POST   | `/api/posti-privati/:id/foto`   | Carica foto per un posto (multipart, max 10)     |
+| Metodo | Path                                  | Auth | Descrizione                                          |
+| ------ | ------------------------------------- | ---: | ---------------------------------------------------- |
+| GET    | `/api/posti-privati`                  |   Sì | Lista dei posti attivi e visibili                    |
+| POST   | `/api/posti-privati`                  |   Sì | Crea un nuovo posto privato                          |
+| GET    | `/api/posti-privati/miei`             |   Sì | Lista dei posti pubblicati dall'host autenticato     |
+| GET    | `/api/posti-privati/:id`              |   Sì | Dettaglio di un posto                                |
+| GET    | `/api/posti-privati/:id/prenotazioni` |   Sì | Dettaglio posto con prenotazioni utili al calendario |
+| PATCH  | `/api/posti-privati/:id`              |   Sì | Modifica un posto, solo se proprietario              |
+| DELETE | `/api/posti-privati/:id`              |   Sì | Elimina logicamente un posto, solo se proprietario   |
+| POST   | `/api/posti-privati/:id/foto`         |   Sì | Carica foto per un posto, massimo 10                 |
+
+---
 
 ### Prenotazioni
 
-| Metodo | Path                      | Descrizione                                    |
-|--------|---------------------------|------------------------------------------------|
-| GET    | `/api/bookings`           | Le proprie prenotazioni (utente)               |
-| GET    | `/api/bookings/ricevute`  | Prenotazioni ricevute sui propri posti (host)  |
-| POST   | `/api/bookings`           | Crea una nuova prenotazione                    |
-| POST   | `/api/bookings/:id/pay`   | Conferma pagamento (mockato)                   |
-| DELETE | `/api/bookings/:id`       | Annulla una prenotazione                       |
+| Metodo | Path                     | Auth | Descrizione                                      |
+| ------ | ------------------------ | ---: | ------------------------------------------------ |
+| GET    | `/api/bookings`          |   Sì | Lista delle prenotazioni dell'utente autenticato |
+| GET    | `/api/bookings/ricevute` |   Sì | Lista delle prenotazioni ricevute dall'host      |
+| POST   | `/api/bookings`          |   Sì | Crea una nuova prenotazione                      |
+| POST   | `/api/bookings/:id/pay`  |   Sì | Conferma il pagamento mockato                    |
+| DELETE | `/api/bookings/:id`      |   Sì | Annulla una prenotazione                         |
+
+---
 
 ### Recensioni
 
-| Metodo | Path                              | Descrizione                              |
-|--------|-----------------------------------|------------------------------------------|
-| POST   | `/api/recensioni`                 | Crea una recensione (prenotazione pagata)|
-| GET    | `/api/recensioni/posto/:postoId`  | Recensioni di un posto                   |
-| GET    | `/api/recensioni/host/:hostId`    | Recensioni di tutte le prenotazioni di un host |
-| GET    | `/api/recensioni/medie-posti`     | Media voti per posto dell'host loggato   |
+| Metodo | Path                             | Auth | Descrizione                                               |
+| ------ | -------------------------------- | ---: | --------------------------------------------------------- |
+| POST   | `/api/recensioni`                |   Sì | Crea una recensione                                       |
+| GET    | `/api/recensioni/posto/:postoId` |   Sì | Restituisce le recensioni di un posto                     |
+| GET    | `/api/recensioni/host/:hostId`   |   Sì | Restituisce le recensioni ricevute da un host             |
+| GET    | `/api/recensioni/medie-posti`    |   Sì | Restituisce la media voti dei posti dell'host autenticato |
+
+---
 
 ### Chat
 
-| Metodo | Path              | Descrizione                                         |
-|--------|-------------------|-----------------------------------------------------|
-| GET    | `/api/chat/:id`   | Messaggi di una prenotazione (utente o host)        |
-| POST   | `/api/chat/:id`   | Invia un messaggio in una prenotazione              |
+| Metodo | Path            | Auth | Descrizione                                |
+| ------ | --------------- | ---: | ------------------------------------------ |
+| GET    | `/api/chat/:id` |   Sì | Restituisce i messaggi di una prenotazione |
+| POST   | `/api/chat/:id` |   Sì | Invia un messaggio in una prenotazione     |
+
+---
+
+## Testing e controlli
+
+Durante lo sviluppo sono stati usati controlli statici, build frontend e test manuali sui flussi principali.
+
+### Controlli backend
+
+```bash
+node --check backend/server.js
+node --check backend/routes/postiPrivati.js
+node --check backend/controllers/postoPrivatoController.js
+node --check backend/controllers/bookingController.js
+node --check backend/controllers/authController.js
+node --check backend/controllers/chatController.js
+node --check backend/controllers/recensioneController.js
+```
+
+---
+
+### Controlli frontend
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+---
+
+### Flussi testati manualmente
+
+* registrazione utente
+* verifica email
+* login
+* reset password
+* modifica profilo
+* pubblicazione posto privato
+* caricamento foto
+* visualizzazione posto su mappa
+* ricerca per raggio
+* prenotazione posto
+* blocco sovrapposizione prenotazioni
+* pagamento entro scadenza
+* scadenza pagamento
+* annullamento prenotazione
+* chat tra utente e host
+* recensione dopo prenotazione conclusa
+* disattivazione posto
+* eliminazione posto senza prenotazioni future attive
+* blocco eliminazione posto con prenotazioni future attive
+* visualizzazione corretta di posti senza foto
+
+---
+
+## Note progettuali
+
+### Ruoli
+
+Il sistema usa tre ruoli:
+
+* `UTENTE`: utente registrato che può cercare e prenotare posti
+* `HOST`: utente che ha pubblicato almeno un posto privato
+* `AMMINISTRATORE`: ruolo predisposto nel modello per possibili estensioni future
+
+Nella versione attuale l'amministratore non ha una dashboard dedicata.
+
+---
+
+### Gamification
+
+Nel modello utente sono presenti i campi `punti` e `livello`.
+
+Questi campi rappresentano una predisposizione per possibili funzionalità future di gamification, ma nella versione attuale non è implementato un sistema completo di assegnazione automatica dei punti.
+
+---
+
+### Admin e verifica posti
+
+Il modello `PostoPrivato` contiene uno stato di verifica del posto.
+
+Questo consente una futura estensione in cui un amministratore o ente verificatore possa approvare o rifiutare i posti pubblicati dagli host.
+
+Nella versione attuale, la pubblicazione e la gestione dei posti sono affidate all'host autenticato, con dichiarazione di proprietà/autorizzazione al momento della creazione del posto.
+
+---
+
+### Storage immagini
+
+Per semplicità progettuale le immagini sono salvate nel filesystem locale del backend.
+
+Questa soluzione è adeguata per demo locale e sviluppo universitario.
+
+In una versione production sarebbe preferibile usare uno storage esterno, ad esempio:
+
+* Cloudinary
+* Amazon S3
+* Firebase Storage
+* Supabase Storage
+
+---
+
+### Evoluzione del progetto
+
+Durante lo sviluppo il progetto è stato raffinato iterativamente.
+
+La versione finale si concentra sul caso d'uso principale:
+
+```text
+utente cerca un posto privato
+↓
+utente prenota
+↓
+utente paga
+↓
+utente comunica con l'host
+↓
+utente recensisce il posto
+```
+
+Rispetto alle prime ipotesi progettuali, alcune funzionalità più ampie, come stima dei parcheggi pubblici, integrazione con trasporto pubblico o pannello amministratore completo, sono state considerate estensioni future per mantenere il prodotto finale più concreto, stabile e dimostrabile.
 
 ---
 
 ## Autori
 
-- David Dorobantu — 234467
-- Riccardo Gonzato — 246476
-- Matteo Sepa — 243283
+* David Dorobantu — 234467
+* Riccardo Gonzato — 246476
+* Matteo Sepa — 243283
