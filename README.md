@@ -741,7 +741,7 @@ Il sistema usa tre ruoli:
 
 * `UTENTE`: utente registrato che può cercare e prenotare posti
 * `HOST`: utente che ha pubblicato almeno un posto privato
-* `AMMINISTRATORE`: ruolo predisposto nel modello per possibili estensioni future
+* `AMMINISTRATORE`: ruolo con permessi per gestione di utenti/posti privati/prenotazioni
 
 ---
 
