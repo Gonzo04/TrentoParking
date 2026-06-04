@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getCurrentUser,
   loginUser,
@@ -39,6 +39,11 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+
+  // Guardia contro il doppio submit: React aggiorna il DOM in modo asincrono,
+  // quindi il pulsante potrebbe non essere ancora disabilitato nel brevissimo
+  // lasso tra il primo click e il re-render con loading=true.
+  const isSubmitting = useRef(false);
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -153,11 +158,14 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
 
   async function handleRegisterSubmit(event) {
     event.preventDefault();
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
     resetMessages();
 
     const validationError = validateRegisterForm();
     if (validationError) {
       setErrorMessage(validationError);
+      isSubmitting.current = false;
       return;
     }
 
@@ -177,6 +185,7 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
       setErrorMessage(error.message);
     } finally {
       setLoading(false);
+      isSubmitting.current = false;
     }
   }
 
