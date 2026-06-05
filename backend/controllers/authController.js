@@ -154,7 +154,7 @@ async function register(req, res) {
         if (!existingUser.emailVerificata) {
           await Utente.findByIdAndDelete(existingUser._id);
           await TokenVerificaMail.deleteMany({ userId: existingUser._id });
-          // fall-through: la registrazione prosegue normalmente
+          // la registrazione prosegue normalmente
         } else {
           return res.status(409).json({
             message: 'Email già registrata'

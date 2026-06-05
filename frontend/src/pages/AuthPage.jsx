@@ -7,6 +7,7 @@ function AuthPage({
   authInitialTab,
   onAuthChange,
   verificationSuccess,
+  verificationExpired,
   resetSuccess,
   onRegisterSuccess,
   waitingVerification,
@@ -70,6 +71,7 @@ function AuthPage({
               initialTab={authInitialTab}
               onAuthChange={onAuthChange}
               verificationSuccess={verificationSuccess}
+              verificationExpired={verificationExpired}
               resetSuccess={resetSuccess}
               onRegisterSuccess={onRegisterSuccess}
             />
