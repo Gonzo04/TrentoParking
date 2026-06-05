@@ -146,20 +146,29 @@ async function register(req, res) {
 
     if (existingUser) {
       if (existingUser.email === normalizedEmail) {
-        return res.status(409).json({
-          message: 'Email già registrata'
-        });
-      }
-
-      if (existingUser.nomeUtente === normalizedUsername) {
+        // Se l'utente esiste ma non ha ancora verificato la mail,
+        // potrebbe essere un "fantasma" rimasto da un tentativo precedente in cui
+        // l'invio email era fallito prima che il rollback fosse implementato.
+        // In questo caso lo eliminiamo (con il suo token) e permettiamo la nuova registrazione,
+        // così l'utente non rimane bloccato per sempre.
+        if (!existingUser.emailVerificata) {
+          await Utente.findByIdAndDelete(existingUser._id);
+          await TokenVerificaMail.deleteMany({ userId: existingUser._id });
+          // fall-through: la registrazione prosegue normalmente
+        } else {
+          return res.status(409).json({
+            message: 'Email già registrata'
+          });
+        }
+      } else if (existingUser.nomeUtente === normalizedUsername) {
         return res.status(409).json({
           message: 'Nome utente già in uso'
         });
+      } else {
+        return res.status(409).json({
+          message: 'Utente già esistente'
+        });
       }
-
-      return res.status(409).json({
-        message: 'Utente già esistente'
-      });
     }
 
     // Calcoliamo l'hash della password.
