@@ -82,6 +82,7 @@ function App() {
 
   const [waitingVerification, setWaitingVerification] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [verificationExpired, setVerificationExpired] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
 
   const [resetSuccess, setResetSuccess] = useState(false);
@@ -112,7 +113,7 @@ function App() {
     : null;
 
   const shouldSkipSessionRestore = Boolean(resetToken) ||
-    window.location.search.includes('verified=true') ||
+    window.location.search.includes('verified=') ||
     window.location.search.includes('reset=success');
 
   useEffect(() => {
@@ -122,6 +123,12 @@ function App() {
 
     if (params.get('verified') === 'true') {
       setVerificationSuccess(true);
+      window.history.replaceState({}, document.title, '/');
+      setView('auth');
+    }
+
+    if (params.get('verified') === 'expired' || params.get('verified') === 'error') {
+      setVerificationExpired(true);
       window.history.replaceState({}, document.title, '/');
       setView('auth');
     }
@@ -569,6 +576,7 @@ function App() {
         authInitialTab={authInitialTab}
         onAuthChange={handleAuthChange}
         verificationSuccess={verificationSuccess}
+        verificationExpired={verificationExpired}
         resetSuccess={resetSuccess}
         waitingVerification={waitingVerification}
         pendingEmail={pendingEmail}
