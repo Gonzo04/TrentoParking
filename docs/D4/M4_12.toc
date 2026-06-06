@@ -1,0 +1,25 @@
+\contentsline {section}{\numberline {1}Sezione Introduttiva}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Team Members}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Project Idea}{2}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Links}{2}{subsection.1.3}%
+\contentsline {section}{\numberline {2}Sezione Generale}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Strategia di Branching}{2}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Product Backlog}{3}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Definizione di Done}{4}{subsection.2.3}%
+\contentsline {section}{\numberline {3}Sprint 2}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Goal}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Sprint Planning}{5}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}Burndown Chart}{7}{subsubsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.3}Test Cases}{7}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Sprint Review}{8}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Product Backlog Refinement}{9}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}Sprint Retrospective}{9}{subsection.3.6}%
+\contentsline {subsubsection}{\numberline {3.6.1}Aspetti positivi}{9}{subsubsection.3.6.1}%
+\contentsline {subsubsection}{\numberline {3.6.2}Criticità riscontrate}{10}{subsubsection.3.6.2}%
+\contentsline {subsubsection}{\numberline {3.6.3}Pratiche Agile adottate}{10}{subsubsection.3.6.3}%
+\contentsline {subsubsection}{\numberline {3.6.4}Design Thinking}{10}{subsubsection.3.6.4}%
+\contentsline {subsubsection}{\numberline {3.6.5}Dinamiche di gruppo}{10}{subsubsection.3.6.5}%
+\contentsline {section}{\numberline {4}Sezione Finale}{11}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Diagramma del Deploy}{11}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Stack Tecnologico}{11}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Conclusioni}{11}{subsection.4.3}%
