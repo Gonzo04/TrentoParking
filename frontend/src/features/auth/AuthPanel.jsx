@@ -33,7 +33,7 @@ function EyeOffIcon() {
 }
 
 /* ── Component ───────────────────────────────────────────────────── */
-function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, resetSuccess, initialTab }) {
+function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, verificationExpired, resetSuccess, initialTab }) {
   const [mode, setMode] = useState(initialTab ?? 'login');
 
   const [currentUser, setCurrentUser] = useState(null);
@@ -332,6 +332,12 @@ function AuthPanel({ onAuthChange, onRegisterSuccess, verificationSuccess, reset
           {successMessage && <p className="success-message">{successMessage}</p>}
           {verificationSuccess && (
             <p className="success-message">Email verificata! Ora puoi accedere.</p>
+          )}
+          {verificationExpired && (
+            <p className="error-message">
+              Il link di verifica non è più valido (scaduto o già usato).
+              Registrati di nuovo per ricevere un nuovo link.
+            </p>
           )}
           {resetSuccess && (
             <p className="success-message">Password aggiornata! Ora puoi accedere.</p>
