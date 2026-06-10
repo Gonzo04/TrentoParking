@@ -149,7 +149,7 @@ export default function SpotMap({
             <Popup>
               {typeof spot.foto?.[0] === 'string' && spot.foto[0].trim().length > 0 && (
                 <img
-                  src={`http://localhost:8080${spot.foto[0]}`}
+                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}${spot.foto[0]}`}
                   alt=""
                   style={{ width: '100%', height: 110, objectFit: 'cover', borderRadius: 6, marginBottom: 6, display: 'block' }}
                   onError={e => { e.currentTarget.style.display = 'none' }}
