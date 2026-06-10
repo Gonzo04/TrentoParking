@@ -18,10 +18,32 @@ Il progetto è stato sviluppato per il corso di **Ingegneria del Software** dell
 * [Database](#database)
 * [Upload foto](#upload-foto)
 * [Struttura del progetto](#struttura-del-progetto)
+* [Link utili](#link-utili)
 * [API principali](#api-principali)
 * [Testing e controlli](#testing-e-controlli)
 * [Note progettuali](#note-progettuali)
 * [Autori](#autori)
+
+---
+
+## Link utili
+
+* Repository GitHub: https://github.com/Gonzo04/TrentoParking
+* Documentazione API: https://trentoparking.docs.apiary.io/#
+* Deploy frontend demo: https://trentoparking-frontend.onrender.com
+* Backend API health: https://trentoparking-backend.onrender.com/api/health
+---
+
+## Deployment
+
+Questa applicazione è stata deployata su Render:
+
+* Frontend: `trentoparking-frontend.onrender.com`
+* Backend API: `trentoparking-backend.onrender.com` (health: `/api/health`)
+* Database: MongoDB Atlas (cloud)
+* Email transazionali: Mailjet
+
+Il frontend React compilato comunica con il backend Express tramite chiamate REST autenticate con JWT. Le immagini caricate vengono salvate nel filesystem del backend e servite come file statici da `/uploads`.
 
 ---
 
@@ -178,6 +200,13 @@ I messaggi vengono aggiornati tramite polling periodico.
 
 ---
 
+### Dashboard host e pannello admin
+
+Gli host possono accedere a una dashboard dedicata per gestire i propri posti pubblicati e visualizzare le prenotazioni ricevute.
+Gli amministratori possono accedere al pannello admin per gestire utenti, posti e prenotazioni dal frontend.
+
+---
+
 ### Foto dei posti
 
 Gli host possono caricare fino a 10 foto per ogni posto.
@@ -221,7 +250,7 @@ Se un posto non ha foto, il frontend evita di mostrare immagini rotte.
 | Backend         | Node.js, Express                    |
 | Database        | MongoDB, Mongoose                   |
 | Autenticazione  | JWT, bcryptjs                       |
-| Email           | Nodemailer                          |
+| Email           | Mailjet                             |
 | Upload file     | Multer                              |
 | Mappa           | Leaflet, OpenStreetMap              |
 | Ambiente locale | Docker Compose per MongoDB locale   |
@@ -264,8 +293,20 @@ Variabili principali:
 PORT=8080
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/trentoparking
 JWT_SECRET=una_stringa_lunga_e_sicura
-EMAIL_USER=account_email
-EMAIL_PASS=password_o_app_password
+# Mailjet credentials (usate dal backend)
+MAILJET_API_KEY=your_mailjet_public_key
+MAILJET_SECRET_KEY=your_mailjet_private_key
+VERIFICA_EMAIL=TrentoParking <trentoparking1@gmail.com>```
+
+Per usare Mailjet con `trentoparking1@gmail.com`, assicurati che l'indirizzo mittente sia verificato nel pannello Mailjet e imposta le chiavi `MAILJET_API_KEY` e `MAILJET_SECRET_KEY` e la variabile `VERIFICA_EMAIL` nelle variabili d'ambiente (o sul servizio di deploy).
+
+Su Render (o altro provider), aggiungi queste variabili d'ambiente nella sezione di configurazione del servizio backend.
+
+Test rapido (invio email di verifica via backend):
+
+```bash
+# Esempio: reinvia l'email di verifica per un utente
+curl -X POST -H "Content-Type: application/json" -d '{"email":"mario.rossi@gmail.com"}' http://localhost:8080/api/auth/resend-verification
 ```
 
 Se si vuole usare MongoDB locale:
@@ -508,7 +549,7 @@ Le seguenti credenziali sono valide solo se inserite manualmente nel database o 
 | ------------------------- | ------------- | ---------------- |
 | `admin@trentoparking.it`  | `admin123`    | `AMMINISTRATORE` |
 | `host@trentoparking.it`   | `host123`     | `HOST`           |
-| `mario.rossi@example.com` | `password123` | `UTENTE`         |
+| `mario.rossi@gmail.com`   | `password123` | `UTENTE`         |
 
 ---
 
@@ -672,6 +713,20 @@ Authorization: Bearer <token>
 
 ---
 
+### Admin API
+
+| Metodo | Path                         | Auth | Descrizione                                    |
+| ------ | ---------------------------- | ---: | ---------------------------------------------- |
+| GET    | `/api/admin/users`           |   Sì | Lista tutti gli utenti                          |
+| PATCH  | `/api/admin/users/:id`       |   Sì | Aggiorna ruolo o altri dati di un utente       |
+| DELETE | `/api/admin/users/:id`       |   Sì | Elimina un utente                               |
+| GET    | `/api/admin/spots`           |   Sì | Lista tutti i posti                             |
+| DELETE | `/api/admin/spots/:id`       |   Sì | Elimina un posto                                |
+| GET    | `/api/admin/bookings`        |   Sì | Lista tutte le prenotazioni                     |
+| PATCH  | `/api/admin/bookings/:id/cancel` |   Sì | Annulla una prenotazione                        |
+
+---
+
 ### Chat
 
 | Metodo | Path            | Auth | Descrizione                                |
@@ -757,9 +812,9 @@ Questi campi rappresentano una predisposizione per possibili funzionalità futur
 
 Il modello `PostoPrivato` contiene uno stato di verifica del posto.
 
-Questo consente una futura estensione in cui un amministratore o ente verificatore possa approvare o rifiutare i posti pubblicati dagli host.
+Il progetto include un pannello admin per la gestione degli utenti, dei posti e delle prenotazioni.
 
-Nella versione attuale, la pubblicazione e la gestione dei posti sono affidate all'host autenticato, con dichiarazione di proprietà/autorizzazione al momento della creazione del posto.
+Il ruolo `AMMINISTRATORE` può modificare ruoli utenti, eliminare posti e annullare prenotazioni dal pannello admin.
 
 ---
 
@@ -802,6 +857,6 @@ Rispetto alle prime ipotesi progettuali, alcune funzionalità più ampie, come s
 
 ## Autori
 
-* David Dorobantu — 234467
-* Riccardo Gonzato — 246476
-* Matteo Sepa — 243283
+* David Dorobantu — 234467 — https://github.com/DavidDorobantu
+* Riccardo Gonzato — 246476 — https://github.com/Gonzo04
+* Matteo Sepa — 243283 — https://github.com/sepamatteo
