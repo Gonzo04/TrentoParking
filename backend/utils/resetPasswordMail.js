@@ -1,13 +1,14 @@
-const { Resend } = require('resend');
+const Brevo = require('@getbrevo/brevo');
 
 async function sendResetPasswordEmail(email, link) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+    const client = new Brevo.TransactionalEmailsApi();
+    client.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
 
-  const { error } = await resend.emails.send({
-    from: 'TrentoParking <onboarding@resend.dev>',
-    to: email,
-    subject: 'Reset password TrentoParking',
-    html: `
+    const mail = new Brevo.SendSmtpEmail();
+    mail.sender = { name: 'TrentoParking', email: process.env.VERIFICA_EMAIL };
+    mail.to = [{ email }];
+    mail.subject = 'Reset password TrentoParking';
+    mail.htmlContent = `
     <div style="margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
         <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
             <tr>
@@ -43,10 +44,9 @@ async function sendResetPasswordEmail(email, link) {
                 </td>
             </tr>
         </table>
-    </div>`
-  });
+    </div>`;
 
-  if (error) throw new Error(error.message);
+    await client.sendTransacEmail(mail);
 }
 
 module.exports = { sendResetPasswordEmail };
