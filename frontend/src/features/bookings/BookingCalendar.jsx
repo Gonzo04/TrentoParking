@@ -99,7 +99,7 @@ function Lightbox({ foto, index, onClose, onPrev, onNext }) {
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose, onPrev, onNext])
 
-  const src   = `http://localhost:8080${foto[index]}`
+  const src   = `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}${foto[index]}`
   const total = foto.length
 
   // Usiamo un Portal per rendere il lightbox direttamente in document.body.
@@ -265,7 +265,7 @@ export default function BookingCalendar({ posto, prenotazioni, onConfirm, isOwne
             {foto.map((url, i) => (
               <img
                 key={i}
-                src={`http://localhost:8080${url}`}
+                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}${url}`}
                 alt={`Foto ${i + 1}`}
                 onClick={() => openLightbox(i)}
                 style={{

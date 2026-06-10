@@ -52,7 +52,7 @@ async function resendVerificationEmail(req, res) {
       token: crypto.randomBytes(16).toString('hex')
     });
 
-    const link = `http://localhost:8080/api/auth/conferma/${tokenMail.token}`;
+    const link = `${process.env.BACKEND_URL || 'http://localhost:8080'}/api/auth/conferma/${tokenMail.token}`;
 
     await verificaEmail(user.email, link);
 
@@ -197,7 +197,7 @@ async function register(req, res) {
         token: crypto.randomBytes(16).toString('hex')
       });
 
-      const link = `http://localhost:8080/api/auth/conferma/${tokenMail.token}`;
+      const link = `${process.env.BACKEND_URL || 'http://localhost:8080'}/api/auth/conferma/${tokenMail.token}`;
       await verificaEmail(user.email, link);
     } catch (emailError) {
       // Rollback: rimuoviamo utente e token per permettere un nuovo tentativo pulito
@@ -360,7 +360,7 @@ async function richiediResetPassword(req, res) {
     });
 
     const resetLink =
-      `http://localhost:5173/reset-password/${resetToken}`;
+      `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
 
     await sendResetPasswordEmail(
       user.email,

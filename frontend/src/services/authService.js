@@ -2,7 +2,7 @@
 // In sviluppo Vite gira di solito su http://localhost:5173,
 // mentre il backend Express gira su http://localhost:8080.
 // Se in futuro vogliamo cambiare URL, possiamo usare una variabile VITE_API_BASE_URL.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8080') + '/api';
 
 // Funzione interna usata da tutte le chiamate HTTP.
 // Centralizziamo qui la gestione di fetch, JSON ed errori,
@@ -99,7 +99,7 @@ export async function resendVerificationEmail(email) {
 // Manda la mail per il reset della password
 export async function richiediResetPassword(email) {
 
-  const response = await fetch('http://localhost:8080/api/auth/forgot-password', {
+  const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
