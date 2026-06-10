@@ -12,7 +12,7 @@ const verificaEmail = async (email, link) => {
         host: 'smtp.gmail.com',
         port: 587,
         secure: false,
-        family: 4,
+        socketOptions: { family: 4 },
         auth:{
             user: process.env.VERIFICA_EMAIL,
             pass: process.env.VERIFICA_PASSWORD
