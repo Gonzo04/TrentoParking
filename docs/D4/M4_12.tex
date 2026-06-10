@@ -68,12 +68,7 @@ la mobilità urbana e ottimizzare l'utilizzo degli spazi privati inutilizzati.
 \begin{itemize}
   \item Repository Github: \url{https://github.com/Gonzo04/TrentoParking}
   \item Link Apiary: \url{https://trentoparking.docs.apiary.io/#}
-  \item Deploy: l'applicazione è eseguita in locale. Per avviarla: clonare il
-        repository, configurare le variabili d'ambiente seguendo
-        \texttt{.env.example}, eseguire \texttt{npm install} nelle
-        cartelle \texttt{backend/} e \texttt{frontend/}, quindi avviare con
-        \texttt{npm run dev} in entrambe. L'app sarà disponibile su
-        \texttt{http://localhost:5173}.
+  \item Link deploy: \url{https://trentoparking-frontend.onrender.com}
   \item Account demo:
   \begin{itemize}
     \item \textbf{Admin}  --- email: \texttt{admin@trentoparking.it}, password: \texttt{admin123}
@@ -520,39 +515,42 @@ Il team ha mantenuto una collaborazione efficace per tutta la durata dello sprin
 \begin{figure}[h!]
 \centering
 \begin{tikzpicture}[
-  box/.style={rectangle, draw, rounded corners, minimum width=3.2cm,
+  box/.style={rectangle, draw, rounded corners, minimum width=3.6cm,
     minimum height=1cm, align=center, font=\small},
   ext/.style={box, fill=gray!15},
   arr/.style={->, thick}
 ]
 \node[box, fill=blue!10]   (browser)  at (4,9)   {Browser (Client)};
-\node[box, fill=green!10]  (frontend) at (4,6.5) {Frontend\\React + Vite\\porta 5173};
-\node[box, fill=orange!10] (backend)  at (4,4)   {Backend\\Express + Node.js\\porta 8080};
-\node[box, fill=red!10]    (mongo)    at (1,1.5) {MongoDB\\porta 27017};
-\node[ext]                 (smtp)     at (7,1.5) {Servizio SMTP\\(Nodemailer)};
-\node[box, fill=yellow!10] (fs)       at (8.5,4) {File System\\/uploads};
+\node[box, fill=green!10]  (frontend) at (4,6.5) {Render Static Site\\React + Vite};
+\node[box, fill=orange!10] (backend)  at (4,4)   {Render Web Service\\Express + Node.js};
+\node[box, fill=red!10]    (mongo)    at (0.5,1.5) {MongoDB Atlas\\(cloud)};
+\node[ext]                 (resend)   at (4,1.5)   {Resend API\\(email)};
+\node[box, fill=yellow!10] (fs)       at (9.5,4)   {File System\\/uploads (ephemeral)};
 
-\draw[arr] (browser)  -- node[right, font=\scriptsize]{HTTP} (frontend);
+\draw[arr] (browser)  -- node[right, font=\scriptsize]{HTTPS} (frontend);
 \draw[arr] (frontend) -- node[right, font=\scriptsize]{REST /api/*} (backend);
 \draw[arr] (backend)  -- node[left,  font=\scriptsize]{Mongoose} (mongo);
-\draw[arr] (backend)  -- node[right, font=\scriptsize]{SMTP} (smtp);
+\draw[arr] (backend)  -- node[right, font=\scriptsize]{Resend SDK} (resend);
 \draw[arr] (backend)  -- node[above, font=\scriptsize]{Multer} (fs);
 \draw[arr, dashed] (fs) -- node[below, font=\scriptsize]{/uploads/*} (backend);
 \end{tikzpicture}
 \caption{Architettura di deploy di TrentoParking}
 \end{figure}
 
-L'applicazione è composta da tre livelli principali:
+L'applicazione è deployata su Render ed è composta da tre livelli principali:
 
 \begin{itemize}
-  \item \textbf{Frontend}: applicazione React servita da Vite (porta 5173). Comunica
-        con il backend esclusivamente tramite chiamate REST autenticate con JWT.
-  \item \textbf{Backend}: server Express (porta 8080) che espone le API REST, gestisce
-        l'autenticazione JWT, il caricamento file tramite Multer e l'invio email
-        tramite Nodemailer.
-  \item \textbf{Database}: istanza MongoDB (porta 27017) con Mongoose come ODM. I file
-        caricati vengono salvati nella cartella \texttt{backend/uploads/} e serviti
-        come file statici.
+  \item \textbf{Frontend}: Static Site su Render
+        (\texttt{trentoparking-frontend.onrender.com}). Applicazione React
+        compilata con Vite, comunica con il backend tramite chiamate REST
+        autenticate con JWT.
+  \item \textbf{Backend}: Web Service su Render
+        (\texttt{trentoparking-backend.onrender.com}). Server Express che
+        espone le API REST, gestisce l'autenticazione JWT, il caricamento
+        file tramite Multer e l'invio email tramite Resend.
+  \item \textbf{Database}: MongoDB Atlas (cloud) con Mongoose come ODM.
+        I file caricati vengono salvati nel filesystem del container
+        (\texttt{/uploads/}) e serviti come file statici.
 \end{itemize}
 
 \subsection{Stack Tecnologico}
@@ -572,7 +570,7 @@ MongoDB      & 7.x     & Database NoSQL documentale \\
 bcryptjs     & 2.4.3   & Hashing delle password \\
 jsonwebtoken & 9.0.2   & Autenticazione stateless JWT \\
 Multer       & 2.1.1   & Upload file multipart (foto posti) \\
-Nodemailer   & 8.0.7   & Invio email (verifica account, reset password) \\
+Resend       & ---     & Invio email transazionale (verifica account, reset password) \\
 dotenv       & 16.4.5  & Gestione variabili d'ambiente \\
 cors         & 2.8.6   & Cross-Origin Resource Sharing \\
 \hline
@@ -597,6 +595,23 @@ lucide-react  & 1.14.0 & Libreria icone SVG \\
 \hline
 \end{tabular}
 \caption{Stack tecnologico frontend}
+\end{table}
+
+\subsubsection*{Infrastruttura di deploy}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Servizio} & \textbf{Piano} & \textbf{Utilizzo} \\
+\hline
+Render Static Site  & Free & Hosting frontend React compilato \\
+Render Web Service  & Free & Hosting backend Node.js/Express \\
+MongoDB Atlas       & M0 Free & Database NoSQL cloud \\
+Resend              & Free & Invio email transazionali \\
+\hline
+\end{tabular}
+\caption{Infrastruttura di deploy}
 \end{table}
 
 \subsection{Conclusioni}
