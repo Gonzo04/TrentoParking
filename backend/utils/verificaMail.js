@@ -9,7 +9,10 @@ const verificaEmail = async (email, link) => {
     // Ingoiare l'errore silenziosamente impedisce il rollback e lascia
     // utenti e token "fantasma" nel database.
     let transporter = nodemailer.createTransport({
-        service: "Gmail",
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        family: 4,
         auth:{
             user: process.env.VERIFICA_EMAIL,
             pass: process.env.VERIFICA_PASSWORD
@@ -86,7 +89,7 @@ const confermaMail = async (req, res) => {
             // da una nuova registrazione. Reindirizziamo al frontend con un
             // parametro di errore così l'utente vede un messaggio chiaro.
             return res.redirect(
-                'http://localhost:5173/?verified=expired'
+                `${process.env.FRONTEND_URL || 'http://localhost:5173'}/?verified=expired`
             );
         }
 
@@ -96,11 +99,11 @@ const confermaMail = async (req, res) => {
         );
         await TokenVerifica.findByIdAndDelete(tokenMail._id);
 
-        return res.redirect('http://localhost:5173/?verified=true');
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/?verified=true`);
 
     } catch (error) {
         console.error('Errore conferma mail:', error);
-        return res.redirect('http://localhost:5173/?verified=error');
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/?verified=error`);
     }
 }
 
