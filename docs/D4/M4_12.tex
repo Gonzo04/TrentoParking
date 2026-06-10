@@ -77,6 +77,10 @@ la mobilità urbana e ottimizzare l'utilizzo degli spazi privati inutilizzati.
   \end{itemize}
 \end{itemize}
 
+\textbf{Nota:} le email transazionali (verifica account, reset password) sono inviate
+tramite Mailjet. In assenza di un dominio personalizzato verificato, alcune email
+potrebbero essere recapitate nella cartella spam del destinatario.
+
 % ── 2. Sezione Generale ───────────────────────────────────────────
 \section{Sezione Generale}
 
@@ -524,13 +528,13 @@ Il team ha mantenuto una collaborazione efficace per tutta la durata dello sprin
 \node[box, fill=green!10]  (frontend) at (4,6.5) {Render Static Site\\React + Vite};
 \node[box, fill=orange!10] (backend)  at (4,4)   {Render Web Service\\Express + Node.js};
 \node[box, fill=red!10]    (mongo)    at (0.5,1.5) {MongoDB Atlas\\(cloud)};
-\node[ext]                 (resend)   at (4,1.5)   {Resend API\\(email)};
+\node[ext]                 (resend)   at (4,1.5)   {Mailjet API\\(email)};
 \node[box, fill=yellow!10] (fs)       at (9.5,4)   {File System\\/uploads (ephemeral)};
 
 \draw[arr] (browser)  -- node[right, font=\scriptsize]{HTTPS} (frontend);
 \draw[arr] (frontend) -- node[right, font=\scriptsize]{REST /api/*} (backend);
 \draw[arr] (backend)  -- node[left,  font=\scriptsize]{Mongoose} (mongo);
-\draw[arr] (backend)  -- node[right, font=\scriptsize]{Resend SDK} (resend);
+\draw[arr] (backend)  -- node[right, font=\scriptsize]{Mailjet SDK} (resend);
 \draw[arr] (backend)  -- node[above, font=\scriptsize]{Multer} (fs);
 \draw[arr, dashed] (fs) -- node[below, font=\scriptsize]{/uploads/*} (backend);
 \end{tikzpicture}
@@ -541,13 +545,13 @@ L'applicazione è deployata su Render ed è composta da tre livelli principali:
 
 \begin{itemize}
   \item \textbf{Frontend}: Static Site su Render
-        (\texttt{trentoparking-frontend.onrender.com}). Applicazione React
+        (\url{https://trentoparking-frontend.onrender.com}). Applicazione React
         compilata con Vite, comunica con il backend tramite chiamate REST
         autenticate con JWT.
   \item \textbf{Backend}: Web Service su Render
-        (\texttt{trentoparking-backend.onrender.com}). Server Express che
+        (\url{https://trentoparking-backend.onrender.com}). Server Express che
         espone le API REST, gestisce l'autenticazione JWT, il caricamento
-        file tramite Multer e l'invio email tramite Resend.
+        file tramite Multer e l'invio email tramite Mailjet.
   \item \textbf{Database}: MongoDB Atlas (cloud) con Mongoose come ODM.
         I file caricati vengono salvati nel filesystem del container
         (\texttt{/uploads/}) e serviti come file statici.
@@ -570,7 +574,7 @@ MongoDB      & 7.x     & Database NoSQL documentale \\
 bcryptjs     & 2.4.3   & Hashing delle password \\
 jsonwebtoken & 9.0.2   & Autenticazione stateless JWT \\
 Multer       & 2.1.1   & Upload file multipart (foto posti) \\
-Resend       & ---     & Invio email transazionale (verifica account, reset password) \\
+Mailjet      & ---     & Invio email transazionale (verifica account, reset password) \\
 dotenv       & 16.4.5  & Gestione variabili d'ambiente \\
 cors         & 2.8.6   & Cross-Origin Resource Sharing \\
 \hline
@@ -608,7 +612,7 @@ lucide-react  & 1.14.0 & Libreria icone SVG \\
 Render Static Site  & Free & Hosting frontend React compilato \\
 Render Web Service  & Free & Hosting backend Node.js/Express \\
 MongoDB Atlas       & M0 Free & Database NoSQL cloud \\
-Resend              & Free & Invio email transazionali \\
+Mailjet             & Free & Invio email transazionali \\
 \hline
 \end{tabular}
 \caption{Infrastruttura di deploy}
